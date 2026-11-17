@@ -44,7 +44,8 @@ class HS_Parent_Link {
 		if ( ! $parent_id || ! $student_id ) {
 			return false;
 		}
-		if ( current_user_can( 'manage_options' ) || current_user_can( 'hs_manage_all_classes' ) ) {
+		// دسترسی خودِ $parent_id بررسی می‌شود، نه کاربر فعلی (رفع باگ ۱.۷.۳)
+		if ( user_can( $parent_id, 'manage_options' ) || user_can( $parent_id, 'hs_manage_all_classes' ) ) {
 			return true;
 		}
 		// معلم کلاس دانش‌آموز

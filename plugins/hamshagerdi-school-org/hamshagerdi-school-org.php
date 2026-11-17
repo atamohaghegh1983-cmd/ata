@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ساختار مدیریت مدرسه
  * Description: معرفی مدرسه توسط مدیر، معاونین و شرح وظایف، واگذاری وظایف و نظارت (فقط‌خواندنی) بر کلاس‌ها؛ یکپارچه با پنل «مدیریت کلاس».
- * Version:     2.2.0
+ * Version:     2.2.1
  * Text Domain: hamshagerdi-school-org
  * Requires at least: 5.8
  * Requires PHP: 7.4
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HS_SO_VERSION', '2.2.0' );
+define( 'HS_SO_VERSION', '2.2.1' );
 define( 'HS_SO_FILE', __FILE__ );
 define( 'HS_SO_PATH', plugin_dir_path( __FILE__ ) );
 define( 'HS_SO_URL', plugin_dir_url( __FILE__ ) );

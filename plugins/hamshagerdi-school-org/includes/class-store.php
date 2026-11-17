@@ -90,8 +90,43 @@ class HS_SO_Store {
 		return user_can( $uid ? $uid : get_current_user_id(), 'manage_options' );
 	}
 
-	/** مدرسهٔ مدیر (یا مدرسهٔ انتخاب‌شده توسط مدیر سایت) */
+	/**
+	 * مدیر مدرسه تأیید شده است؟ (از ۲.۲.۱)
+	 * کسی که فرم مدیر مدرسه را پر کرده ولی هنوز مدیر سایت تأییدش نکرده، نقش school_admin ندارد
+	 * و نباید اختیار مدیر (دعوت کادر، مجوز والدین، نظارت) داشته باشد.
+	 */
+	public static function manager_approved( $uid ) {
+		$uid = (int) $uid;
+		if ( ! $uid ) {
+			return false;
+		}
+		if ( self::is_admin_user( $uid ) ) {
+			return true;
+		}
+		$u = get_userdata( $uid );
+		if ( ! $u || ! in_array( 'school_admin', (array) $u->roles, true ) ) {
+			return false;
+		}
+		if ( class_exists( 'HSUM_Membership' ) && 'suspended' === HSUM_Membership::status( $uid ) ) {
+			return false;
+		}
+		return (bool) apply_filters( 'hs_so_manager_approved', true, $uid );
+	}
+
+	/** مدرسه‌ای که این کاربر ثبت کرده (بدون توجه به تأیید؛ فقط برای ویرایش پرونده‌ی خودش) */
+	public static function owned_school_id( $uid ) {
+		$ids = get_posts( array(
+			'post_type' => self::CPT, 'post_status' => 'publish', 'fields' => 'ids', 'posts_per_page' => 1,
+			'meta_key' => '_hs_manager_id', 'meta_value' => $uid, 'orderby' => 'ID', 'order' => 'ASC', 'no_found_rows' => true,
+		) );
+		return $ids ? (int) $ids[0] : 0;
+	}
+
+	/** مدرسهٔ مدیرِ تأییدشده (یا مدرسهٔ انتخاب‌شده توسط مدیر سایت) */
 	public static function manager_school_id( $uid ) {
+		if ( ! self::manager_approved( $uid ) ) {
+			return 0;
+		}
 		$ids = get_posts( array(
 			'post_type' => self::CPT, 'post_status' => 'publish', 'fields' => 'ids', 'posts_per_page' => 1,
 			'meta_key' => '_hs_manager_id', 'meta_value' => $uid, 'orderby' => 'ID', 'order' => 'ASC', 'no_found_rows' => true,
@@ -205,7 +240,10 @@ class HS_SO_Store {
 		if ( ! $uid || ! $school_id ) {
 			return false;
 		}
-		return self::is_admin_user( $uid ) || (int) get_post_meta( $school_id, '_hs_manager_id', true ) === (int) $uid;
+		if ( self::is_admin_user( $uid ) ) {
+			return true;
+		}
+		return self::manager_approved( $uid ) && (int) get_post_meta( $school_id, '_hs_manager_id', true ) === (int) $uid;
 	}
 
 	/** ناظر: مدیر یا عضو کادری که مدیر اجازهٔ مشاهده داده است */

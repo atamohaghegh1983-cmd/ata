@@ -14,10 +14,31 @@ class HSUM_Onboard {
 
 	const DONE = '_hsum_onboarded';
 	const DATA = '_hsum_profile';
+	const STAFF_PENDING = '_hsum_staff_pending';
 
 	public static function init() {
 		add_action( 'template_redirect', array( __CLASS__, 'gate' ), 4 );
 		add_action( 'admin_post_hsum_onboard', array( __CLASS__, 'save' ) );
+		add_action( 'hsum_status_changed', array( __CLASS__, 'on_status_changed' ), 20, 3 );
+	}
+
+	/** پس از تأیید مدیر مدرسه، فهرست کادری که پیش از تأیید ثبت کرده بود دعوت می‌شود */
+	public static function on_status_changed( $uid, $status, $old = '' ) {
+		if ( 'active' !== $status || ! class_exists( 'HS_SO_Store' ) || ! class_exists( 'HSUM_Staff' ) || ! method_exists( 'HS_SO_Store', 'manager_approved' ) ) {
+			return;
+		}
+		$pend = get_user_meta( $uid, self::STAFF_PENDING, true );
+		if ( ! is_array( $pend ) || empty( $pend['school'] ) || ! HS_SO_Store::manager_approved( $uid ) ) {
+			return;
+		}
+		if ( (int) get_post_meta( (int) $pend['school'], '_hs_manager_id', true ) !== (int) $uid ) {
+			delete_user_meta( $uid, self::STAFF_PENDING );
+			return;
+		}
+		delete_user_meta( $uid, self::STAFF_PENDING );
+		if ( ! empty( $pend['rows'] ) ) {
+			HSUM_Staff::sync( (int) $pend['school'], (array) $pend['rows'], $uid );
+		}
 	}
 
 	private static function role_of( $u ) {
@@ -243,25 +264,28 @@ class HSUM_Onboard {
 
 	/* ------------------------------ ذخیره ------------------------------ */
 
-	public static function save() {
-		if ( ! is_user_logged_in() ) {
-			auth_redirect();
+	/**
+	 * منطق مشترک تکمیل ثبت‌نام (فرم سایت و API اپ).
+	 * از ۲.۶.۳ از save() جدا شد تا اپ موبایل همان قواعد را بدون تکرار کد اجرا کند.
+	 *
+	 * @param int   $uid کاربر
+	 * @param array $in  داده‌ی فرم (unslash شده)
+	 * @return array{message:string,role:string,to:string}|WP_Error
+	 */
+	public static function process( $uid, $in ) {
+		$u   = get_userdata( (int) $uid );
+		if ( ! $u ) {
+			return new WP_Error( 'user', 'کاربر یافت نشد.' );
 		}
-		check_admin_referer( 'hsum_onboard' );
-		$u   = wp_get_current_user();
-		$uid = $u->ID;
-		$in  = wp_unslash( $_POST );
+		$uid = (int) $u->ID;
+		$in  = (array) $in;
 		$t   = function ( $k ) use ( $in ) {
 			return sanitize_text_field( $in[ $k ] ?? '' );
 		};
 		$cur  = self::role_of( $u );
 		$role = in_array( $in['role'] ?? '', array( 'parent', 'teacher', 'school_admin' ), true ) ? $in['role'] : '';
-		$back = function ( $msg ) {
-			wp_safe_redirect( add_query_arg( array( 'onboard' => 1, 'hsum_err' => rawurlencode( $msg ) ), HSUM_Front::page_url() ) );
-			exit;
-		};
 		if ( ! $role ) {
-			$back( 'نقش خود را انتخاب کنید.' );
+			return new WP_Error( 'onboard', 'نقش خود را انتخاب کنید.' );
 		}
 		$first = $t( 'first_name' );
 		$last  = $t( 'last_name' );
@@ -277,11 +301,11 @@ class HSUM_Onboard {
 				}
 			}
 			if ( '' === $first || '' === $last ) {
-				$back( 'در کارت «والدین»، نام و نام خانوادگی خودتان را بنویسید.' );
+				return new WP_Error( 'onboard', 'در کارت «والدین»، نام و نام خانوادگی خودتان را بنویسید.' );
 			}
 		}
 		if ( '' === $first || '' === $last ) {
-			$back( 'نام و نام خانوادگی لازم است.' );
+			return new WP_Error( 'onboard', 'نام و نام خانوادگی لازم است.' );
 		}
 		wp_update_user( array( 'ID' => $uid, 'first_name' => $first, 'last_name' => $last, 'display_name' => $first . ' ' . $last ) );
 
@@ -313,14 +337,14 @@ class HSUM_Onboard {
 			);
 			$p['child_name'] = trim( $p['child_first'] . ' ' . $p['child_last'] );
 			if ( mb_strlen( $p['child_name'] ) < 3 ) {
-				$back( 'نام و نام خانوادگی فرزند را بنویسید.' );
+				return new WP_Error( 'onboard', 'نام و نام خانوادگی فرزند را بنویسید.' );
 			}
 			$linked = class_exists( 'HSUM_Links' ) && HSUM_Links::for_parent( $uid );
 			$code   = strtoupper( $t( 'code' ) );
 			if ( $code ) {
 				$r = HSUM_Invites::parent_join( $code, $uid, $p['child_name'] );
 				if ( is_wp_error( $r ) ) {
-					$back( 'کد دعوت: ' . $r->get_error_message() );
+					return new WP_Error( 'onboard', 'کد دعوت: ' . $r->get_error_message() );
 				}
 				$msg = 'به کلاس وصل شدید.';
 			} elseif ( ! $linked && $p['teacher_mobile'] ) {
@@ -379,34 +403,47 @@ class HSUM_Onboard {
 			$pc = preg_replace( '/\D/', '', strtr( $t( 'personnel_code' ), array( '۰'=>'0','۱'=>'1','۲'=>'2','۳'=>'3','۴'=>'4','۵'=>'5','۶'=>'6','۷'=>'7','۸'=>'8','۹'=>'9' ) ) );
 			$p['personnel_code'] = $pc;
 			if ( strlen( $pc ) < 6 ) {
-				$back( 'کد پرسنلی معتبر وارد کنید (فقط عدد).' );
+				return new WP_Error( 'onboard', 'کد پرسنلی معتبر وارد کنید (فقط عدد).' );
 			}
 			update_user_meta( $uid, '_hs_personnel_code', $pc );
 			if ( '' === $p['province'] || '' === $p['school_address'] ) {
-				$back( 'استان و آدرس مدرسه لازم است.' );
+				return new WP_Error( 'onboard', 'استان و آدرس مدرسه لازم است.' );
 			}
 			if ( '' === $p['school_name'] ) {
-				$back( 'نام مدرسه لازم است.' );
+				return new WP_Error( 'onboard', 'نام مدرسه لازم است.' );
 			}
 			update_user_meta( $uid, '_hs_school_name', $p['school_name'] );
 			$msg = 'ثبت شد؛ نقش مدیر مدرسه بعد از تأیید مدیر سایت فعال می‌شود.';
 			// پرونده‌ی مدرسه (افزونه‌ی سازمان مدرسه) ساخته/به‌روز می‌شود تا بعداً قابل ویرایش باشد
 			if ( class_exists( 'HS_SO_Store' ) ) {
-				$sid = HS_SO_Store::manager_school_id( $uid );
+				// مدرسه‌ی خودِ کاربر (حتی اگر هنوز تأیید نشده) تا با هر بار ارسال فرم، مدرسه‌ی تکراری ساخته نشود
+				$sid = method_exists( 'HS_SO_Store', 'owned_school_id' ) ? HS_SO_Store::owned_school_id( $uid ) : HS_SO_Store::manager_school_id( $uid );
 				$res = HS_SO_Store::save_school( $sid, array(
 					'name' => $p['school_name'], 'province' => $p['province'], 'city' => $p['city'], 'address' => $p['school_address'],
 					'postal' => $p['postal_code'], 'code' => $p['school_code'], 'phone' => $p['school_phone'], 'level' => $p['school_type'],
 				), $uid );
 				if ( is_wp_error( $res ) ) {
 					update_user_meta( $uid, self::DATA, $p ); // تا فرم با همین اطلاعات دوباره پر شود
-					$back( $res->get_error_message() );
+					return new WP_Error( 'onboard', $res->get_error_message() );
 				}
-				$st = HSUM_Staff::sync( (int) $res, $in['staff'] ?? array(), $uid );
-				if ( $st['added'] ) {
-					$msg .= ' برای ' . $st['added'] . ' نفر از کادر، دعوت‌نامه ساخته شد.';
-				}
-				if ( $st['errors'] ) {
-					$msg .= ' ' . implode( ' ', $st['errors'] );
+				// امنیت (۲.۶.۳): دعوت کادر فقط از مدیرِ تأییدشده. دعوت، حساب موجودِ آن شماره را مستقیم
+				// عضو کادر می‌کند و نقش معلم می‌دهد؛ پس پیش از تأیید فقط ذخیره می‌شود و بعد از تأیید اجرا می‌شود.
+				$approved = ! method_exists( 'HS_SO_Store', 'manager_approved' ) || HS_SO_Store::manager_approved( $uid );
+				if ( $approved ) {
+					$st = HSUM_Staff::sync( (int) $res, $in['staff'] ?? array(), $uid );
+					if ( $st['added'] ) {
+						$msg .= ' برای ' . $st['added'] . ' نفر از کادر، دعوت‌نامه ساخته شد.';
+					}
+					if ( $st['errors'] ) {
+						$msg .= ' ' . implode( ' ', $st['errors'] );
+					}
+					delete_user_meta( $uid, self::STAFF_PENDING );
+				} else {
+					$staff = array_values( array_filter( (array) ( $in['staff'] ?? array() ), 'is_array' ) );
+					update_user_meta( $uid, self::STAFF_PENDING, array( 'school' => (int) $res, 'rows' => array_slice( $staff, 0, 60 ) ) );
+					if ( $staff ) {
+						$msg .= ' فهرست کادر ذخیره شد و پس از تأیید شما، دعوت‌نامه‌ها ساخته می‌شوند.';
+					}
 				}
 			}
 		}
@@ -415,7 +452,21 @@ class HSUM_Onboard {
 		HSUM_Audit::log( 'onboard', $uid, array( 'role' => $role ) );
 
 		$to = 'teacher' === $role ? home_url( '/panel/classes/' ) : ( 'parent' === $role && empty( $linked ) && empty( $code ) ? HSUM_Front::page_url() : home_url( '/panel/' ) );
-		wp_safe_redirect( add_query_arg( 'hsum_msg', rawurlencode( $msg ), $to ) );
+		return array( 'message' => $msg, 'role' => $role, 'to' => $to );
+	}
+
+	/** فرم سایت */
+	public static function save() {
+		if ( ! is_user_logged_in() ) {
+			auth_redirect();
+		}
+		check_admin_referer( 'hsum_onboard' );
+		$r = self::process( get_current_user_id(), wp_unslash( $_POST ) );
+		if ( is_wp_error( $r ) ) {
+			wp_safe_redirect( add_query_arg( array( 'onboard' => 1, 'hsum_err' => rawurlencode( $r->get_error_message() ) ), HSUM_Front::page_url() ) );
+			exit;
+		}
+		wp_safe_redirect( add_query_arg( 'hsum_msg', rawurlencode( $r['message'] ), $r['to'] ) );
 		exit;
 	}
 }

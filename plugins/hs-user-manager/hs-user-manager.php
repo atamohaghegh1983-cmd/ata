@@ -2,7 +2,7 @@
 /**
  * Plugin Name: کاربران و عضویت
  * Description: ورود و ثبت‌نام با موبایل و کد یک‌بار مصرف (پیامک از طریق پینوا)، انتخاب نقش، تأیید عضویت معلم و مدیر مدرسه، تغییر نقش با سابقه، تعلیق، اتصال والدین به دانش‌آموز با شماره موبایل، کد دعوت کلاس، معرفی معلم توسط مدیر مدرسه، درخواست اتصال والدین بدون کلاس، ورود گروهی دانش‌آموز و والدین از اکسل، نگاشت فیلد موبایل افزونه‌های دیگر.
- * Version:     2.6.2
+ * Version:     2.6.3
  * Text Domain: hs-user-manager
  * Requires at least: 5.9
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HSUM_VERSION', '2.6.2' );
+define( 'HSUM_VERSION', '2.6.3' );
 define( 'HSUM_DB_VERSION', '2' );
 define( 'HSUM_FILE', __FILE__ );
 define( 'HSUM_PATH', plugin_dir_path( __FILE__ ) );
