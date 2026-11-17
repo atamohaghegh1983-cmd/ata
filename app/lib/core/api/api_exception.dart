@@ -45,7 +45,7 @@ class ApiException implements Exception {
     // مسیر روی سایت تعریف نشده: افزونه‌ی API نسخه‌ی لازم را ندارد
     if (body is Map && body['code'] == 'rest_no_route') {
       return ApiException(
-        'این بخش روی سایت پیدا نشد. افزونه‌ی «API موبایل» نسخه‌ی ۲ یا بالاتر باید روی سایت نصب و فعال باشد.',
+        'این بخش روی سایت پیدا نشد. افزونه‌ی «API موبایل» روی سایت به‌روز نیست؛ آخرین نسخه‌ی آن را نصب و فعال کنید.',
         status: status,
         code: 'rest_no_route',
       );
