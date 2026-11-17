@@ -1,0 +1,30 @@
+/* محتوا عرض و جای خودش را نگه می‌دارد؛ فهرست در فضای خالی سمت راست صفحه (بیرون از ستون محتوا) */
+.hs-article-wrap{position:relative;margin:0}
+.hs-article-body{min-width:0}
+.hs-toc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.03);margin:0 0 24px}
+.hs-toc details>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;font-weight:700;font-size:15px;color:#1e293b}
+.hs-toc details>summary::-webkit-details-marker{display:none}
+.hs-toc details>summary::after{content:"▾";transition:transform .2s}
+.hs-toc details:not([open])>summary::after{transform:rotate(90deg)}
+.hs-toc details[open]>summary{margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e2e8f0}
+.hs-toc-list{list-style:none;margin:0;padding:0}
+.hs-toc-list li{margin:0}
+.hs-toc-list a{display:block;padding:7px 10px;color:#475569;text-decoration:none;border-radius:8px;transition:background .2s,color .2s;line-height:1.45;border-right:3px solid transparent}
+.hs-toc-list a:hover{background:#f1f5f9;color:#0f172a}
+.hs-toc-list a.active{background:#eff6ff;color:#1d4ed8;font-weight:600;border-right-color:#3b82f6}
+.hs-toc-list .toc-h3 a{padding-right:22px;font-size:13px}
+.hs-article-body h2[id],.hs-article-body h3[id]{scroll-margin-top:110px}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+
+/* حالت ستون کناری (وقتی سمت راست صفحه جای کافی هست؛ با JS فعال می‌شود) */
+.hs-toc-side .hs-toc-rail{position:absolute;top:0;bottom:0;right:calc(-1 * (var(--hs-toc-w) + var(--hs-toc-gap)));width:var(--hs-toc-w)}
+.hs-toc-side .hs-toc{position:sticky;top:var(--hs-toc-top,100px);max-height:calc(100vh - var(--hs-toc-top,100px) - 30px);overflow-y:auto;margin:0;padding:18px 16px}
+.hs-toc-side .hs-toc details>summary{cursor:default}
+.hs-toc-side .hs-toc details>summary::after{display:none}
+.admin-bar .hs-toc-side{--hs-toc-top:132px}
+/* هماهنگ با قالب همشاگردی */
+.hs-toc{font-family:var(--hs-font,inherit);background:var(--card,#fff);border-color:var(--line,#e2e8f0);border-radius:18px}
+.hs-toc details>summary{font-family:var(--hs-title,inherit);font-weight:400;font-size:17px;color:var(--ink,#1e293b)}
+.hs-toc-list a{color:var(--text,#475569)}
+.hs-toc-list a:hover{background:var(--bg2,#f1f5f9)}
+.hs-toc-list a.active{background:rgba(194,78,0,.08);color:var(--p,#C24E00);border-right-color:var(--p,#C24E00)}
