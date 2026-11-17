@@ -42,6 +42,14 @@ class ApiException implements Exception {
     }
     final status = res.statusCode ?? 0;
     final body = res.data;
+    // مسیر روی سایت تعریف نشده: افزونه‌ی API نسخه‌ی لازم را ندارد
+    if (body is Map && body['code'] == 'rest_no_route') {
+      return ApiException(
+        'این بخش روی سایت پیدا نشد. افزونه‌ی «API موبایل» نسخه‌ی ۲ یا بالاتر باید روی سایت نصب و فعال باشد.',
+        status: status,
+        code: 'rest_no_route',
+      );
+    }
     if (body is Map && body['message'] is String && (body['message'] as String).isNotEmpty) {
       final data = body['data'];
       return ApiException(

@@ -35,4 +35,14 @@ void main() {
     ));
     expect(e.message, contains('موقتاً'));
   });
+
+  test('مسیر ناموجود ← راهنمای نصب افزونه', () {
+    final e = ApiException.fromDio(DioException(
+      requestOptions: req,
+      type: DioExceptionType.badResponse,
+      response: Response(requestOptions: req, statusCode: 404, data: {'code': 'rest_no_route', 'message': 'No route was found'}),
+    ));
+    expect(e.code, 'rest_no_route');
+    expect(e.message, contains('API موبایل'));
+  });
 }
