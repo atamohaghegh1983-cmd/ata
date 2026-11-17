@@ -56,7 +56,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   Future<void> _verify() async {
     final code = Fa.enDigits(_c.text);
-    if (code.length != _len) return;
+    if (code.length != _len) {
+      setState(() => _error = 'کد ۵ رقمی را کامل وارد کنید.');
+      return;
+    }
+    if (_busy) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -69,6 +73,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       setState(() => _error = e.message);
       _c.clear();
       _focus.requestFocus();
+      SystemChannels.textInput.invokeMethod<void>('TextInput.show');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -99,59 +104,44 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             Text('کد ۵ رقمی پیامک‌شده به ${Fa.faDigits(widget.mobile)} را وارد کنید.', textAlign: TextAlign.center, style: const TextStyle(height: 1.7, color: Colors.black54)),
             TextButton(onPressed: () => context.pop(), child: const Text('ویرایش شماره')),
             const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => _focus.requestFocus(),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // فیلد واقعی (نامرئی) برای صفحه‌کلید و پر شدن خودکار
-                  Opacity(
-                    opacity: 0,
-                    child: TextField(
-                      key: const Key('otp_field'),
-                      controller: _c,
-                      focusNode: _focus,
-                      autofocus: true,
-                      keyboardType: TextInputType.number,
-                      maxLength: _len,
-                      autofillHints: const [AutofillHints.oneTimeCode],
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9۰-۹٠-٩]'))],
-                      onChanged: (v) {
-                        setState(() {});
-                        if (Fa.enDigits(v).length == _len) _verify();
-                      },
-                    ),
-                  ),
-                  Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(_len, (i) {
-                        final t = Fa.enDigits(_c.text);
-                        final filled = i < t.length;
-                        final active = i == t.length && _focus.hasFocus;
-                        return Container(
-                          width: 54,
-                          height: 62,
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: _error != null ? HsColors.red : (active ? HsColors.orange : const Color(0x22000000)), width: active ? 2 : 1),
-                          ),
-                          child: Text(filled ? Fa.faDigits(t[i]) : '', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700)),
-                        );
-                      }),
-                    ),
-                  ),
-                ],
+            // خانه‌ی معمولی و قابل‌دیدن: با هر لمس صفحه‌کلید باز می‌شود و «چسباندن» هم کار می‌کند
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: TextField(
+                key: const Key('otp_field'),
+                controller: _c,
+                focusNode: _focus,
+                autofocus: true,
+                enabled: !_busy,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                textAlign: TextAlign.center,
+                maxLength: _len,
+                autofillHints: const [AutofillHints.oneTimeCode],
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: 18),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9۰-۹٠-٩]'))],
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '-----',
+                  hintStyle: const TextStyle(fontSize: 32, letterSpacing: 18, color: Colors.black26),
+                  errorText: _error,
+                  errorMaxLines: 3,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                ),
+                onTap: () => SystemChannels.textInput.invokeMethod<void>('TextInput.show'),
+                onChanged: (v) {
+                  if (_error != null) setState(() => _error = null);
+                  if (Fa.enDigits(v).length == _len) _verify();
+                },
+                onSubmitted: (_) => _verify(),
               ),
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: HsColors.red, height: 1.6)),
-            ],
+            const SizedBox(height: 14),
+            FilledButton(
+              key: const Key('otp_submit'),
+              onPressed: _busy ? null : _verify,
+              child: const Text('تأیید و ورود'),
+            ),
             const SizedBox(height: 24),
             if (_busy) const Center(child: CircularProgressIndicator(color: HsColors.orange)),
             if (!_busy)

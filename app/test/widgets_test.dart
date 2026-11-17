@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hamshagerdi/core/theme.dart';
 import 'package:hamshagerdi/core/widgets/hs_avatar.dart';
+import 'package:hamshagerdi/features/auth/otp_screen.dart';
 import 'package:hamshagerdi/features/auth/phone_screen.dart';
 
 Widget wrap(Widget w) => ProviderScope(
@@ -25,5 +26,15 @@ void main() {
     await t.tap(find.byKey(const Key('phone_submit')));
     await t.pump();
     expect(find.textContaining('شماره موبایل درست نیست'), findsOneWidget);
+  });
+
+  testWidgets('کد را می‌شود تایپ کرد (ارقام فارسی هم) و کد ناقص پیام می‌دهد', (t) async {
+    await t.pumpWidget(wrap(const OtpScreen(mobile: '09121234567', wait: 30)));
+    await t.enterText(find.byKey(const Key('otp_field')), '۱۲۳');
+    await t.pump();
+    expect(find.text('۱۲۳'), findsOneWidget);
+    await t.tap(find.byKey(const Key('otp_submit')));
+    await t.pump();
+    expect(find.textContaining('کامل وارد کنید'), findsOneWidget);
   });
 }
