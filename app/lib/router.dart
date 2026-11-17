@@ -11,6 +11,10 @@ import 'features/auth/phone_screen.dart';
 import 'features/classes/class_screen.dart';
 import 'features/classes/create_class_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/magazine/magazine.dart';
+import 'features/messages/messages_screens.dart';
+import 'features/parent/add_child_screen.dart';
+import 'features/parent/child_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
 /// اطلاع‌دادن تغییر وضعیت ورود به go_router
@@ -66,6 +70,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
       GoRoute(path: '/class/new', builder: (_, _) => const CreateClassScreen()),
+      GoRoute(path: '/children/add', builder: (_, _) => const AddChildScreen()),
+      GoRoute(path: '/children/:id', builder: (_, s) => ChildScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, name: '${s.extra ?? ''}')),
+      GoRoute(path: '/messages/:id', builder: (_, s) => ThreadScreen(userId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, name: '${s.extra ?? ''}')),
+      GoRoute(path: '/articles/:id', builder: (_, s) => ArticleScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0)),
       GoRoute(path: '/class/:id', builder: (_, s) => ClassScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0)),
     ],
   );

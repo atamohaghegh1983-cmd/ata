@@ -22,3 +22,8 @@ Future<void> markIntroSeen() async {
   final p = await SharedPreferences.getInstance();
   await p.setBool('hs_intro_seen', true);
 }
+
+/// خواندن یک مسیر API با کش آفلاین؛ کلید = مسیر کامل (با query)
+final getProvider = FutureProvider.autoDispose.family<ApiResult<Object?>, String>((ref, path) {
+  return ref.read(apiProvider).get<Object?>(path);
+});

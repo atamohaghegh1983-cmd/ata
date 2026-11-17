@@ -1,4 +1,4 @@
-# مستندات API همشاگردی (نسخه‌ی ۲.۱.۰)
+# مستندات API همشاگردی (نسخه‌ی ۲.۲.۰)
 
 پایه: `https://SITE/wp-json/hamshagerdi/v1` (یا `https://SITE/?rest_route=/hamshagerdi/v1/...`).
 همه‌ی پاسخ‌ها JSON است. خطا: `{ "code", "message", "data": { "status", ... } }` و `message` همیشه فارسی و قابل نمایش به کاربر است.
@@ -84,7 +84,9 @@
 | GET | `/children/{id}` | به ازای هر کلاس: `attendance_month`، `points`، `homework[]` (هر کدام فقط اگر باز باشد) + `locked[]` + `features` |
 | GET | `/children/{id}/today?date=` | خلاصه‌ی امروز: `attendance{status, note}`، `points_today`، `points_items[]`، `points_total`، `homework_open[]`، `announcements[]` (۳ تای آخر)، `can_message`، `locked[]` |
 | GET | `/children/{id}/week?from=` | گزارش ۷ روز: `days[{date, attendance, points}]` |
-| POST | `/children/join` | `code` (کد کلاس، لینک `/join/CODE` یا متن QR)، `child_name` ← `status: linked | request`. اگر شماره‌ی شما در پرونده‌ی دانش‌آموز ثبت باشد فوراً وصل می‌شوید؛ وگرنه درخواست برای معلم می‌رود. ۸ کد اشتباه ← ۱۵ دقیقه قفل. |
+| POST | `/children/join` | `code`: **کد اتصال والد** (۸ نویسه، مخصوص هر دانش‌آموز) ← اتصال فوری. یا کد کلاس/لینک `/join/CODE`/متن QR همراه `child_name` ← `status: linked | request`. اگر شماره‌ی شما در پرونده‌ی دانش‌آموز ثبت باشد فوراً وصل می‌شوید؛ وگرنه درخواست برای معلم می‌رود. ۸ کد اشتباه ← ۱۵ دقیقه قفل. |
+| GET | `/children/proposals` | پیشنهادهای اتصال (معلم شماره‌ی شما را ثبت کرده): `id, student, class, teacher, relation` |
+| POST | `/children/proposals/{id}` | `accept: true/false` ← تأیید یا رد |
 | GET | `/children/requests` | درخواست‌های اتصالِ در انتظار تأیید معلم |
 | GET | `/children/{id}/pin` | `enabled, has_pin` (خود رمز هرگز برنمی‌گردد) |
 | POST | `/children/{id}/pin` | `pin` (۴ رقم؛ رمزهای ساده مثل 1234 و 0000 پذیرفته نمی‌شود) ← ورود فرزند با کارت کلاس + این رمز فعال می‌شود |

@@ -17,6 +17,8 @@ class HS_API_Routes_Parent {
 		register_rest_route( $ns, '/children', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'children' ), 'permission_callback' => $authd ) );
 		register_rest_route( $ns, '/children/join', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'join' ), 'permission_callback' => $authd ) );
 		register_rest_route( $ns, '/children/requests', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'requests' ), 'permission_callback' => $authd ) );
+		register_rest_route( $ns, '/children/proposals', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'proposals' ), 'permission_callback' => $authd ) );
+		register_rest_route( $ns, '/children/proposals/(?P<id>\d+)', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'proposal_answer' ), 'permission_callback' => $authd ) );
 		register_rest_route( $ns, '/children/(?P<id>\d+)', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'child' ), 'permission_callback' => $child ) );
 		register_rest_route( $ns, '/children/(?P<id>\d+)/today', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'today' ), 'permission_callback' => $child ) );
 		register_rest_route( $ns, '/children/(?P<id>\d+)/week', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'week' ), 'permission_callback' => $child ) );
@@ -257,10 +259,35 @@ class HS_API_Routes_Parent {
 		$code = HS_API_Util::extract_code( (string) HS_API_Util::p( $r, 'code' ) );
 		$name = HS_API_Util::text( HS_API_Util::p( $r, 'child_name' ), 100 );
 		if ( strlen( $code ) < 4 ) {
-			return HS_API_Util::err( 'کد کلاس را وارد کنید یا QR را اسکن کنید.', 400, 'hs_bad_code' );
+			return HS_API_Util::err( 'کد اتصال یا کد کلاس را وارد کنید، یا QR را اسکن کنید.', 400, 'hs_bad_code' );
 		}
+		// ۱) کد اتصال والدِ مخصوص یک دانش‌آموز (معلم به خانواده می‌دهد) ← اتصال مستقیم
+		$sid = self::student_by_parent_code( $code );
+		if ( $sid ) {
+			HS_API_Util::reset( $k_u );
+			if ( HS_API_Access::is_parent_of( $uid, $sid ) ) {
+				return array( 'ok' => true, 'status' => 'linked', 'message' => 'این فرزند قبلاً به حساب شما وصل است.', 'children' => self::children() );
+			}
+			$cls = HS_API_Access::student_classes( $sid );
+			if ( class_exists( 'HSUM_Links' ) ) {
+				$res = HSUM_Links::link_direct( $sid, $uid, $cls ? $cls[0] : 0, 'parent_code' );
+			} else {
+				$res = HS_Parent_Link::link( $uid, $sid );
+			}
+			if ( is_wp_error( $res ) ) {
+				return HS_API_Util::err( $res->get_error_message(), 400, 'hs_join_' . $res->get_error_code() );
+			}
+			$u = get_userdata( $sid );
+			return array( 'ok' => true, 'status' => 'linked', 'message' => 'به حساب ' . $u->display_name . ' وصل شدید.', 'children' => self::children() );
+		}
+		// ۲) کد کلاس ← تطبیق با شماره‌ی شما یا درخواست برای معلم
 		if ( mb_strlen( $name ) < 3 ) {
-			return HS_API_Util::err( 'نام و نام خانوادگی فرزند را کامل بنویسید.', 400, 'hs_bad_name' );
+			if ( ! HSUM_Invites::by_code( $code ) ) {
+				HS_API_Util::hit( $k_u, 15 * MINUTE_IN_SECONDS );
+				HS_API_Util::hit( $k_i, 15 * MINUTE_IN_SECONDS );
+				return HS_API_Util::err( 'این کد معتبر نیست. کد اتصال را دوباره از معلم بگیرید.', 404, 'hs_bad_code' );
+			}
+			return HS_API_Util::err( 'این کد کلاس است؛ نام و نام خانوادگی فرزند را هم بنویسید.', 400, 'hs_need_name' );
 		}
 		if ( ! HSUM_Invites::by_code( $code ) ) {
 			HS_API_Util::hit( $k_u, 15 * MINUTE_IN_SECONDS );
@@ -278,6 +305,48 @@ class HS_API_Routes_Parent {
 			'message'  => $res['message'],
 			'children' => self::children(),
 		);
+	}
+
+	/** دانش‌آموزِ صاحب این کد اتصال والد (۸ نویسه، ساخته‌شده توسط HS_Parent_Link) */
+	private static function student_by_parent_code( $code ) {
+		$code = strtoupper( preg_replace( '/[^A-Za-z0-9]/', '', (string) $code ) );
+		if ( ! preg_match( '/^[A-Z0-9]{8}$/', $code ) ) {
+			return 0;
+		}
+		$ids = get_users( array( 'meta_key' => '_hs_parent_code', 'meta_value' => $code, 'fields' => 'ID', 'number' => 2, 'role' => 'student' ) );
+		return 1 === count( $ids ) ? (int) $ids[0] : 0;
+	}
+
+	/** پیشنهادهای اتصال (معلم شماره‌ی شما را در پرونده‌ی دانش‌آموز ثبت کرده) */
+	public static function proposals() {
+		if ( ! class_exists( 'HSUM_Links' ) ) { return array(); }
+		$uid = get_current_user_id();
+		$out = array();
+		foreach ( (array) HSUM_Links::for_parent( $uid ) as $l ) {
+			if ( 'awaiting' !== $l['status'] ) { continue; }
+			$u = get_userdata( (int) $l['student_id'] );
+			if ( ! $u ) { continue; }
+			$t = $l['class_id'] ? get_userdata( (int) get_post_meta( (int) $l['class_id'], '_hs_teacher_id', true ) ) : null;
+			$out[] = array(
+				'id'       => (int) $l['id'],
+				'student'  => $u->display_name,
+				'class'    => $l['class_id'] ? get_the_title( (int) $l['class_id'] ) : '',
+				'teacher'  => $t ? $t->display_name : '',
+				'relation' => (string) $l['relation'],
+			);
+		}
+		return $out;
+	}
+
+	public static function proposal_answer( WP_REST_Request $r ) {
+		if ( ! class_exists( 'HSUM_Links' ) ) { return HS_API_Util::err( 'این بخش روی سایت فعال نیست.', 503, 'hs_unavailable' ); }
+		$uid = get_current_user_id();
+		$id  = (int) $r['id'];
+		$res = rest_sanitize_boolean( HS_API_Util::p( $r, 'accept', false ) ) ? HSUM_Links::confirm( $id, $uid ) : HSUM_Links::reject( $id, $uid );
+		if ( is_wp_error( $res ) ) {
+			return HS_API_Util::err( $res->get_error_message(), 400, 'hs_proposal' );
+		}
+		return array( 'ok' => true, 'children' => self::children() );
 	}
 
 	/** درخواست‌های اتصالِ در انتظار تأیید معلم */

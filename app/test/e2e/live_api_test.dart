@@ -118,6 +118,31 @@ void main() {
     expect((inv['parent'] as Map)['code'], isNotEmpty);
     final classes = (await api.get<List<dynamic>>('/classes')).data;
     expect(classes.single['students'], 1);
+    final code = '${st['parent_code']}';
+    expect(code.length, 8);
+    // معلم حضور، امتیاز و تکلیف ثبت می‌کند
+    final sid = (st['id'] as num).toInt();
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    await api.post<Object?>('/classes/$id/attendance', data: {'date': today, 'records': [{'student_id': sid, 'status': 'late'}]});
+    final beh = ((await api.get<Map<String, dynamic>>('/classes/$id/points', useCache: false)).data['behaviors'] as List).first;
+    await api.post<Object?>('/classes/$id/points', data: {'behavior_id': beh['id'], 'student_ids': [sid]});
+    await api.post<Object?>('/classes/$id/homework', data: {'title': 'تمرین ریاضی', 'due_date': today});
+    await auth.logout();
+
+    // والد تازه: ورود ← تکمیل ثبت‌نام ← فقط کد اتصال
+    final pm = '0937${(DateTime.now().millisecondsSinceEpoch ~/ 11) % 10000000}'.padRight(11, '2').substring(0, 11);
+    await auth.requestOtp(pm);
+    await auth.verifyOtp(pm, await readOtp(pm));
+    await api.post<Object?>('/onboarding', data: {'role': 'parent', 'relation': 'father', 'father_first': 'رضا', 'father_last': 'رضایی', 'child_first': 'سارا', 'child_last': 'رضایی'});
+    final j = await api.post<Map<String, dynamic>>('/children/join', data: {'code': code});
+    expect(j['status'], 'linked');
+    final t = (await api.get<Map<String, dynamic>>('/children/$sid/today', useCache: false)).data;
+    final c0 = (t['classes'] as List).first as Map;
+    expect((c0['attendance'] as Map)['status'], 'late');
+    expect(c0['points_today'], isNot(0));
+    expect((c0['homework_open'] as List).length, 1);
+    expect(c0['can_message'], isTrue);
+    await api.post<Object?>('/messages', data: {'recipient_id': c0['teacher_id'], 'body': 'سلام، ممنون'});
     await auth.logout();
   }, skip: site.isEmpty ? 'HS_E2E_SITE تعریف نشده' : false);
 }

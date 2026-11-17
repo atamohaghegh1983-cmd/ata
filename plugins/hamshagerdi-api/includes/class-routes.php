@@ -352,7 +352,13 @@ class HS_API_Routes {
 	}
 
 	public static function students( WP_REST_Request $r ) {
-		return array_map( array( __CLASS__, 'student_row' ), self::class_students( (int) $r['id'] ) );
+		$cid = (int) $r['id'];
+		return array_map( function ( $u ) use ( $cid ) {
+			$row            = self::student_row( $u );
+			$row['parents'] = class_exists( 'HS_Parent_Link' ) ? count( HS_Parent_Link::get_parents( $u->ID ) ) : 0;
+			$row['points']  = class_exists( 'HS_Points_DB' ) ? (int) HS_Points_DB::get_student_total( $cid, $u->ID ) : 0;
+			return $row;
+		}, self::class_students( $cid ) );
 	}
 
 	/** پروفایل سریع دانش‌آموز برای معلم/ناظر */
@@ -381,6 +387,11 @@ class HS_API_Routes {
 			foreach ( HS_Parent_Link::get_parents( $sid ) as $pid ) {
 				$p = get_userdata( $pid );
 				if ( $p ) { $out['parents'][] = array( 'id' => $p->ID, 'name' => $p->display_name ); }
+			}
+			// کد اتصال والد فقط برای معلمِ همین کلاس
+			if ( HS_API_Access::WRITE === $r['_level'] ) {
+				$out['parent_code']  = HS_Parent_Link::get_code( $sid );
+				$out['parent_phone'] = (string) get_user_meta( $sid, '_hs_parent_phone', true );
 			}
 		}
 		return $out;
@@ -555,7 +566,15 @@ class HS_API_Routes {
 			'username'    => $res['username'],
 			'password'    => $res['password'],
 			'parent_code' => class_exists( 'HS_Parent_Link' ) ? HS_Parent_Link::get_code( $res['user_id'] ) : '',
+			'share_text'  => self::parent_share_text( (int) $res['user_id'] ),
 		), 201 );
+	}
+
+	/** متن آماده برای فرستادن به والد (پیامک/پیام‌رسان) */
+	public static function parent_share_text( $sid ) {
+		$u    = get_userdata( $sid );
+		$code = class_exists( 'HS_Parent_Link' ) ? HS_Parent_Link::get_code( $sid ) : '';
+		return sprintf( "والد گرامی %s،\nبرای دیدن حضور، امتیاز و تکالیف فرزندتان، اپ «همشاگردی» را نصب کنید، با شماره موبایل خود وارد شوید و در «افزودن فرزند» این کد را بزنید:\n%s\n%s", $u ? $u->display_name : '', $code, home_url( '/' ) );
 	}
 
 	/* ---------- امتیاز ---------- */

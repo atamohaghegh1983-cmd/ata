@@ -59,3 +59,19 @@ class Fa {
     return String.fromCharCode(t.runes.first);
   }
 }
+
+/// تاریخ‌های هفته‌ی ایرانی (شنبه تا پنجشنبه)
+class Week {
+  Week._();
+
+  /// شنبه‌ی هفته‌ی این روز
+  static DateTime saturdayOf(DateTime d) {
+    final day = DateTime(d.year, d.month, d.day);
+    final back = (day.weekday - DateTime.saturday + 7) % 7;
+    return day.subtract(Duration(days: back));
+  }
+
+  static List<DateTime> schoolDays(DateTime saturday) => List.generate(6, (i) => saturday.add(Duration(days: i)));
+
+  static const shortNames = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+}
