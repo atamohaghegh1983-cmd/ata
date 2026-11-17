@@ -1,4 +1,4 @@
-# مستندات API همشاگردی (نسخه‌ی ۲.۰.۰)
+# مستندات API همشاگردی (نسخه‌ی ۲.۱.۰)
 
 پایه: `https://SITE/wp-json/hamshagerdi/v1` (یا `https://SITE/?rest_route=/hamshagerdi/v1/...`).
 همه‌ی پاسخ‌ها JSON است. خطا: `{ "code", "message", "data": { "status", ... } }` و `message` همیشه فارسی و قابل نمایش به کاربر است.
@@ -56,6 +56,8 @@
 | متد | مسیر | دسترسی | توضیح |
 |---|---|---|---|
 | GET | `/classes` | همه | کلاس‌های قابل‌دسترس: `id, title, grade, teacher, teacher_id, students, access, sort` |
+| GET | `/classes/options` | همه | `can_create, grades[], provinces[], year, defaults{school, city, province}` |
+| POST | `/classes` | معلم | `title, grade, school, province, city, description?` ← ۲۰۱ `{message, class}`. حداکثر ۲۰ کلاس در روز. |
 | GET | `/classes/{id}` | همه‌ی سطوح | یک کلاس |
 | GET | `/classes/{id}/students` | معلم، ناظر | `id, name, first_name, last_name, avatar, has_photo` (به ترتیب انتخابی معلم) |
 | POST | `/classes/{id}/students` | معلم | `first_name, last_name, parent_name, parent_phone, class_number, birth_date` ← `id, username, password, parent_code` (تکراری ← ۴۰۹) |

@@ -8,6 +8,8 @@ import 'features/auth/auth_controller.dart';
 import 'features/auth/intro_screen.dart';
 import 'features/auth/otp_screen.dart';
 import 'features/auth/phone_screen.dart';
+import 'features/classes/class_screen.dart';
+import 'features/classes/create_class_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
@@ -41,8 +43,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.me?.needsOnboarding == true) {
         return loc == '/onboarding' ? null : '/onboarding';
       }
-      if (loc == '/' ) return null;
-      return '/';
+      const outside = ['/splash', '/intro', '/login', '/onboarding'];
+      if (outside.any((x) => loc == x || loc.startsWith('$x/'))) return '/';
+      return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const _Splash()),
@@ -62,6 +65,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
+      GoRoute(path: '/class/new', builder: (_, _) => const CreateClassScreen()),
+      GoRoute(path: '/class/:id', builder: (_, s) => ClassScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0)),
     ],
   );
 });

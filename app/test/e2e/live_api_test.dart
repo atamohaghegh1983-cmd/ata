@@ -92,4 +92,32 @@ void main() {
       throwsA(isA<DioException>().having((e) => e.response?.statusCode, 'status', 401)),
     );
   }, skip: site.isEmpty ? 'HS_E2E_SITE تعریف نشده' : false);
+
+  test('معلم: ثبت‌نام، ساخت کلاس، افزودن دانش‌آموز، QR دعوت', () async {
+    final mobile = '0936${(DateTime.now().millisecondsSinceEpoch ~/ 7) % 10000000}'.padRight(11, '1').substring(0, 11);
+    final auth = box.read(authProvider.notifier);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await auth.requestOtp(mobile);
+    await auth.verifyOtp(mobile, await readOtp(mobile));
+    final api = box.read(apiProvider);
+    await api.post<Map<String, dynamic>>('/onboarding', data: {'role': 'teacher', 'first_name': 'زهرا', 'last_name': 'معلمی', 'city': 'تهران', 'school_name_t': 'دبستان امید'});
+    final me = await auth.reloadMe();
+    expect(me.homeKind, 'teacher');
+    final opt = (await api.get<Map<String, dynamic>>('/classes/options', useCache: false)).data;
+    expect(opt['can_create'], isTrue);
+    expect((opt['defaults'] as Map)['school'], 'دبستان امید');
+    final made = await api.post<Map<String, dynamic>>('/classes', data: {
+      'title': 'سوم الف', 'grade': (opt['grades'] as List)[3], 'school': 'دبستان امید', 'province': (opt['provinces'] as List).first, 'city': 'تهران',
+    });
+    final id = (made['class']['id'] as num).toInt();
+    final st = await api.post<Map<String, dynamic>>('/classes/$id/students', data: {'first_name': 'سارا', 'last_name': 'رضایی', 'parent_phone': '09121112233'});
+    expect(st['username'], isNotEmpty);
+    final list = (await api.get<List<dynamic>>('/classes/$id/students')).data;
+    expect(list.length, 1);
+    final inv = (await api.get<Map<String, dynamic>>('/classes/$id/invite', useCache: false)).data;
+    expect((inv['parent'] as Map)['code'], isNotEmpty);
+    final classes = (await api.get<List<dynamic>>('/classes')).data;
+    expect(classes.single['students'], 1);
+    await auth.logout();
+  }, skip: site.isEmpty ? 'HS_E2E_SITE تعریف نشده' : false);
 }

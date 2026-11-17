@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/api_exception.dart';
@@ -10,6 +11,7 @@ import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../auth/auth_controller.dart';
 import '../auth/me.dart';
+import '../classes/class_providers.dart';
 
 /// خواندن یک مسیر با کش آفلاین
 final _getProvider = FutureProvider.autoDispose.family<ApiResult<Object?>, String>((ref, path) {
@@ -41,6 +43,16 @@ class HomeScreen extends ConsumerWidget {
       _ => ('همشاگردی', _StatusBody(me: me)),
     };
     return Scaffold(
+      floatingActionButton: me.homeKind == 'teacher'
+          ? FloatingActionButton.extended(
+              key: const Key('new_class'),
+              backgroundColor: HsColors.orange,
+              foregroundColor: Colors.white,
+              onPressed: () => context.push('/class/new'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('کلاس جدید'),
+            )
+          : null,
       appBar: AppBar(
         title: Text(title),
         leading: Padding(
@@ -121,21 +133,32 @@ class _ListBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final res = ref.watch(_getProvider(path));
+    final prov = kind == _Kind.children ? _getProvider(path) : myClassesProvider;
+    final res = ref.watch(prov);
     return RefreshIndicator(
       color: HsColors.orange,
-      onRefresh: () => ref.refresh(_getProvider(path).future),
+      onRefresh: () async => ref.invalidate(prov),
       child: res.when(
         loading: () => const LoadingView(),
-        error: (e, _) => ListView(children: [const SizedBox(height: 80), ErrorView(error: e, onRetry: () => ref.invalidate(_getProvider(path)))]),
+        error: (e, _) => ListView(children: [const SizedBox(height: 80), ErrorView(error: e, onRetry: () => ref.invalidate(prov))]),
         data: (r) {
           final items = ((r.data as List?) ?? const []).cast<Map>();
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
             children: [
               if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
-              if (items.isEmpty) _empty(),
-              for (final it in items) Padding(padding: const EdgeInsets.only(bottom: 12), child: _card(it)),
+              if (items.isEmpty) _empty(context),
+              for (final it in items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: kind == _Kind.children
+                      ? _card(it)
+                      : InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => context.push('/class/${it['id']}'),
+                          child: _card(it),
+                        ),
+                ),
             ],
           );
         },
@@ -143,13 +166,21 @@ class _ListBody extends ConsumerWidget {
     );
   }
 
-  Widget _empty() => switch (kind) {
+  Widget _empty(BuildContext context) => switch (kind) {
         _Kind.children => const EmptyView(
             icon: Icons.child_care_rounded,
             title: 'هنوز فرزندی متصل نشده',
             text: 'اگر معلم شماره‌ی شما را در پرونده‌ی فرزندتان ثبت کرده باشد، خودکار وصل می‌شوید.\nافزودن فرزند با اسکن QR کلاس در نسخه‌ی بعد.',
           ),
-        _Kind.teacherClasses => const EmptyView(icon: Icons.class_rounded, title: 'هنوز کلاسی ندارید', text: 'فعلاً کلاس را از سایت بسازید؛ ساخت کلاس در اپ به‌زودی.'),
+        _Kind.teacherClasses => Column(children: [
+            const EmptyView(icon: Icons.class_rounded, title: 'هنوز کلاسی ندارید', text: 'اولین کلاس خود را بسازید؛ بعد دانش‌آموزان را اضافه کنید و QR دعوت را برای والدین بفرستید.'),
+            FilledButton.icon(
+              key: const Key('empty_new_class'),
+              onPressed: () => context.push('/class/new'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('ساخت اولین کلاس'),
+            ),
+          ]),
         _Kind.studentClasses => const EmptyView(icon: Icons.class_rounded, title: 'هنوز در کلاسی نیستید'),
       };
 

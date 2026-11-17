@@ -33,7 +33,11 @@ class HS_API_Routes {
 		) );
 
 		// کلاس‌ها
-		register_rest_route( $ns, '/classes', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'classes' ), 'permission_callback' => $authd ) );
+		register_rest_route( $ns, '/classes', array(
+			array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'classes' ), 'permission_callback' => $authd ),
+			array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'class_create' ), 'permission_callback' => array( __CLASS__, 'can_create_class' ) ),
+		) );
+		register_rest_route( $ns, '/classes/options', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'class_options' ), 'permission_callback' => $authd ) );
 		$staff = array( HS_API_Access::WRITE, HS_API_Access::SUPER );
 		$all   = array( HS_API_Access::WRITE, HS_API_Access::SUPER, HS_API_Access::STUDENT, HS_API_Access::PARENT );
 		$w     = array( HS_API_Access::WRITE );
@@ -253,6 +257,79 @@ class HS_API_Routes {
 	public static function classes() {
 		$uid = get_current_user_id();
 		return array_map( function ( $cid ) use ( $uid ) { return self::class_row( $cid, $uid ); }, HS_API_Access::class_ids( $uid ) );
+	}
+
+	/** فقط معلم (یا مدیر مدرسه‌ی تأییدشده برای کلاس‌های مدرسه) — همان قاعده‌ی سایت */
+	public static function can_create_class() {
+		if ( ! is_user_logged_in() ) { return HS_API_Util::err( 'ابتدا وارد شوید.', 401, 'hs_unauthorized' ); }
+		if ( ! HS_API_Access::ready() || ! HS_Roles::can_create_class( get_current_user_id() ) ) {
+			return HS_API_Util::err( 'فقط معلم می‌تواند کلاس بسازد. اگر معلم هستید، ثبت‌نام خود را با نقش «معلم» کامل کنید.', 403, 'hs_forbidden' );
+		}
+		return true;
+	}
+
+	/** فهرست پایه‌ها و استان‌ها + پیش‌فرض‌ها برای فرم ساخت کلاس */
+	public static function class_options() {
+		$uid  = get_current_user_id();
+		$prof = class_exists( 'HSUM_Onboard' ) ? get_user_meta( $uid, HSUM_Onboard::DATA, true ) : array();
+		$prof = is_array( $prof ) ? $prof : array();
+		return array(
+			'can_create' => HS_API_Access::ready() && HS_Roles::can_create_class( $uid ),
+			'grades'     => class_exists( 'HS_Class_Meta' ) && method_exists( 'HS_Class_Meta', 'grades' ) ? array_values( (array) HS_Class_Meta::grades() ) : array(),
+			'provinces'  => class_exists( 'HS_Util' ) && method_exists( 'HS_Util', 'provinces' ) ? array_values( HS_Util::provinces() ) : array(),
+			'year'       => class_exists( 'HS_Util' ) && method_exists( 'HS_Util', 'academic_year' ) ? HS_Util::academic_year() : '',
+			'defaults'   => array(
+				'school'   => (string) get_user_meta( $uid, '_hs_school_name', true ),
+				'city'     => (string) ( $prof['city'] ?? '' ),
+				'province' => (string) ( $prof['province'] ?? '' ),
+			),
+		);
+	}
+
+	/** ساخت کلاس (همان منطق HS_Frontend_Handlers::create_class در سایت) */
+	public static function class_create( WP_REST_Request $r ) {
+		$uid = get_current_user_id();
+		$lim = HS_API_Util::limited( 'mkclass_' . $uid, 20, 'امروز کلاس زیادی ساخته‌اید؛ فردا دوباره امتحان کنید.' );
+		if ( $lim ) { return $lim; }
+		$title    = HS_API_Util::text( self::p( $r, 'title' ), 120 );
+		$grade    = HS_API_Util::text( self::p( $r, 'grade' ), 40 );
+		$school   = HS_API_Util::text( self::p( $r, 'school' ), 150 );
+		$city     = HS_API_Util::text( self::p( $r, 'city' ), 80 );
+		$province = HS_API_Util::text( self::p( $r, 'province' ), 40 );
+		$desc     = HS_API_Util::textarea( self::p( $r, 'description' ), 1000 );
+		$year     = HS_API_Util::text( self::p( $r, 'year' ), 20 );
+		$year     = $year ? $year : ( class_exists( 'HS_Util' ) && method_exists( 'HS_Util', 'academic_year' ) ? HS_Util::academic_year() : '' );
+		$grades   = class_exists( 'HS_Class_Meta' ) && method_exists( 'HS_Class_Meta', 'grades' ) ? array_values( (array) HS_Class_Meta::grades() ) : array();
+		$provs    = class_exists( 'HS_Util' ) && method_exists( 'HS_Util', 'provinces' ) ? HS_Util::provinces() : array();
+		if ( '' === $title ) { return HS_API_Util::err( 'نام کلاس را بنویسید.' ); }
+		if ( $grade && $grades && ! in_array( $grade, $grades, true ) ) { return HS_API_Util::err( 'پایه را از فهرست انتخاب کنید.' ); }
+		if ( $province && $provs && ! in_array( $province, $provs, true ) ) { $province = ''; }
+		if ( '' === $school || '' === $city || '' === $province ) { return HS_API_Util::err( 'نام مدرسه، استان و شهر را وارد کنید.' ); }
+		$post_id = wp_insert_post( array( 'post_title' => $title, 'post_type' => 'hs_class', 'post_status' => 'publish', 'post_author' => $uid ), true );
+		if ( is_wp_error( $post_id ) ) { return HS_API_Util::err( 'ساخت کلاس انجام نشد. دوباره امتحان کنید.', 500 ); }
+		HS_API_Util::hit( 'mkclass_' . $uid, DAY_IN_SECONDS );
+		update_post_meta( $post_id, '_hs_grade', $grade );
+		update_post_meta( $post_id, '_hs_year', $year );
+		update_post_meta( $post_id, '_hs_description', $desc );
+		update_post_meta( $post_id, '_hs_school', $school );
+		update_post_meta( $post_id, '_hs_city', $city );
+		update_post_meta( $post_id, '_hs_province', $province );
+		$mm = (string) get_user_meta( $uid, '_hs_manager_mobile', true );
+		if ( $mm ) {
+			update_post_meta( $post_id, '_hs_manager_mobile', $mm );
+			do_action( 'hs_class_manager_mobile', $post_id, $mm );
+		}
+		do_action( 'hs_class_location_saved', $post_id, $school, $city, $province );
+		update_post_meta( $post_id, '_hs_teacher_id', $uid );
+		update_post_meta( $post_id, '_hs_students', array() );
+		if ( class_exists( 'HS_Class_Meta' ) && method_exists( 'HS_Class_Meta', 'generate_invite_code' ) ) {
+			update_post_meta( $post_id, '_hs_invite_code', HS_Class_Meta::generate_invite_code() );
+		}
+		if ( ! get_user_meta( $uid, '_hs_school_name', true ) ) {
+			update_user_meta( $uid, '_hs_school_name', $school );
+		}
+		do_action( 'hs_api_class_created', (int) $post_id, $uid );
+		return self::json( array( 'message' => 'کلاس ساخته شد.', 'class' => self::class_row( (int) $post_id, $uid ) ), 201 );
 	}
 
 	public static function class_one( WP_REST_Request $r ) {
