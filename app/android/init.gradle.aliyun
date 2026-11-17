@@ -1,0 +1,22 @@
+// آینه‌ی Aliyun برای وقتی دانلود از Google/Maven در ایران گیر می‌کند.
+// استفاده: cp android/init.gradle.aliyun ~/.gradle/init.gradle
+allprojects {
+    buildscript {
+        repositories {
+            maven { url = uri("https://maven.aliyun.com/repository/google") }
+            maven { url = uri("https://maven.aliyun.com/repository/public") }
+            maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        }
+    }
+    repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+    }
+}
+settingsEvaluated { settings ->
+    settings.pluginManagement.repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+    }
+}

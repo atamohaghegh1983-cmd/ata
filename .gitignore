@@ -1,1 +1,6 @@
 plugins/_zips/
+
+# کلید امضای اندروید هرگز در گیت نباشد
+*.jks
+*.keystore
+key.properties
