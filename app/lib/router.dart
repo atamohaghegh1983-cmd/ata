@@ -15,6 +15,7 @@ import 'features/magazine/magazine.dart';
 import 'features/messages/messages_screens.dart';
 import 'features/parent/add_child_screen.dart';
 import 'features/parent/child_screen.dart';
+import 'features/student/student_screens.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
 /// اطلاع‌دادن تغییر وضعیت ورود به go_router
@@ -39,7 +40,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == '/splash' ? null : '/splash';
       }
       if (auth.status == AuthStatus.loggedOut) {
-        if (loc.startsWith('/login')) return null;
+        if (loc.startsWith('/login') || loc == '/kid') return null;
         if (intro.valueOrNull != true) return loc == '/intro' ? null : '/intro';
         return loc == '/intro' ? null : '/login';
       }
@@ -47,7 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.me?.needsOnboarding == true) {
         return loc == '/onboarding' ? null : '/onboarding';
       }
-      const outside = ['/splash', '/intro', '/login', '/onboarding'];
+      const outside = ['/splash', '/intro', '/login', '/onboarding', '/kid'];
       if (outside.any((x) => loc == x || loc.startsWith('$x/'))) return '/';
       return null;
     },
@@ -67,6 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      GoRoute(path: '/kid', builder: (_, _) => const KidLoginScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
       GoRoute(path: '/class/new', builder: (_, _) => const CreateClassScreen()),

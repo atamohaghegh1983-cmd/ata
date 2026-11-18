@@ -126,7 +126,7 @@ class _NewHomeworkSheetState extends ConsumerState<_NewHomeworkSheet> {
     }
     setState(() => _busy = true);
     try {
-      final due = _days == null ? null : Fa.ymd(DateTime.now().add(Duration(days: _days!)));
+      final due = _days == null ? null : Fa.ymd(_dueDate(_days!));
       await ref.read(apiProvider).post<Object?>('/classes/${widget.classId}/homework', data: {'title': _t.text.trim(), 'description': _d.text.trim(), 'subject': _s.text.trim(), 'due_date': due});
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -136,9 +136,15 @@ class _NewHomeworkSheetState extends ConsumerState<_NewHomeworkSheet> {
     }
   }
 
+  /// «یک هفته» = ۷ روز تقویمی؛ بقیه = روز مدرسه‌ی بعدی (پنجشنبه و جمعه رد می‌شود)
+  DateTime _dueDate(int days) {
+    if (days >= 7) return Week.lastSchoolDay(DateTime.now().add(Duration(days: days)));
+    return Week.addSchoolDays(DateTime.now(), days);
+  }
+
   @override
   Widget build(BuildContext context) {
-    const choices = <int?, String>{1: 'فردا', 2: 'پس‌فردا', 7: 'یک هفته', null: 'بدون موعد'};
+    const choices = <int?, String>{1: 'جلسه‌ی بعد', 2: 'دو روز بعد', 7: 'یک هفته', null: 'بدون موعد'};
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -154,7 +160,7 @@ class _NewHomeworkSheetState extends ConsumerState<_NewHomeworkSheet> {
         Wrap(spacing: 8, children: [
           for (final e in choices.entries)
             ChoiceChip(
-              label: Text(e.key == null ? e.value : '${e.value} (${Fa.date(Fa.ymd(DateTime.now().add(Duration(days: e.key!))), withYear: false)})'),
+              label: Text(e.key == null ? e.value : '${e.value} (${Fa.weekday(_dueDate(e.key!))} ${Fa.date(Fa.ymd(_dueDate(e.key!)), withYear: false)})'),
               selected: _days == e.key,
               onSelected: (_) => setState(() => _days = e.key),
             ),

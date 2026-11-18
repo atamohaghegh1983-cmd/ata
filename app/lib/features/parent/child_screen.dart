@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
+import '../../core/widgets/confirm.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
 import '../classes/class_screen.dart' show AnnouncementCard;
@@ -24,7 +25,15 @@ class ChildScreen extends ConsumerWidget {
     final today = ref.watch(getProvider('/children/$id/today'));
     final week = ref.watch(getProvider('/children/$id/week'));
     return Scaffold(
-      appBar: AppBar(title: Text(name.isEmpty ? 'فرزند من' : name)),
+      appBar: AppBar(
+        title: Text(name.isEmpty ? 'فرزند من' : name),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (_) => _unlink(context, ref),
+            itemBuilder: (_) => const [PopupMenuItem(value: 'unlink', child: Text('جدا کردن از حساب من', style: TextStyle(color: HsColors.red)))],
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         color: HsColors.orange,
         onRefresh: () async {
@@ -65,6 +74,23 @@ class ChildScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+Future<void> _unlink(BuildContext context, WidgetRef ref) async {
+  final ok = await confirmDanger(context, title: 'جدا کردن فرزند', text: 'این فرزند از حساب شما جدا می‌شود و دیگر اطلاعاتش را نمی‌بینید. والد دیگر و سوابق مدرسه دست‌نخورده می‌ماند. برای اتصال دوباره، کد اتصال را از معلم بگیرید.', ok: 'جدا کن');
+  if (!ok || !context.mounted) return;
+  final id = int.tryParse(GoRouterState.of(context).pathParameters['id'] ?? '') ?? 0;
+  try {
+    await ref.read(apiProvider).delete<Object?>('/children/$id');
+    ref.invalidate(getProvider('/children'));
+    ref.invalidate(getProvider('/dashboard'));
+    if (context.mounted) {
+      showMessage(context, 'جدا شد.');
+      context.pop();
+    }
+  } on ApiException catch (e) {
+    if (context.mounted) showMessage(context, e.message, error: true);
   }
 }
 
@@ -136,13 +162,21 @@ class _ClassBlock extends ConsumerWidget {
             for (final dd in days)
               Expanded(
                 child: Column(children: [
-                  Text(Week.shortNames[(DateTime.parse('${dd['date']}').weekday - DateTime.saturday + 7) % 7], style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                  Builder(builder: (_) {
+                    final day = DateTime.parse('${dd['date']}');
+                    return Text(Week.shortName(day), style: TextStyle(fontSize: 12, fontWeight: Week.isHoliday(day) ? FontWeight.w700 : FontWeight.w400, color: Week.isHoliday(day) ? HsColors.red : Colors.black54));
+                  }),
                   const SizedBox(height: 4),
                   if (dd.containsKey('attendance'))
                     Container(
                       width: 26,
                       height: 26,
-                      decoration: BoxDecoration(color: dd['attendance'] == null ? const Color(0xFFEDEDED) : AttStatus.of('${dd['attendance']}').color, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: dd['attendance'] != null
+                            ? AttStatus.of('${dd['attendance']}').color
+                            : (Week.isHoliday(DateTime.parse('${dd['date']}')) ? const Color(0xFFFDE8E8) : const Color(0xFFEDEDED)),
+                        shape: BoxShape.circle,
+                      ),
                       child: dd['attendance'] == null ? null : Icon(AttStatus.of('${dd['attendance']}').icon, size: 16, color: Colors.white),
                     ),
                   if (dd.containsKey('points')) ...[

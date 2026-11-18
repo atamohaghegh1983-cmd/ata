@@ -25,4 +25,16 @@ void main() {
     expect(Fa.initial(' سارا'), 'س');
     expect(Fa.initial(''), '؟');
   });
+
+  test('هفته‌ی مدرسه: شنبه تا چهارشنبه، پنجشنبه و جمعه تعطیل', () {
+    final wed = DateTime(2026, 11, 18); // چهارشنبه
+    expect(wed.weekday, DateTime.wednesday);
+    expect(Week.saturdayOf(wed), DateTime(2026, 11, 14));
+    expect(Week.schoolDays(DateTime(2026, 11, 14)).length, 5);
+    expect(Week.isHoliday(DateTime(2026, 11, 19)), isTrue); // پنجشنبه
+    expect(Week.isHoliday(DateTime(2026, 11, 20)), isTrue); // جمعه
+    expect(Week.lastSchoolDay(DateTime(2026, 11, 20)), wed);
+    expect(Week.addSchoolDays(wed, 1), DateTime(2026, 11, 21)); // شنبه
+    expect(Week.shortName(wed), 'چ');
+  });
 }

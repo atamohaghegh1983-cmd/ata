@@ -60,7 +60,7 @@ class Fa {
   }
 }
 
-/// تاریخ‌های هفته‌ی ایرانی (شنبه تا پنجشنبه)
+/// هفته‌ی ایرانی: شنبه تا جمعه؛ مدرسه‌ها شنبه تا چهارشنبه باز، پنجشنبه و جمعه تعطیل
 class Week {
   Week._();
 
@@ -71,7 +71,37 @@ class Week {
     return day.subtract(Duration(days: back));
   }
 
-  static List<DateTime> schoolDays(DateTime saturday) => List.generate(6, (i) => saturday.add(Duration(days: i)));
+  /// هر هفت روز (شنبه تا جمعه)
+  static List<DateTime> allDays(DateTime saturday) => List.generate(7, (i) => saturday.add(Duration(days: i)));
 
+  /// روزهای باز مدرسه (شنبه تا چهارشنبه)
+  static List<DateTime> schoolDays(DateTime saturday) => List.generate(5, (i) => saturday.add(Duration(days: i)));
+
+  /// پنجشنبه و جمعه
+  static bool isHoliday(DateTime d) => d.weekday == DateTime.thursday || d.weekday == DateTime.friday;
+
+  /// نزدیک‌ترین روز مدرسه تا امروز (پنجشنبه و جمعه ← چهارشنبه)
+  static DateTime lastSchoolDay(DateTime d) {
+    var x = DateTime(d.year, d.month, d.day);
+    while (isHoliday(x)) {
+      x = x.subtract(const Duration(days: 1));
+    }
+    return x;
+  }
+
+  /// n روز مدرسه بعد از امروز (پنجشنبه و جمعه شمرده نمی‌شوند)
+  static DateTime addSchoolDays(DateTime from, int n) {
+    var x = DateTime(from.year, from.month, from.day);
+    var left = n;
+    while (left > 0) {
+      x = x.add(const Duration(days: 1));
+      if (!isHoliday(x)) left--;
+    }
+    return x;
+  }
+
+  /// نام کوتاه روز، به ترتیب از شنبه
   static const shortNames = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+
+  static String shortName(DateTime d) => shortNames[(d.weekday - DateTime.saturday + 7) % 7];
 }

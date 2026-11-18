@@ -36,8 +36,7 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with AutomaticKee
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _day = DateTime(now.year, now.month, now.day);
-    if (_day.weekday == DateTime.friday) _day = _day.subtract(const Duration(days: 1));
+    _day = Week.lastSchoolDay(now);
     _weekStart = Week.saturdayOf(_day);
   }
 
@@ -46,6 +45,10 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with AutomaticKee
   String get _weekPath => '/classes/${widget.classId}/attendance/week?from=${Fa.ymd(_weekStart)}';
 
   void _pick(DateTime d) {
+    if (Week.isHoliday(d)) {
+      showMessage(context, 'پنجشنبه و جمعه مدرسه تعطیل است.');
+      return;
+    }
     if (_dirty) {
       showMessage(context, 'اول حضور این روز را ذخیره کنید.', error: true);
       return;
@@ -63,7 +66,7 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with AutomaticKee
     }
     setState(() {
       _weekStart = _weekStart.add(Duration(days: 7 * dir));
-      _day = _weekStart;
+      _day = _weekStart; // شنبه
       _loadedFor = null;
     });
   }
@@ -102,24 +105,30 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with AutomaticKee
         padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
         child: Row(children: [
           IconButton(onPressed: () => _moveWeek(-1), icon: const Icon(Icons.chevron_right_rounded), tooltip: 'هفته‌ی قبل'),
-          for (final d in Week.schoolDays(_weekStart))
+          for (final d in Week.allDays(_weekStart))
             Expanded(
-              child: GestureDetector(
-                onTap: () => _pick(d),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Fa.ymd(d) == _ymd ? HsColors.orange : (Fa.ymd(d) == today ? const Color(0xFFFFE3CC) : Colors.transparent),
-                    borderRadius: BorderRadius.circular(12),
+              child: Builder(builder: (_) {
+                final ymd = Fa.ymd(d);
+                final off = Week.isHoliday(d);
+                final sel = ymd == _ymd;
+                final fg = sel ? Colors.white : (off ? HsColors.red : HsColors.navy);
+                return GestureDetector(
+                  onTap: () => _pick(d),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: sel ? HsColors.orange : (off ? const Color(0xFFFDE8E8) : (ymd == today ? const Color(0xFFFFE3CC) : Colors.transparent)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(children: [
+                      Text(Week.shortName(d), style: TextStyle(fontSize: 12, color: sel ? Colors.white : (off ? HsColors.red : Colors.black54))),
+                      Text(Fa.date(ymd, withYear: false).split(' ').first, style: TextStyle(fontWeight: FontWeight.w700, color: fg)),
+                      Icon(Icons.circle, size: 6, color: recordedDays.contains(ymd) ? (sel ? Colors.white : HsColors.green) : Colors.transparent),
+                    ]),
                   ),
-                  child: Column(children: [
-                    Text(Week.shortNames[(d.weekday - DateTime.saturday + 7) % 7], style: TextStyle(fontSize: 12, color: Fa.ymd(d) == _ymd ? Colors.white : Colors.black54)),
-                    Text(Fa.date(Fa.ymd(d), withYear: false).split(' ').first, style: TextStyle(fontWeight: FontWeight.w700, color: Fa.ymd(d) == _ymd ? Colors.white : HsColors.navy)),
-                    Icon(Icons.circle, size: 6, color: recordedDays.contains(Fa.ymd(d)) ? (Fa.ymd(d) == _ymd ? Colors.white : HsColors.green) : Colors.transparent),
-                  ]),
-                ),
-              ),
+                );
+              }),
             ),
           IconButton(onPressed: () => _moveWeek(1), icon: const Icon(Icons.chevron_left_rounded), tooltip: 'هفته‌ی بعد'),
         ]),

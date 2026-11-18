@@ -1,4 +1,4 @@
-# مستندات API همشاگردی (نسخه‌ی ۲.۲.۰)
+# مستندات API همشاگردی (نسخه‌ی ۲.۳.۰)
 
 پایه: `https://SITE/wp-json/hamshagerdi/v1` (یا `https://SITE/?rest_route=/hamshagerdi/v1/...`).
 همه‌ی پاسخ‌ها JSON است. خطا: `{ "code", "message", "data": { "status", ... } }` و `message` همیشه فارسی و قابل نمایش به کاربر است.
@@ -100,6 +100,25 @@
 | GET | `/messages` | صندوق: `user_id, name, avatar, preview, at, unread, can_reply` |
 | GET | `/messages/{user_id}` | `can_reply, messages[{id, mine, body, image, at}]` (خوانده‌شده علامت می‌خورد) |
 | POST | `/messages` | `recipient_id, body` (حداکثر ۲۰۰۰ نویسه)، `class_id?` ← ۲۰۱. حداکثر ۳۰ پیام در ۵ دقیقه. |
+
+## داشبورد
+| متد | مسیر | توضیح |
+|---|---|---|
+| GET | `/dashboard` | `role, date, unread_messages` و بسته به نقش: `teacher{totals, classes[], parent_requests}`، `parent{children[], announcements[], proposals}`، `manager{school, is_manager, totals, classes[], teachers[], pending_invites, task_counts}` |
+
+## دانش‌آموز
+| متد | مسیر | توضیح |
+|---|---|---|
+| POST | `/auth/kid/class` | `code` (کد یا لینک QR کارت کلاس) ← `class, students[{id, name, avatar, locked}]` فقط دانش‌آموزانی که ورودشان باز است. ۲۰ کد اشتباه در ساعت برای هر IP. |
+| POST | `/auth/kid/login` | `code, student_id, pin, device` ← جفت توکن. ۵ رمز اشتباه ← ۱۵ دقیقه قفل؛ ۱۵ اشتباه در روز ← قفل تا فردا. |
+| GET | `/student/summary` | فقط دانش‌آموز: کلاس‌ها، امتیاز کل و اخیر، تکالیف با وضعیت خودش |
+
+## حذف
+| متد | مسیر | دسترسی | توضیح |
+|---|---|---|---|
+| DELETE | `/children/{id}` | والدِ همان فرزند | جدا کردن فرزند از حساب خودش؛ والد دیگر و سوابق می‌ماند |
+| DELETE | `/classes/{id}/students/{sid}` | معلم همان کلاس | بیرون کردن از کلاس؛ حساب، سوابق و اتصال والدین می‌ماند |
+| DELETE | `/school/staff/{id}` | مدیر تأییدشده‌ی همان مدرسه | حذف معلم/معاون از کادر (`id` = شناسه‌ی ردیف کادر در `/school`)؛ عضویت از راه دعوت هم قطع می‌شود؛ حساب و کلاس‌های او می‌ماند |
 
 ## مجله
 | متد | مسیر | توضیح |

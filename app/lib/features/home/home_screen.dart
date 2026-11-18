@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
-import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
@@ -13,9 +12,12 @@ import '../auth/me.dart';
 import '../classes/class_providers.dart';
 import '../classes/class_screen.dart' show AnnouncementsTab;
 import '../classes/homework_tab.dart' show HomeworkTab;
+import '../dashboard/dashboard.dart';
+import '../dashboard/manager_views.dart';
 import '../magazine/magazine.dart';
 import '../messages/messages_screens.dart';
 import '../parent/parent_home.dart';
+import '../student/student_screens.dart';
 
 /// خانه با نوار پایین؛ زبانه‌ها بر اساس نقش
 class HomeScreen extends ConsumerStatefulWidget {
@@ -35,29 +37,35 @@ class _Tab {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _i = 0;
 
+  void _go(int i) => setState(() => _i = i);
+
   List<_Tab> _tabs(Me me) {
     const msgs = _Tab('پیام‌ها', Icons.forum_rounded, 'پیام‌ها', InboxView());
     switch (me.homeKind) {
       case 'teacher':
-        return const [
-          _Tab('کلاس‌ها', Icons.class_rounded, 'کلاس‌های من', _ClassList(student: false)),
+        return [
+          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد', DashboardView(kind: 'teacher', onOpenTab: _go)),
+          const _Tab('کلاس‌ها', Icons.class_rounded, 'کلاس‌های من', _ClassList(student: false)),
           msgs,
-          _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
+          const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
         ];
       case 'parent':
-        return const [
-          _Tab('فرزندان', Icons.family_restroom_rounded, 'فرزندان من', ParentHome()),
+        return [
+          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد', DashboardView(kind: 'parent', onOpenTab: _go)),
+          const _Tab('فرزندان', Icons.family_restroom_rounded, 'فرزندان من', ParentHome()),
           msgs,
-          _Tab('مجله', Icons.auto_stories_rounded, 'مجله‌ی والدین', MagazineView()),
+          const _Tab('مجله', Icons.auto_stories_rounded, 'مجله‌ی والدین', MagazineView()),
         ];
       case 'manager':
-        return const [
-          _Tab('مدرسه', Icons.account_balance_rounded, 'مدرسه‌ی من', _SchoolBody()),
-          _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
+        return [
+          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد مدرسه', DashboardView(kind: 'manager', onOpenTab: _go)),
+          const _Tab('کلاس‌ها', Icons.class_rounded, 'کلاس‌های مدرسه', SchoolClassesView()),
+          const _Tab('کادر', Icons.badge_rounded, 'کادر مدرسه', StaffView()),
+          const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
         ];
       case 'student':
         return const [
-          _Tab('کلاس', Icons.class_rounded, 'کلاس من', _ClassList(student: true)),
+          _Tab('من', Icons.emoji_events_rounded, 'امتیازها و تکالیف من', StudentHome()),
           _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView()),
         ];
     }
@@ -80,7 +88,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         leading: Padding(padding: const EdgeInsetsDirectional.only(start: 12), child: Center(child: HsAvatar(name: me.name, url: me.avatar, size: 36))),
         actions: [_Menu(me: me)],
       ),
-      floatingActionButton: me.homeKind == 'teacher' && _i == 0
+      floatingActionButton: me.homeKind == 'teacher' && _i == 1
           ? FloatingActionButton.extended(
               key: const Key('new_class'),
               backgroundColor: HsColors.orange,
@@ -255,56 +263,6 @@ class _HsCard extends StatelessWidget {
           ),
           const Icon(Icons.chevron_left_rounded, color: Colors.black26),
         ]),
-      ),
-    );
-  }
-}
-
-class _SchoolBody extends ConsumerWidget {
-  const _SchoolBody();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final res = ref.watch(getProvider('/school'));
-    return RefreshIndicator(
-      color: HsColors.orange,
-      onRefresh: () => ref.refresh(getProvider('/school').future),
-      child: res.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => ListView(children: [const SizedBox(height: 80), ErrorView(error: e, onRetry: () => ref.invalidate(getProvider('/school')))]),
-        data: (r) {
-          final s = (r.data as Map?) ?? const {};
-          final classes = ((s['classes'] as List?) ?? const []).cast<Map>();
-          final staff = ((s['staff'] as List?) ?? const []);
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-            children: [
-              if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${s['name'] ?? ''}', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 6),
-                    Text('${Fa.faDigits(classes.length)} کلاس  •  ${Fa.faDigits(staff.length)} نفر کادر', style: const TextStyle(color: Colors.black54)),
-                    const SizedBox(height: 4),
-                    const Text('نمای فقط‌خواندنی', style: TextStyle(color: HsColors.blue, fontSize: 13)),
-                  ]),
-                ),
-              ),
-              const SizedBox(height: 12),
-              for (final c in classes)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _HsCard(
-                    leading: const Icon(Icons.class_rounded, color: HsColors.blue, size: 32),
-                    title: '${c['title']}',
-                    lines: ['معلم: ${c['teacher']}  •  ${Fa.faDigits(c['students'] ?? 0)} دانش‌آموز'],
-                  ),
-                ),
-            ],
-          );
-        },
       ),
     );
   }

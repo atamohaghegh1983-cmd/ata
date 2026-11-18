@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
+import '../../core/widgets/confirm.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
 import 'class_providers.dart';
@@ -160,11 +161,40 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                     ),
                 ]),
               ),
+              if (widget.canWrite) ...[
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  key: const Key('remove_student'),
+                  style: OutlinedButton.styleFrom(foregroundColor: HsColors.red, side: const BorderSide(color: HsColors.red)),
+                  onPressed: _busy ? null : () => _remove('${s['name']}'),
+                  icon: const Icon(Icons.person_remove_rounded),
+                  label: const Text('حذف از کلاس'),
+                ),
+              ],
             ],
           );
         },
       ),
     );
+  }
+
+  Future<void> _remove(String name) async {
+    final ok = await confirmDanger(context, title: 'حذف $name از کلاس', text: 'دانش‌آموز از این کلاس بیرون می‌رود. حساب، سوابق و اتصال والدینش پاک نمی‌شود و بعداً می‌توانید دوباره اضافه‌اش کنید.');
+    if (!ok) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(apiProvider).delete<Object?>('/classes/${widget.classId}/students/${widget.studentId}');
+      ref.invalidate(classStudentsProvider(widget.classId));
+      ref.invalidate(myClassesProvider);
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(context, '$name از کلاس حذف شد.');
+      }
+    } on ApiException catch (e) {
+      if (mounted) showMessage(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   String _shareText(Map s) =>

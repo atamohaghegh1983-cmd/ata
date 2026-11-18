@@ -92,10 +92,11 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
               child: _busy ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Text('دریافت کد'),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'دانش‌آموزان با کارت کلاس و رمز ۴ رقمی وارد می‌شوند (به‌زودی).',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.black45),
+            OutlinedButton.icon(
+              key: const Key('kid_login'),
+              onPressed: () => context.push('/kid'),
+              icon: const Text('🎒', style: TextStyle(fontSize: 20)),
+              label: const Text('ورود دانش‌آموز با کارت کلاس'),
             ),
           ],
         ),

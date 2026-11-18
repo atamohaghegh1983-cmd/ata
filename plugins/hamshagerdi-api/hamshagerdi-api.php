@@ -2,13 +2,13 @@
 /**
  * Plugin Name: API موبایل (JWT)
  * Description: REST API امن با توکن (JWT + Refresh Token) برای اپ موبایل؛ ورود با پیامک، تکمیل ثبت‌نام، کلاس‌ها، حضور و غیاب، امتیاز، تکالیف، اطلاعیه‌ها، پیام‌ها، والدین، مجله و مدرسه.
- * Version:     2.2.0
+ * Version:     2.3.0
  * Requires at least: 5.9
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'HS_API_VERSION', '2.2.0' );
+define( 'HS_API_VERSION', '2.3.0' );
 define( 'HS_API_NS', 'hamshagerdi/v1' );
 define( 'HS_API_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -21,6 +21,7 @@ require_once HS_API_DIR . 'includes/class-access.php';
 require_once HS_API_DIR . 'includes/class-routes.php';
 require_once HS_API_DIR . 'includes/class-routes-parent.php';
 require_once HS_API_DIR . 'includes/class-routes-articles.php';
+require_once HS_API_DIR . 'includes/class-routes-dashboard.php';
 
 register_activation_hook( __FILE__, function () { HS_API_Auth::ensure_secret(); } );
 

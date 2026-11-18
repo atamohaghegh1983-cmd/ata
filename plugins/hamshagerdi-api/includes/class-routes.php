@@ -88,6 +88,7 @@ class HS_API_Routes {
 
 		HS_API_Routes_Parent::register();
 		HS_API_Routes_Articles::register();
+		HS_API_Routes_Dashboard::register();
 	}
 
 	/* ---------- دسترسی ---------- */

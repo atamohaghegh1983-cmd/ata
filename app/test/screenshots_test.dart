@@ -17,7 +17,9 @@ import 'package:hamshagerdi/features/auth/me.dart';
 import 'package:hamshagerdi/features/auth/otp_screen.dart';
 import 'package:hamshagerdi/features/auth/phone_screen.dart';
 import 'package:hamshagerdi/features/classes/class_screen.dart';
+import 'package:hamshagerdi/features/dashboard/dashboard.dart';
 import 'package:hamshagerdi/features/home/home_screen.dart';
+import 'package:hamshagerdi/features/student/student_screens.dart';
 import 'package:hamshagerdi/features/magazine/magazine.dart';
 import 'package:hamshagerdi/features/parent/add_child_screen.dart';
 import 'package:hamshagerdi/features/parent/child_screen.dart';
@@ -71,6 +73,21 @@ class FakeApi extends ApiClient {
           {'id': 1, 'title': 'چطور با کودک درباره‌ی مدرسه حرف بزنیم؟', 'excerpt': 'چند پرسش ساده که گفتگوی عصرگاهی را شیرین می‌کند…', 'date': '2026-11-10', 'grades': ['سوم'], 'audiences': [{'id': 'parents', 'title': 'والدین'}], 'locked': false},
           {'id': 2, 'title': 'برنامه‌ی تمرین ریاضی پایه‌ی سوم', 'excerpt': 'ویژه‌ی معلمان پایه‌ی سوم.', 'date': '2026-11-08', 'grades': ['سوم'], 'audiences': [{'id': 'teachers', 'title': 'معلمان'}], 'locked': true},
         ]},
+      '/dashboard' => {'role': 'teacher', 'unread_messages': 2,
+          'teacher': {'totals': {'classes': 2, 'students': 48, 'absent_today': 3, 'late_today': 1, 'not_recorded': 1, 'unlinked_parents': 5, 'open_homework': 4, 'points_today': 37}, 'parent_requests': 1,
+            'classes': [
+              {'id': 9, 'title': 'کلاس سوم الف', 'students': 24, 'recorded_today': true, 'absent_today': 3, 'late_today': 1, 'points_today': 30, 'open_homework': 2, 'unlinked_parents': 2},
+              {'id': 10, 'title': 'کلاس سوم ب', 'students': 24, 'recorded_today': false, 'absent_today': 0, 'late_today': 0, 'points_today': 7, 'open_homework': 2, 'unlinked_parents': 3},
+            ]},
+          'manager': {'school': {'id': 1, 'name': 'دبستان امید'}, 'is_manager': true, 'pending_invites': 2,
+            'totals': {'classes': 12, 'teachers': 10, 'students': 286, 'recorded_today': 9, 'absent_today': 11, 'att_rate_30': 94, 'parents_linked_pct': 71},
+            'classes': [{'id': 9, 'title': 'سوم الف', 'teacher': 'خانم احمدی', 'students': 24, 'homework': 8, 'att_rate': 96, 'recorded_today': true}, {'id': 10, 'title': 'سوم ب', 'teacher': 'آقای کریمی', 'students': 25, 'homework': 3, 'att_rate': 81, 'recorded_today': false}],
+            'teachers': [{'id': 2, 'name': 'خانم احمدی', 'classes': 1, 'students': 24, 'homework': 8, 'att_rate': 96}]},
+          'parent': {'proposals': 1, 'children': [{'id': 5, 'name': 'سارا رضایی', 'avatar': '', 'attendance_today': 'present', 'absent_week': 0, 'late_week': 1, 'points_week': 12, 'open_homework': 1, 'locked': []}],
+            'announcements': [{'id': 1, 'class': 'کلاس سوم الف', 'title': 'جلسه‌ی اولیا', 'body': 'جلسه‌ی اولیا پنجشنبه ساعت ۱۰ در نمازخانه برگزار می‌شود.', 'created_at': '2026-11-16'}]}},
+      '/student/summary' => {'classes': [{'id': 9, 'title': 'کلاس سوم الف', 'teacher': 'خانم احمدی', 'points_total': 41,
+          'points_recent': [{'points': 2, 'behavior': 'همکاری', 'icon': '🤝', 'at': '2026-11-17'}],
+          'homework': [{'id': 1, 'title': 'تمرین ریاضی', 'subject': 'ریاضی', 'due_date': '2026-11-21', 'status': 'pending', 'feedback': ''}, {'id': 2, 'title': 'املا', 'subject': 'فارسی', 'due_date': '2026-11-15', 'status': 'done', 'feedback': 'آفرین'}]}]},
       _ when path.startsWith('/messages') => <Object>[],
       _ => <String, Object>{},
     };
@@ -141,5 +158,9 @@ void main() {
   testWidgets('teacher', (t) => shot(t, '7-teacher-class', const ClassScreen(id: 9), teacher: true), skip: !on);
   testWidgets('attendance', (t) => shot(t, '8-attendance', const ClassScreen(id: 9), teacher: true, tab: 1), skip: !on);
   testWidgets('add child', (t) => shot(t, '9-add-child', const AddChildScreen()), skip: !on);
+  testWidgets('dash-teacher', (t) => shot(t, '11-dash-teacher', const Scaffold(body: DashboardView(kind: 'teacher'))), skip: !on);
+  testWidgets('dash-parent', (t) => shot(t, '12-dash-parent', const Scaffold(body: DashboardView(kind: 'parent'))), skip: !on);
+  testWidgets('dash-manager', (t) => shot(t, '13-dash-manager', const Scaffold(body: DashboardView(kind: 'manager'))), skip: !on);
+  testWidgets('student', (t) => shot(t, '14-student', const Scaffold(body: StudentHome())), skip: !on);
   testWidgets('magazine', (t) => shot(t, '10-magazine', const Scaffold(body: MagazineView(showMineFilter: true))), skip: !on);
 }
