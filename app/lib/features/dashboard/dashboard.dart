@@ -9,6 +9,8 @@ import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
 import '../school/school_screens.dart' show ClaimsCard;
+import '../teach/teach_screens.dart';
+import 'dash_cards.dart';
 
 /// داشبورد: معلم، والد یا مدیر (از /dashboard)
 class DashboardView extends ConsumerWidget {
@@ -52,67 +54,19 @@ class DashboardView extends ConsumerWidget {
   /* ------------------------------ معلم ------------------------------ */
 
   List<Widget> _teacher(BuildContext context, Map t, int unread) {
-    final tot = (t['totals'] as Map?) ?? const {};
     final classes = ((t['classes'] as List?) ?? const []).cast<Map>();
-    final notRec = (tot['not_recorded'] as num?)?.toInt() ?? 0;
     if (classes.isEmpty) {
       return [
+        TeacherTools(onOpenTab: onOpenTab),
+        const SizedBox(height: 12),
         const EmptyView(icon: Icons.dashboard_rounded, title: 'هنوز کلاسی ندارید', text: 'اولین کلاس را بسازید تا داشبورد پر شود.'),
         FilledButton.icon(onPressed: () => context.push('/class/new'), icon: const Icon(Icons.add_rounded), label: const Text('ساخت کلاس')),
       ];
     }
     return [
-      if (notRec > 0)
-        _Alert(
-          icon: Icons.fact_check_rounded,
-          color: HsColors.orangeDark,
-          text: 'حضور و غیاب امروز ${Fa.faDigits(notRec)} کلاس هنوز ثبت نشده است.',
-          action: 'ثبت',
-          onTap: () => onOpenTab?.call(1),
-        ),
-      if (((t['parent_requests'] as num?) ?? 0) > 0)
-        _Alert(icon: Icons.person_add_rounded, color: HsColors.blue, text: '${Fa.faDigits(t['parent_requests'])} درخواست اتصال والد منتظر تأیید شماست.', action: 'بررسی', onTap: () => context.push('/requests')),
-      _Grid(tiles: [
-        _Tile('دانش‌آموز', '${tot['students'] ?? 0}', Icons.groups_rounded, HsColors.blue),
-        _Tile('غایب امروز', '${tot['absent_today'] ?? 0}', Icons.person_off_rounded, HsColors.red),
-        _Tile('امتیاز امروز', '${tot['points_today'] ?? 0}', Icons.stars_rounded, HsColors.green),
-        _Tile('تکلیف باز', '${tot['open_homework'] ?? 0}', Icons.menu_book_rounded, HsColors.orange),
-        _Tile('بدون والد متصل', '${tot['unlinked_parents'] ?? 0}', Icons.link_off_rounded, HsColors.orangeDark),
-        _Tile('پیام نخوانده', '$unread', Icons.forum_rounded, HsColors.navy, onTap: () => onOpenTab?.call(2)),
-      ]),
-      const SizedBox(height: 14),
-      const Text('کلاس‌ها امروز', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
-      const SizedBox(height: 8),
-      for (final c in classes)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () => context.push('/class/${c['id']}'),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Row(children: [
-                    Expanded(child: Text('${c['title']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy))),
-                    Pill(c['recorded_today'] == true ? 'حضور ثبت شد' : 'حضور ثبت نشده', color: c['recorded_today'] == true ? HsColors.green : HsColors.orangeDark, icon: c['recorded_today'] == true ? Icons.check_rounded : Icons.schedule_rounded),
-                  ]),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 6, runSpacing: 6, children: [
-                    Pill('${Fa.faDigits(c['students'] ?? 0)} دانش‌آموز', color: HsColors.blue),
-                    if ((c['absent_today'] ?? 0) > 0) Pill('${Fa.faDigits(c['absent_today'])} غایب', color: HsColors.red),
-                    if ((c['late_today'] ?? 0) > 0) Pill('${Fa.faDigits(c['late_today'])} تأخیر', color: HsColors.amber),
-                    if ((c['points_today'] ?? 0) > 0) Pill('${Fa.faDigits(c['points_today'])} امتیاز', color: HsColors.green),
-                    if ((c['open_homework'] ?? 0) > 0) Pill('${Fa.faDigits(c['open_homework'])} تکلیف باز', color: HsColors.orange),
-                    if ((c['unlinked_parents'] ?? 0) > 0) Pill('${Fa.faDigits(c['unlinked_parents'])} بدون والد', color: HsColors.orangeDark),
-                  ]),
-                ]),
-              ),
-            ),
-          ),
-        ),
+      TeacherTools(onOpenTab: onOpenTab),
+      const SizedBox(height: 12),
+      TeacherPanelBody(t: t, unread: unread, onOpenTab: onOpenTab),
     ];
   }
 
@@ -129,34 +83,7 @@ class DashboardView extends ConsumerWidget {
       if (kids.isEmpty)
         const EmptyView(icon: Icons.child_care_rounded, title: 'هنوز فرزندی متصل نشده', text: 'در زبانه‌ی «فرزندان»، دکمه‌ی «افزودن فرزند» را بزنید.'),
       for (final k in kids) ...[
-        Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => context.push('/children/${k['id']}', extra: '${k['name']}'),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Row(children: [
-                  HsAvatar(name: '${k['name']}', url: '${k['avatar'] ?? ''}', size: 48),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text('${k['name']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: HsColors.navy))),
-                  if (k['attendance_today'] != null) Pill('امروز: ${AttStatus.of('${k['attendance_today']}').label}', color: AttStatus.of('${k['attendance_today']}').color),
-                ]),
-                const SizedBox(height: 10),
-                const Text('هفت روز اخیر', style: TextStyle(color: Colors.black54, fontSize: 12)),
-                const SizedBox(height: 6),
-                _Grid(cols: 4, compact: true, tiles: [
-                  if (!_locked(k, 'points')) _Tile('امتیاز', '${k['points_week'] ?? 0}', Icons.stars_rounded, HsColors.green),
-                  if (!_locked(k, 'attendance')) _Tile('غیبت', '${k['absent_week'] ?? 0}', Icons.person_off_rounded, HsColors.red),
-                  if (!_locked(k, 'attendance')) _Tile('تأخیر', '${k['late_week'] ?? 0}', Icons.schedule_rounded, HsColors.amber),
-                  if (!_locked(k, 'homework')) _Tile('تکلیف باز', '${k['open_homework'] ?? 0}', Icons.menu_book_rounded, HsColors.orange),
-                ]),
-              ]),
-            ),
-          ),
-        ),
+        ParentChildCard(k: k, onOpenTab: onOpenTab, locked: (f) => _locked(k, f)),
         const SizedBox(height: 12),
       ],
       if (anns.isNotEmpty) ...[
@@ -177,6 +104,25 @@ class DashboardView extends ConsumerWidget {
           ),
       ],
     ];
+  }
+
+  /// کلاس‌ها زیرمجموعه‌ی پایه (پایه‌ی اول، دوم، …)
+  static Map<String, List<Map>> _byGrade(List<Map> classes) {
+    const order = ['پیش', 'اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم', 'هفتم', 'هشتم', 'نهم', 'دهم', 'یازدهم', 'دوازدهم'];
+    int rank(String g) {
+      for (var i = order.length - 1; i >= 0; i--) {
+        if (g.contains(order[i])) return i;
+      }
+      return 99;
+    }
+
+    final out = <String, List<Map>>{};
+    final sorted = [...classes]..sort((a, b) => rank('${a['grade'] ?? ''}').compareTo(rank('${b['grade'] ?? ''}')));
+    for (final c in sorted) {
+      final g = '${c['grade'] ?? ''}'.trim();
+      out.putIfAbsent(g.isEmpty ? 'بدون پایه' : 'پایه‌ی $g', () => []).add(c);
+    }
+    return out;
   }
 
   static bool _locked(Map k, String f) => ((k['locked'] as List?) ?? const []).contains(f);
@@ -202,6 +148,12 @@ class DashboardView extends ConsumerWidget {
         TextButton.icon(onPressed: () => context.push('/school/form'), icon: const Icon(Icons.edit_rounded, size: 16), label: const Text('ویرایش')),
       ]),
       const SizedBox(height: 6),
+      Wrap(spacing: 6, runSpacing: 6, children: [
+        ActionChip(avatar: const Icon(Icons.calendar_month_rounded, size: 18), label: const Text('تقویم آموزشی و مناسبتی'), onPressed: () => context.push('/calendar')),
+        ActionChip(avatar: const Icon(Icons.badge_rounded, size: 18), label: const Text('کادر مدرسه'), onPressed: () => onOpenTab?.call(2)),
+        ActionChip(avatar: const Icon(Icons.edit_rounded, size: 18), label: const Text('اطلاعات مدرسه'), onPressed: () => context.push('/school/form')),
+      ]),
+      const SizedBox(height: 10),
       const ClaimsCard(),
       if (notRec > 0) _Alert(icon: Icons.fact_check_rounded, color: HsColors.orangeDark, text: 'حضور و غیاب امروز ${Fa.faDigits(notRec)} کلاس هنوز ثبت نشده است.'),
       _Grid(tiles: [
@@ -217,35 +169,56 @@ class DashboardView extends ConsumerWidget {
         _Alert(icon: Icons.mail_outline_rounded, color: HsColors.blue, text: '${Fa.faDigits(m['pending_invites'])} دعوت کادر هنوز پذیرفته نشده است.', action: 'کادر', onTap: () => onOpenTab?.call(2)),
       ],
       const SizedBox(height: 14),
-      const Text('کلاس‌ها (۳۰ روز اخیر)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
-      const SizedBox(height: 8),
-      for (final c in classes)
+      const SizedBox(height: 14),
+      SectionCard(
+        title: 'تقویم پیش‌رو',
+        icon: Icons.calendar_month_rounded,
+        trailing: TextButton(onPressed: () => context.push('/calendar'), child: const Text('مدیریت ←')),
+        child: (((m['events'] as List?) ?? const []).isEmpty)
+            ? const Text('رویدادی ثبت نشده است. تقویم آموزشی هر مقطع و مناسبت‌های پرورشی را از «مدیریت» اضافه کنید.', style: TextStyle(color: Colors.black45, height: 1.7))
+            : Column(children: [for (final e in ((m['events'] as List?) ?? const []).cast<Map>()) EventTile(e: e)]),
+      ),
+      const SizedBox(height: 14),
+      const Text('کلاس‌های مدرسه (۳۰ روز اخیر)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
+      const SizedBox(height: 4),
+      for (final g in _byGrade(classes).entries) ...[
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            child: InkWell(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+          child: Row(children: [
+            const Icon(Icons.subdirectory_arrow_left_rounded, size: 18, color: HsColors.blue),
+            const SizedBox(width: 4),
+            Text(g.key, style: const TextStyle(fontWeight: FontWeight.w700, color: HsColors.blue)),
+            Text('  (${Fa.faDigits(g.value.length)} کلاس)', style: const TextStyle(color: Colors.black45, fontSize: 12)),
+          ]),
+        ),
+        for (final c in g.value)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: 8, start: 14),
+            child: Material(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              onTap: () => context.push('/class/${c['id']}'),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(children: [
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${c['title']}', style: const TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
-                      Text('${c['teacher']}  •  ${Fa.faDigits(c['students'] ?? 0)} دانش‌آموز  •  ${Fa.faDigits(c['homework'] ?? 0)} تکلیف', style: const TextStyle(color: Colors.black54, fontSize: 12)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => context.push('/class/${c['id']}'),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${c['title']}', style: const TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
+                        Text('${c['teacher']}  •  ${Fa.faDigits(c['students'] ?? 0)} دانش‌آموز  •  ${Fa.faDigits(c['homework'] ?? 0)} تکلیف', style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                      ]),
+                    ),
+                    Column(children: [
+                      Text(pct(c['att_rate']), style: TextStyle(fontWeight: FontWeight.w700, color: (c['att_rate'] ?? 100) < 85 ? HsColors.red : HsColors.green)),
+                      Icon(c['recorded_today'] == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 18, color: c['recorded_today'] == true ? HsColors.green : Colors.black26),
                     ]),
-                  ),
-                  Column(children: [
-                    Text(pct(c['att_rate']), style: TextStyle(fontWeight: FontWeight.w700, color: (c['att_rate'] ?? 100) < 85 ? HsColors.red : HsColors.green)),
-                    Icon(c['recorded_today'] == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 18, color: c['recorded_today'] == true ? HsColors.green : Colors.black26),
                   ]),
-                ]),
+                ),
               ),
             ),
           ),
-        ),
+      ],
       if (teachers.isNotEmpty) ...[
         const SizedBox(height: 8),
         const Text('آموزگاران', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
@@ -301,10 +274,10 @@ class _Tile {
 }
 
 class _Grid extends StatelessWidget {
-  const _Grid({required this.tiles, this.cols = 3, this.compact = false});
+  const _Grid({required this.tiles});
   final List<_Tile> tiles;
-  final int cols;
-  final bool compact;
+  static const cols = 3;
+  static const compact = false;
 
   @override
   Widget build(BuildContext context) {

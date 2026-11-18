@@ -82,7 +82,15 @@ class HS_API_Routes_More {
 		$title = HS_API_Util::text( self::p( $r, 'title', $a['title'] ), 190 );
 		$body  = HS_API_Util::textarea( self::p( $r, 'body', wp_strip_all_tags( $a['body'] ) ) );
 		if ( '' === $title || '' === trim( $body ) ) { return self::err( 'عنوان و متن لازم است.' ); }
-		$wpdb->update( HS_Comms_DB::announcements_table(), array( 'title' => $title, 'body' => wp_kses_post( $body ), 'is_pinned' => rest_sanitize_boolean( self::p( $r, 'pinned', (bool) $a['is_pinned'] ) ) ? 1 : 0 ), array( 'id' => (int) $a['id'] ) );
+		$f = array( 'title' => $title, 'body' => wp_kses_post( $body ), 'is_pinned' => rest_sanitize_boolean( self::p( $r, 'pinned', (bool) $a['is_pinned'] ) ) ? 1 : 0 );
+		if ( method_exists( 'HS_Comms_DB', 'ann_state' ) ) {
+			$p = $r->get_json_params() ? $r->get_json_params() : $r->get_body_params();
+			foreach ( array( 'show_from', 'show_until' ) as $k ) {
+				if ( is_array( $p ) && array_key_exists( $k, $p ) ) { $f[ $k ] = HS_Comms_DB::dt( (string) $p[ $k ], 'show_until' === $k ); }
+			}
+			if ( ! empty( $f['show_from'] ) && ! empty( $f['show_until'] ) && $f['show_until'] < $f['show_from'] ) { return self::err( 'تاریخ پایان نمایش قبل از شروع است.' ); }
+		}
+		$wpdb->update( HS_Comms_DB::announcements_table(), $f, array( 'id' => (int) $a['id'] ) );
 		return array( 'ok' => true, 'message' => 'اطلاعیه ویرایش شد.' );
 	}
 

@@ -90,6 +90,7 @@ class HS_API_Routes {
 		HS_API_Routes_Articles::register();
 		HS_API_Routes_Dashboard::register();
 		HS_API_Routes_More::register();
+		HS_API_Routes_Teach::register();
 	}
 
 	/* ---------- دسترسی ---------- */
@@ -494,7 +495,8 @@ class HS_API_Routes {
 	/* ---------- تکالیف ---------- */
 
 	private static function hw_row( $h ) {
-		return array( 'id' => (int) $h['id'], 'title' => (string) $h['title'], 'description' => (string) $h['description'], 'subject' => (string) $h['subject'], 'due_date' => $h['due_date'], 'created_at' => $h['created_at'] ?? null );
+		$att = method_exists( 'HS_Homework_DB', 'attachments' ) ? HS_Homework_DB::attachments( $h ) : array();
+		return array( 'id' => (int) $h['id'], 'title' => (string) $h['title'], 'description' => (string) $h['description'], 'subject' => (string) $h['subject'], 'due_date' => $h['due_date'], 'created_at' => $h['created_at'] ?? null, 'attachments' => $att );
 	}
 
 	public static function homework_list( WP_REST_Request $r ) {
@@ -532,7 +534,12 @@ class HS_API_Routes {
 		$title = HS_API_Util::text( self::p( $r, 'title' ), 190 );
 		if ( '' === $title ) { return HS_API_Util::err( 'عنوان تکلیف لازم است.' ); }
 		$due = HS_API_Util::date( self::p( $r, 'due_date' ) );
-		$id  = HS_Homework_DB::create( (int) $r['id'], $title, HS_API_Util::textarea( self::p( $r, 'description' ) ), HS_API_Util::text( self::p( $r, 'subject' ), 100 ), $due ? $due : null );
+		$att = array();
+		foreach ( array_slice( (array) self::p( $r, 'attachments', array() ), 0, 5 ) as $a ) {
+			$url = is_array( $a ) ? esc_url_raw( (string) ( $a['url'] ?? '' ), array( 'http', 'https' ) ) : '';
+			if ( $url ) { $att[] = array( 'url' => $url, 'name' => HS_API_Util::text( $a['name'] ?? '', 120 ), 'type' => sanitize_key( (string) ( $a['type'] ?? 'file' ) ) ); }
+		}
+		$id  = HS_Homework_DB::create( (int) $r['id'], $title, HS_API_Util::textarea( self::p( $r, 'description' ) ), HS_API_Util::text( self::p( $r, 'subject' ), 100 ), $due ? $due : null, $att );
 		do_action( 'hs_api_homework_created', (int) $id, (int) $r['id'], get_current_user_id() );
 		return self::json( array( 'id' => (int) $id ), 201 );
 	}
@@ -568,18 +575,31 @@ class HS_API_Routes {
 		if ( HS_API_Access::PARENT === $r['_level'] && ! HS_API_Access::children_in_class( get_current_user_id(), (int) $r['id'], 'announce' ) ) {
 			return HS_API_Util::err( 'مدرسه دیدن اطلاعیه‌های این کلاس را برای شما بسته است.', 403, 'hs_feature_locked', array( 'feature' => 'announce' ) );
 		}
-		$uid = get_current_user_id();
-		return array_map( function ( $a ) use ( $uid ) {
+		$uid   = get_current_user_id();
+		$staff = in_array( $r['_level'], array( HS_API_Access::WRITE, HS_API_Access::SUPER ), true );
+		$dated = method_exists( 'HS_Comms_DB', 'ann_state' );
+		// معلم و مدیر: همه (با بایگانی و زمان‌بندی‌شده)؛ والد و دانش‌آموز: فقط اطلاعیه‌های در بازه‌ی نمایش
+		$list  = $dated ? HS_Comms_DB::get_announcements( (int) $r['id'], 50, $staff ) : HS_Comms_DB::get_announcements( (int) $r['id'], 30 );
+		return array_map( function ( $a ) use ( $uid, $dated ) {
 			$au = get_userdata( (int) $a['author_id'] );
-			return array( 'id' => (int) $a['id'], 'title' => $a['title'], 'body' => wp_strip_all_tags( $a['body'] ), 'pinned' => (bool) $a['is_pinned'], 'author' => $au ? $au->display_name : '', 'created_at' => $a['created_at'], 'can_edit' => HS_API_Routes_More::can_edit_ann( $a, $uid ) );
-		}, (array) HS_Comms_DB::get_announcements( (int) $r['id'], 30 ) );
+			return array(
+				'id' => (int) $a['id'], 'title' => $a['title'], 'body' => wp_strip_all_tags( $a['body'] ), 'pinned' => (bool) $a['is_pinned'], 'author' => $au ? $au->display_name : '', 'created_at' => $a['created_at'],
+				'show_from' => $a['show_from'] ?? null, 'show_until' => $a['show_until'] ?? null, 'state' => $dated ? HS_Comms_DB::ann_state( $a ) : 'active',
+				'can_edit' => HS_API_Routes_More::can_edit_ann( $a, $uid ),
+			);
+		}, (array) $list );
 	}
 
 	public static function ann_create( WP_REST_Request $r ) {
 		$title = HS_API_Util::text( self::p( $r, 'title' ), 190 );
 		$body  = HS_API_Util::textarea( self::p( $r, 'body' ) );
 		if ( '' === $title || '' === trim( $body ) ) { return HS_API_Util::err( 'عنوان و متن لازم است.' ); }
-		$id = HS_Comms_DB::add_announcement( (int) $r['id'], $title, $body, get_current_user_id(), (bool) rest_sanitize_boolean( self::p( $r, 'pinned', false ) ) );
+		$from  = (string) self::p( $r, 'show_from' );
+		$until = (string) self::p( $r, 'show_until' );
+		if ( $from && $until && HS_Comms_DB::dt( $until, true ) < HS_Comms_DB::dt( $from ) ) { return HS_API_Util::err( 'تاریخ پایان نمایش قبل از شروع است.' ); }
+		$id = method_exists( 'HS_Comms_DB', 'ann_state' )
+			? HS_Comms_DB::add_announcement( (int) $r['id'], $title, $body, get_current_user_id(), (bool) rest_sanitize_boolean( self::p( $r, 'pinned', false ) ), $from, $until )
+			: HS_Comms_DB::add_announcement( (int) $r['id'], $title, $body, get_current_user_id(), (bool) rest_sanitize_boolean( self::p( $r, 'pinned', false ) ) );
 		do_action( 'hs_api_announcement_created', (int) $id, (int) $r['id'], get_current_user_id() );
 		return self::json( array( 'id' => (int) $id ), 201 );
 	}
@@ -707,13 +727,19 @@ class HS_API_Routes {
 	/* ---------- پیام‌ها ---------- */
 
 	public static function inbox() {
+		global $wpdb;
 		$uid = get_current_user_id();
 		$out = array();
+		// تعداد خوانده‌نشده از هر فرستنده (یک ردیف برای هر نفر: «۵ پیام جدید»)
+		$cnt = array();
+		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SELECT sender_id, COUNT(*) n FROM ' . HS_Comms_DB::messages_table() . ' WHERE recipient_id = %d AND is_read = 0 GROUP BY sender_id', $uid ), ARRAY_A ) as $x ) { // phpcs:ignore
+			$cnt[ (int) $x['sender_id'] ] = (int) $x['n'];
+		}
 		foreach ( (array) HS_Comms_DB::get_inbox( $uid, 60 ) as $m ) {
 			$o = (int) ( (int) $m['sender_id'] === $uid ? $m['recipient_id'] : $m['sender_id'] );
 			if ( ! HS_API_Access::can_read_thread( $uid, $o ) ) { continue; } // رابطه‌ی قطع‌شده دیده نمی‌شود
 			$u     = get_userdata( $o );
-			$out[] = array( 'user_id' => $o, 'name' => $u ? $u->display_name : '', 'avatar' => HS_API_Util::avatar( $o, 96 ), 'preview' => HS_Comms_DB::preview( $m ), 'at' => $m['created_at'], 'unread' => (int) $m['recipient_id'] === $uid && ! (int) $m['is_read'], 'can_reply' => HS_API_Access::can_message( $uid, $o ) );
+			$out[] = array( 'user_id' => $o, 'name' => $u ? $u->display_name : '', 'label' => HS_API_Routes_Teach::partner_label( $uid, $o ), 'avatar' => HS_API_Util::avatar( $o, 96 ), 'preview' => HS_Comms_DB::preview( $m ), 'at' => $m['created_at'], 'unread' => ( $cnt[ $o ] ?? 0 ) > 0, 'unread_count' => $cnt[ $o ] ?? 0, 'can_reply' => HS_API_Access::can_message( $uid, $o ) );
 			if ( count( $out ) >= 40 ) { break; }
 		}
 		return $out;
@@ -724,10 +750,13 @@ class HS_API_Routes {
 		$o   = (int) $r['id'];
 		if ( ! HS_API_Access::can_read_thread( $uid, $o ) ) { return HS_API_Util::err( 'دسترسی ندارید.', 403, 'hs_forbidden' ); }
 		HS_Comms_DB::mark_read( $uid, $o );
+		HS_API_Notify::read_messages_from( $uid, $o );
+		$u = get_userdata( $o );
 		return array(
+			'partner'   => array( 'id' => $o, 'name' => $u ? $u->display_name : '', 'label' => HS_API_Routes_Teach::partner_label( $uid, $o ), 'avatar' => HS_API_Util::avatar( $o, 96 ) ),
 			'can_reply' => HS_API_Access::can_message( $uid, $o ),
 			'messages'  => array_map( function ( $m ) use ( $uid ) {
-				return array( 'id' => (int) $m['id'], 'mine' => (int) $m['sender_id'] === $uid, 'body' => (string) $m['body'], 'image' => $m['media_url'] ? esc_url_raw( $m['media_url'] ) : '', 'at' => $m['created_at'] );
+				return array( 'id' => (int) $m['id'], 'mine' => (int) $m['sender_id'] === $uid, 'body' => (string) $m['body'], 'image' => $m['media_url'] ? esc_url_raw( $m['media_url'] ) : '', 'at' => $m['created_at'], 'can_delete' => HS_API_Routes_Teach::can_delete_message( $uid, $m ) );
 			}, (array) HS_Comms_DB::get_conversation( $uid, $o, 0, 100 ) ),
 		);
 	}

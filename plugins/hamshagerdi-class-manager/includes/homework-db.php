@@ -35,6 +35,7 @@ class HS_Homework_DB {
 			description text DEFAULT NULL,
 			subject varchar(120) DEFAULT '',
 			due_date date DEFAULT NULL,
+			attachments text DEFAULT NULL,
 			created_by bigint(20) unsigned DEFAULT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
@@ -70,7 +71,8 @@ class HS_Homework_DB {
 		);
 	}
 
-	public static function create( $class_id, $title, $description = '', $subject = '', $due_date = null ) {
+	/** $attachments: آرایه‌ای از array( url, name, type ) — فایل‌ها قبلاً در کتابخانه‌ی رسانه بارگذاری شده‌اند */
+	public static function create( $class_id, $title, $description = '', $subject = '', $due_date = null, $attachments = array() ) {
 		global $wpdb;
 		$wpdb->insert(
 			self::hw_table(),
@@ -80,11 +82,38 @@ class HS_Homework_DB {
 				'description'  => sanitize_textarea_field( $description ),
 				'subject'      => sanitize_text_field( $subject ),
 				'due_date'     => $due_date ? sanitize_text_field( $due_date ) : null,
+				'attachments'  => self::pack_attachments( $attachments ),
 				'created_by'   => get_current_user_id(),
 			),
-			array( '%d', '%s', '%s', '%s', '%s', '%d' )
+			array( '%d', '%s', '%s', '%s', '%s', '%s', '%d' )
 		);
-		return (int) $wpdb->insert_id;
+		$id = (int) $wpdb->insert_id;
+		if ( $id ) {
+			do_action( 'hs_homework_created', $id, absint( $class_id ), get_current_user_id() );
+		}
+		return $id;
+	}
+
+	public static function pack_attachments( $list ) {
+		$out = array();
+		foreach ( (array) $list as $a ) {
+			$url = esc_url_raw( (string) ( $a['url'] ?? '' ) );
+			if ( ! $url ) {
+				continue;
+			}
+			$out[] = array(
+				'url'  => $url,
+				'name' => sanitize_text_field( (string) ( $a['name'] ?? basename( wp_parse_url( $url, PHP_URL_PATH ) ) ) ),
+				'type' => sanitize_key( (string) ( $a['type'] ?? 'file' ) ),
+			);
+		}
+		return $out ? wp_json_encode( array_slice( $out, 0, 5 ) ) : null;
+	}
+
+	/** پیوست‌های یک تکلیف (ردیف جدول) */
+	public static function attachments( $hw ) {
+		$list = json_decode( (string) ( $hw['attachments'] ?? '' ), true );
+		return is_array( $list ) ? $list : array();
 	}
 
 	public static function get( $id ) {

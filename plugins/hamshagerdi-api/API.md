@@ -1,4 +1,4 @@
-# مستندات API همشاگردی (نسخه‌ی ۲.۴.۰)
+# مستندات API همشاگردی (نسخه‌ی ۲.۵.۰)
 
 پایه: `https://SITE/wp-json/hamshagerdi/v1` (یا `https://SITE/?rest_route=/hamshagerdi/v1/...`).
 همه‌ی پاسخ‌ها JSON است. خطا: `{ "code", "message", "data": { "status", ... } }` و `message` همیشه فارسی و قابل نمایش به کاربر است.
@@ -133,6 +133,55 @@
 | GET | `/school` | ناظر/مدیر: اطلاعات کامل + `classes[]`؛ مدیر: + `staff[]` و `invites[]`. عضو کادر بدون اجازه‌ی نظارت: فقط `id, name`. |
 | GET | `/school/tasks` | مدیر: همه؛ بقیه: وظایف خودشان |
 | POST | `/school/tasks/{id}/status` | `status, report` (فقط مسئول انجام) |
+
+## تازه‌های ۲.۵.۰ (نیاز به «مدیریت کلاس» ۱.۷.۴)
+
+### اطلاعیه با مدت نمایش
+`POST /classes/{id}/announcements` و `POST /announcements/{id}` فیلدهای `show_from` و `show_until` (YYYY-MM-DD) می‌گیرند. والد و دانش‌آموز فقط اطلاعیه‌های در بازه را می‌بینند؛ معلم و مدیر همه را با `state` = `active | scheduled | archived`.
+
+### تکلیف با پیوست
+| روش | مسیر | توضیح |
+|---|---|---|
+| POST | `/uploads` | multipart فیلد `file` (عکس، PDF، Word، PowerPoint، Excel، صدا، ویدیو؛ تا ۱۵ مگابایت؛ فقط معلم) ← `{url,name,type}` |
+| POST | `/classes/{id}/homework` | فیلد تازه‌ی `attachments: [{url,name,type}]` (حداکثر ۵، فقط http/https) |
+
+فهرست تکالیف (معلم، والد، دانش‌آموز) فیلد `attachments` دارد.
+
+### ارزیابی و نمرات
+| روش | مسیر | توضیح |
+|---|---|---|
+| GET/POST | `/classes/{id}/assessments` | فهرست / ساخت `{title, subject, scale: descriptive|numeric, date}` |
+| GET | `/assessments/{id}` | دانش‌آموزان با نتیجه |
+| POST | `/assessments/{id}/results` | `{results: {student_id: {level, score, comment}}}` (نمره ۰ تا ۱۰۰) |
+| DELETE | `/assessments/{id}` | حذف |
+
+### بودجه‌بندی
+`GET/POST /classes/{id}/budget` با `rows: [{subject, planned, done}]`؛ پاسخ `expected` (درصد گذشته از سال) و وضعیت هر درس.
+
+### تقویم آموزشی و مناسبتی
+| روش | مسیر | توضیح |
+|---|---|---|
+| GET | `/calendar?from=&to=` | رویدادهای قابل‌دیدن کاربر (+ تقویم مناسبتی سایت اگر نصب باشد) |
+| POST | `/calendar` | معلم: `{title, date, end_date?, type, class_id}`؛ مدیر مدرسه: `{title, date, type, level?, audience}` برای کل مدرسه |
+| DELETE | `/calendar/{id}` | سازنده، معلم کلاس یا مدیر مدرسه |
+| GET | `/children/{id}/calendar` | تقویم فرزند (رویدادها با مقطع + موعد تکلیف، ارزیابی، جلسه) |
+
+نوع‌ها: `academic` (تقویم آموزشی)، `cultural` (پرورشی و مناسبتی)، occasion، holiday، exam، meeting، ceremony، deadline. مقطع‌ها: preschool، primary، middle، high (از پایه‌ی کلاس تشخیص داده می‌شود).
+
+### کتابخانه‌ی کاربرگ
+`GET /worksheets?grade=&subject=&s=&page=` و `POST /worksheets/{id}/assign {class_id, due_date, note}` ← تکلیف با پیوست کاربرگ.
+
+### پیام‌ها
+- `GET /messages`: هر نفر یک ردیف با `unread_count` و `label` (مثل «والد سارا رضایی» یا «معلم کلاس سوم الف»).
+- `GET /messages/{user}`: `partner {name,label}` و برای هر پیام `can_delete`.
+- `DELETE /messages/item/{id}`: فرستنده، معلم کلاس، مدیر مدرسه، مدیر سایت، نماینده (دستیار) والدین کلاس.
+- اعلان پیام‌های یک فرستنده در یک ردیف جمع می‌شود («۵ پیام جدید»)؛ پیام‌های فرستاده‌شده از سایت هم اعلان دارند. ارسال به گوشی بلافاصله بعد از پاسخ انجام می‌شود (نه با کران وردپرس).
+
+### داشبوردها
+- معلم: `month` (حضور این ماه)، `top` (برترین‌ها)، `upcoming` (تکالیف پیش‌رو)، `events`؛ و برای هر کلاس همین‌ها به‌اضافه‌ی `budget` و `grade`.
+- والد: برای هر فرزند `hw_done/hw_total`، `stars`، `pending`، `events`، `classes`.
+- مدیر: `grade` و `level` هر کلاس، `events`، `levels`.
+- `GET /children/{id}/progress?y=&m=`: گزارش پیشرفت ماهانه (حضور، امتیاز، ارزیابی‌ها، تکالیف، تمرین).
 
 ## تازه‌های ۲.۴.۰
 

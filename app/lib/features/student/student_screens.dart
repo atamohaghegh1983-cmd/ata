@@ -11,6 +11,7 @@ import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
+import '../../core/widgets/attachments.dart';
 import '../../core/widgets/ui.dart';
 import '../auth/auth_controller.dart';
 
@@ -67,11 +68,14 @@ class StudentHome extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(HwStatus.of('${h['status']}') == HwStatus.done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, color: HwStatus.of('${h['status']}').color),
                         title: Text('${h['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text([
-                          if ('${h['subject'] ?? ''}'.isNotEmpty) '${h['subject']}',
-                          if ('${h['due_date'] ?? ''}'.isNotEmpty && '${h['due_date']}' != 'null') 'تا ${Fa.weekday(DateTime.parse('${h['due_date']}'))} ${Fa.date('${h['due_date']}', withYear: false)}',
-                          if ('${h['feedback'] ?? ''}'.isNotEmpty) 'معلم: ${h['feedback']}',
-                        ].join('  •  ')),
+                        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text([
+                            if ('${h['subject'] ?? ''}'.isNotEmpty) '${h['subject']}',
+                            if ('${h['due_date'] ?? ''}'.isNotEmpty && '${h['due_date']}' != 'null') 'تا ${Fa.weekday(DateTime.parse('${h['due_date']}'))} ${Fa.date('${h['due_date']}', withYear: false)}',
+                            if ('${h['feedback'] ?? ''}'.isNotEmpty) 'معلم: ${h['feedback']}',
+                          ].join('  •  ')),
+                          if (((h['attachments'] as List?) ?? const []).isNotEmpty) AttachmentChips(items: ((h['attachments'] as List?) ?? const []).cast<Map>()),
+                        ]),
                         trailing: Pill(HwStatus.of('${h['status']}').label, color: HwStatus.of('${h['status']}').color),
                       ),
                   ]),

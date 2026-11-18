@@ -14,6 +14,8 @@ import 'features/classes/import_screen.dart';
 import 'features/notifications/notifications.dart';
 import 'features/portfolio/portfolio.dart';
 import 'features/school/school_screens.dart';
+import 'features/teach/teach_screens.dart';
+import 'features/parent/progress_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/magazine/magazine.dart';
 import 'features/messages/messages_screens.dart';
@@ -88,18 +90,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/portfolio/:id',
         builder: (_, s) => Scaffold(
-          appBar: AppBar(title: Text('پورتفولیو ${s.extra ?? ''}'.trim())),
+          appBar: AppBar(title: Text('دیوار همشاگردی ${s.extra ?? ''}'.trim())),
           body: PortfolioView(studentId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0),
         ),
       ),
       GoRoute(
         path: '/wall/:id',
         builder: (_, s) => Scaffold(
-          appBar: AppBar(title: Text('دیوار کلاس ${s.extra ?? ''}'.trim())),
+          appBar: AppBar(title: Text(wallTitle('${s.extra ?? ''}'))),
           body: WallView(classId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0),
         ),
       ),
-      GoRoute(path: '/class/:id', builder: (_, s) => ClassScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0)),
+      GoRoute(path: '/class/:id', builder: (_, s) => ClassScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, initialTab: int.tryParse(s.uri.queryParameters['tab'] ?? '') ?? 0)),
+      GoRoute(path: '/assessments/:id', builder: (_, s) => AssessmentsScreen(classId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, title: '${s.extra ?? ''}')),
+      GoRoute(path: '/assessment/:id', builder: (_, s) => AssessmentScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0)),
+      GoRoute(path: '/budget/:id', builder: (_, s) => BudgetScreen(classId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, title: '${s.extra ?? ''}')),
+      GoRoute(path: '/calendar', builder: (_, s) => CalendarScreen(childId: int.tryParse(s.uri.queryParameters['child'] ?? ''))),
+      GoRoute(path: '/worksheets', builder: (_, _) => const WorksheetsScreen()),
+      GoRoute(path: '/progress/:id', builder: (_, s) => ChildProgressScreen(childId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, name: '${s.extra ?? ''}')),
     ],
   );
 });

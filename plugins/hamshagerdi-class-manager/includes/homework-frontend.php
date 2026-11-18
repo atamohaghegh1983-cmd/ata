@@ -183,6 +183,9 @@ class HS_Homework_Frontend {
 						<?php if ( $hw['subject'] ) echo esc_html( $hw['subject'] ) . ' · '; ?>
 						<?php if ( $hw['due_date'] ) echo 'مهلت: ' . esc_html( $hw['due_date'] ); else echo 'بدون مهلت'; ?>
 					</p>
+					<?php foreach ( HS_Homework_DB::attachments( $hw ) as $att ) : ?>
+						<a class="hs-pill" style="margin:0.4rem 0 0 0.3rem;display:inline-block" href="<?php echo esc_url( $att['url'] ); ?>" target="_blank" rel="noopener">📎 <?php echo esc_html( $att['name'] ); ?></a>
+					<?php endforeach; ?>
 					<?php if ( $hw['description'] ) : ?>
 						<p style="margin:0.5rem 0 0;font-size:0.95rem;"><?php echo esc_html( $hw['description'] ); ?></p>
 					<?php endif; ?>

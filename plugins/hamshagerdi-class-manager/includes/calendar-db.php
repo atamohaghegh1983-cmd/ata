@@ -30,6 +30,8 @@ class HS_Calendar_DB {
 			audience varchar(40) NOT NULL DEFAULT 'teachers',
 			class_id bigint(20) unsigned DEFAULT 0,
 			school_id bigint(20) unsigned DEFAULT 0,
+			level varchar(20) NOT NULL DEFAULT '',
+			end_date date DEFAULT NULL,
 			remind_days int(11) NOT NULL DEFAULT 7,
 			reminded tinyint(1) NOT NULL DEFAULT 0,
 			created_by bigint(20) unsigned DEFAULT NULL,
@@ -46,6 +48,8 @@ class HS_Calendar_DB {
 
 	public static function types() {
 		return array(
+			'academic'   => 'تقویم آموزشی',
+			'cultural'   => 'پرورشی و مناسبتی',
 			'occasion'   => 'مناسبت',
 			'holiday'    => 'تعطیلی',
 			'exam'       => 'آزمون',
@@ -77,10 +81,12 @@ class HS_Calendar_DB {
 				'audience'    => sanitize_key( $data['audience'] ?? 'teachers' ),
 				'class_id'    => absint( $data['class_id'] ?? 0 ),
 				'school_id'   => absint( $data['school_id'] ?? 0 ),
+				'level'       => sanitize_key( $data['level'] ?? '' ),
+				'end_date'    => ! empty( $data['end_date'] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $data['end_date'] ) ? $data['end_date'] : null,
 				'remind_days' => isset( $data['remind_days'] ) ? absint( $data['remind_days'] ) : 7,
 				'created_by'  => get_current_user_id(),
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
+			array( '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%d' )
 		);
 		return (int) $wpdb->insert_id;
 	}
@@ -91,7 +97,7 @@ class HS_Calendar_DB {
 		$map = array(
 			'title' => '%s', 'description' => '%s', 'event_date' => '%s',
 			'event_type' => '%s', 'audience' => '%s', 'class_id' => '%d',
-			'remind_days' => '%d', 'reminded' => '%d',
+			'remind_days' => '%d', 'reminded' => '%d', 'level' => '%s', 'end_date' => '%s', 'school_id' => '%d',
 		);
 		$formats = array();
 		foreach ( $map as $k => $f ) {

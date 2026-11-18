@@ -109,7 +109,7 @@ class HS_Comms_Frontend {
 	}
 
 	private static function render_announce_tab( $class_id ) {
-		$items = HS_Comms_DB::get_announcements( $class_id );
+		$items = HS_Comms_DB::get_announcements( $class_id, 30, true ); // معلم: بایگانی‌شده‌ها هم
 		ob_start();
 		?>
 		<div class="hs-comms-tab-content" id="hs-tab-announce">
@@ -146,6 +146,16 @@ class HS_Comms_Frontend {
 							?>
 							<li class="hs-ann-item <?php echo $item['is_pinned'] ? 'pinned' : ''; ?>" data-id="<?php echo esc_attr( $item['id'] ); ?>">
 								<?php if ( $item['is_pinned'] ) : ?><span class="hs-pin">📌</span><?php endif; ?>
+								<?php
+								$st = HS_Comms_DB::ann_state( $item );
+								if ( 'archived' === $st ) {
+									echo '<span class="hs-pill">🗄️ بایگانی (دیگر به والدین نمایش داده نمی‌شود)</span> ';
+								} elseif ( 'scheduled' === $st ) {
+									echo '<span class="hs-pill">⏳ از ' . esc_html( self::format_date( $item['show_from'] ) ) . ' نمایش داده می‌شود</span> ';
+								} elseif ( ! empty( $item['show_until'] ) ) {
+									echo '<span class="hs-pill">⏱️ تا ' . esc_html( self::format_date( $item['show_until'] ) ) . '</span> ';
+								}
+								?>
 								<?php if ( $item['title'] ) : ?>
 									<strong class="hs-ann-title"><?php echo esc_html( $item['title'] ); ?></strong>
 								<?php endif; ?>

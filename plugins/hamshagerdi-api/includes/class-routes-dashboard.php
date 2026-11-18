@@ -131,7 +131,61 @@ class HS_API_Routes_Dashboard {
 			$tot['points_today']     += $row['points_today'];
 		}
 		$requests = class_exists( 'HSUM_Requests' ) ? count( (array) HSUM_Requests::inbox( $uid ) ) : 0;
-		return array( 'totals' => $tot, 'classes' => $classes, 'parent_requests' => $requests );
+		// مثل داشبورد سایت: حضور این ماه، برترین‌ها، تکالیف پیش‌رو، بودجه‌بندی، مناسبت‌ها (برای همه و برای هر کلاس)
+		$month_from = substr( $today, 0, 8 ) . '01';
+		foreach ( $classes as &$c ) {
+			$c['month']    = self::month_att( array( $c['id'] ), $month_from, $today );
+			$c['top']      = self::top_students( array( $c['id'] ), 5 );
+			$c['upcoming'] = self::upcoming_hw( array( $c['id'] ), $today, 5 );
+			$c['budget']   = class_exists( 'HS_Budget' ) ? HS_API_Routes_Teach::budget_data( $c['id'] ) : null;
+			$c['grade']    = (string) get_post_meta( $c['id'], '_hs_grade', true );
+		}
+		unset( $c );
+		$month = self::month_att( $ids, $month_from, $today );
+		$tot['att_rate_month'] = $month['rate'];
+		return array(
+			'totals' => $tot, 'classes' => $classes, 'parent_requests' => $requests,
+			'month' => $month, 'top' => self::top_students( $ids, 5 ), 'upcoming' => self::upcoming_hw( $ids, $today, 5 ),
+			'events' => array_slice( HS_API_Routes_Teach::events_for( $uid, $today, gmdate( 'Y-m-d', strtotime( $today . ' +45 days' ) ) ), 0, 6 ),
+		);
+	}
+
+	/** شمار حضور یک بازه: present, absent, late, excused, rate */
+	private static function month_att( $ids, $from, $to ) {
+		global $wpdb;
+		$out = array( 'present' => 0, 'absent' => 0, 'late' => 0, 'excused' => 0 );
+		if ( $ids && class_exists( 'HS_Attendance_DB' ) ) {
+			$t = HS_Attendance_DB::table_name();
+			foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT status, COUNT(*) n FROM {$t} WHERE class_id IN (" . self::in( $ids ) . ') AND att_date BETWEEN %s AND %s GROUP BY status', $from, $to ), ARRAY_A ) as $r ) { // phpcs:ignore
+				if ( isset( $out[ $r['status'] ] ) ) { $out[ $r['status'] ] = (int) $r['n']; }
+			}
+		}
+		$all         = array_sum( $out );
+		$out['rate'] = $all ? (int) round( ( $out['present'] + $out['late'] ) * 100 / $all ) : null;
+		return $out;
+	}
+
+	private static function top_students( $ids, $n ) {
+		global $wpdb;
+		if ( ! $ids || ! class_exists( 'HS_Points_DB' ) ) { return array(); }
+		$t    = HS_Points_DB::points_table();
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT student_id, SUM(points) total FROM {$t} WHERE class_id IN (" . self::in( $ids ) . ') GROUP BY student_id HAVING total > 0 ORDER BY total DESC LIMIT %d', $n ), ARRAY_A ); // phpcs:ignore
+		$out  = array();
+		foreach ( (array) $rows as $r ) {
+			$u     = get_userdata( (int) $r['student_id'] );
+			$out[] = array( 'id' => (int) $r['student_id'], 'name' => $u ? $u->display_name : '', 'avatar' => HS_API_Util::avatar( (int) $r['student_id'], 96 ), 'points' => (int) $r['total'] );
+		}
+		return $out;
+	}
+
+	private static function upcoming_hw( $ids, $today, $n ) {
+		global $wpdb;
+		if ( ! $ids || ! class_exists( 'HS_Homework_DB' ) ) { return array(); }
+		$t    = HS_Homework_DB::hw_table();
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, class_id, title, subject, due_date FROM {$t} WHERE class_id IN (" . self::in( $ids ) . ') AND (due_date IS NULL OR due_date >= %s) ORDER BY due_date IS NULL, due_date ASC LIMIT %d', $today, $n ), ARRAY_A ); // phpcs:ignore
+		return array_map( function ( $h ) {
+			return array( 'id' => (int) $h['id'], 'class_id' => (int) $h['class_id'], 'class' => get_the_title( (int) $h['class_id'] ), 'title' => $h['title'], 'subject' => (string) $h['subject'], 'due_date' => $h['due_date'] );
+		}, (array) $rows );
 	}
 
 	private static function parent_dash( $uid ) {
@@ -141,9 +195,11 @@ class HS_API_Routes_Dashboard {
 		$kids = array();
 		foreach ( HS_API_Access::children_ids( $uid ) as $sid ) {
 			$u   = get_userdata( $sid );
-			$row = array( 'id' => $sid, 'name' => $u->display_name, 'avatar' => HS_API_Util::avatar( $sid ), 'attendance_today' => null, 'absent_week' => 0, 'late_week' => 0, 'points_week' => 0, 'positive_week' => 0, 'open_homework' => 0, 'locked' => array() );
+			$row = array( 'id' => $sid, 'name' => $u->display_name, 'avatar' => HS_API_Util::avatar( $sid ), 'attendance_today' => null, 'absent_week' => 0, 'late_week' => 0, 'points_week' => 0, 'positive_week' => 0, 'open_homework' => 0, 'locked' => array(), 'hw_done' => 0, 'hw_total' => 0, 'stars' => 0, 'pending' => array(), 'classes' => array() );
 			foreach ( HS_API_Access::student_classes( $sid ) as $cid ) {
 				if ( 'publish' !== get_post_status( $cid ) ) { continue; }
+				$tu               = get_userdata( (int) get_post_meta( $cid, '_hs_teacher_id', true ) );
+				$row['classes'][] = array( 'id' => (int) $cid, 'title' => get_the_title( $cid ), 'teacher' => $tu ? $tu->display_name : '', 'teacher_id' => $tu ? (int) $tu->ID : 0 );
 				if ( HS_API_Access::parent_can( $uid, $sid, 'attendance', $cid ) && class_exists( 'HS_Attendance_DB' ) ) {
 					global $wpdb;
 					$t  = HS_Attendance_DB::table_name();
@@ -162,19 +218,29 @@ class HS_API_Routes_Dashboard {
 					$r  = $wpdb->get_row( $wpdb->prepare( "SELECT COALESCE(SUM(points),0) s, SUM(points > 0) pos FROM {$pt} WHERE class_id = %d AND student_id = %d AND created_at >= %s AND created_at < %s", $cid, $sid, $from, $to ), ARRAY_A ); // phpcs:ignore
 					$row['points_week']   += (int) ( $r['s'] ?? 0 );
 					$row['positive_week'] += (int) ( $r['pos'] ?? 0 );
+					$row['stars']         += (int) HS_Points_DB::get_student_total( $cid, $sid );
 				} else {
 					$row['locked'][] = 'points';
 				}
 				if ( HS_API_Access::parent_can( $uid, $sid, 'homework', $cid ) && class_exists( 'HS_Homework_DB' ) ) {
 					foreach ( (array) HS_Homework_DB::get_class_homework( $cid, 20 ) as $h ) {
-						$st = HS_Homework_DB::get_statuses( $h['id'] );
-						if ( ( ! $h['due_date'] || $h['due_date'] >= $today ) && 'done' !== ( $st[ $sid ]['status'] ?? 'pending' ) ) { $row['open_homework']++; }
+						$st   = HS_Homework_DB::get_statuses( $h['id'] );
+						$done = in_array( $st[ $sid ]['status'] ?? 'pending', array( 'done', 'late' ), true );
+						$row['hw_total']++;
+						$row['hw_done'] += $done ? 1 : 0;
+						if ( ( ! $h['due_date'] || $h['due_date'] >= $today ) && ! $done ) {
+							$row['open_homework']++;
+							if ( count( $row['pending'] ) < 5 ) {
+								$row['pending'][] = array( 'id' => (int) $h['id'], 'class_id' => (int) $cid, 'title' => $h['title'], 'subject' => (string) $h['subject'], 'due_date' => $h['due_date'] );
+							}
+						}
 					}
 				} else {
 					$row['locked'][] = 'homework';
 				}
 			}
 			$row['locked'] = array_values( array_unique( $row['locked'] ) );
+			$row['events'] = array_slice( HS_API_Routes_Teach::child_events( $uid, $sid, $today, gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ), 0, 5 );
 			$kids[]        = $row;
 		}
 		// آخرین اطلاعیه‌های کلاس‌هایی که بخش اطلاعیه برایشان باز است
@@ -216,6 +282,8 @@ class HS_API_Routes_Dashboard {
 		$linked   = 0;
 		foreach ( $rows as &$r ) {
 			$a                   = $att[ $r['id'] ] ?? array();
+			$r['grade']          = (string) get_post_meta( $r['id'], '_hs_grade', true );
+			$r['level']          = HS_API_Routes_Teach::grade_level( $r['grade'] );
 			$r['recorded_today'] = (bool) $a;
 			$r['absent_today']   = (int) ( $a['absent'] ?? 0 );
 			$tot['recorded_today'] += $a ? 1 : 0;
@@ -248,6 +316,8 @@ class HS_API_Routes_Dashboard {
 			'teachers'       => $teachers,
 			'pending_invites' => $pending,
 			'task_counts'    => method_exists( 'HS_SO_Store', 'task_counts' ) ? HS_SO_Store::task_counts( $sid ) : array(),
+			'levels'         => HS_API_Routes_Teach::levels(),
+			'events'         => array_slice( HS_API_Routes_Teach::events_for( $uid, $today, gmdate( 'Y-m-d', strtotime( $today . ' +60 days' ) ) ), 0, 8 ),
 		);
 	}
 
@@ -346,7 +416,7 @@ class HS_API_Routes_Dashboard {
 			if ( class_exists( 'HS_Homework_DB' ) ) {
 				foreach ( (array) HS_Homework_DB::get_class_homework( $cid, 20 ) as $h ) {
 					$st = HS_Homework_DB::get_statuses( $h['id'] );
-					$row['homework'][] = array( 'id' => (int) $h['id'], 'title' => (string) $h['title'], 'subject' => (string) $h['subject'], 'description' => (string) $h['description'], 'due_date' => $h['due_date'], 'status' => $st[ $uid ]['status'] ?? 'pending', 'feedback' => $st[ $uid ]['feedback'] ?? '' );
+					$row['homework'][] = array( 'id' => (int) $h['id'], 'title' => (string) $h['title'], 'subject' => (string) $h['subject'], 'description' => (string) $h['description'], 'due_date' => $h['due_date'], 'status' => $st[ $uid ]['status'] ?? 'pending', 'feedback' => $st[ $uid ]['feedback'] ?? '', 'attachments' => method_exists( 'HS_Homework_DB', 'attachments' ) ? HS_Homework_DB::attachments( $h ) : array() );
 				}
 			}
 			$out['classes'][] = $row;

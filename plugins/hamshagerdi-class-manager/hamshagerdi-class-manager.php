@@ -2,7 +2,7 @@
 /**
  * Plugin Name: مدیریت کلاس
  * Description: مدیریت کلاس و پرونده دانش‌آموز، حضور، امتیاز، ارتباط، ارزیابی، گزارش، تکالیف، پورتفولیو و ابزارها
- * Version:     1.7.3
+ * Version:     1.7.4
  * Text Domain: hamshagerdi-class
  * Requires at least: 5.8
  * Requires PHP: 7.4
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HS_CLASS_VERSION', '1.7.3' );
+define( 'HS_CLASS_VERSION', '1.7.4' );
 define( 'HS_CLASS_FILE', __FILE__ );
 define( 'HS_CLASS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'HS_CLASS_URL', plugin_dir_url( __FILE__ ) );

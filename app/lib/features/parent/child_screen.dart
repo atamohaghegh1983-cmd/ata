@@ -12,7 +12,7 @@ import '../../core/widgets/confirm.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
 import '../classes/class_screen.dart' show AnnouncementCard;
-import '../portfolio/portfolio.dart' show pickAndUpload;
+import '../portfolio/portfolio.dart' show pickAndUpload, wallTitle;
 import '../classes/homework_tab.dart' show HomeworkCard;
 
 /// جزئیات فرزند برای والد: امروز، این هفته، تکالیف، اطلاعیه‌ها، پیام، رمز ورود
@@ -84,7 +84,7 @@ class ChildScreen extends ConsumerWidget {
                   key: const Key('child_portfolio'),
                   onPressed: () => context.push('/portfolio/$id', extra: '${d['name'] ?? name}'),
                   icon: const Icon(Icons.photo_album_rounded),
-                  label: const Text('پورتفولیو و کارهای فرزندم'),
+                  label: const Text('دیوار همشاگردی فرزندم'),
                 ),
                 const SizedBox(height: 14),
                 if (classes.isEmpty) const EmptyView(icon: Icons.class_rounded, title: 'هنوز در کلاسی ثبت نشده'),
@@ -148,7 +148,7 @@ class _ClassBlock extends ConsumerWidget {
       ]),
       Row(children: [
         Expanded(child: Text('معلم: ${c['teacher']}', style: const TextStyle(color: Colors.black54))),
-        TextButton.icon(onPressed: () => context.push('/wall/$cid', extra: '${c['title']}'), icon: const Icon(Icons.photo_album_rounded, size: 18), label: const Text('دیوار کلاس')),
+        TextButton.icon(onPressed: () => context.push('/wall/$cid', extra: '${c['title']}'), icon: const Icon(Icons.photo_album_rounded, size: 18), label: Text(wallTitle('${c['title']}'))),
       ]),
       const SizedBox(height: 6),
       SectionCard(

@@ -86,7 +86,7 @@ class HS_API_Routes_Parent {
 			$status = isset( $st[ $sid ] ) ? $st[ $sid ]['status'] : 'pending';
 			$open   = ! in_array( $status, array( 'done' ), true ) && ( ! $h['due_date'] || $h['due_date'] >= $today );
 			if ( $open ) {
-				$out[] = array( 'id' => (int) $h['id'], 'title' => (string) $h['title'], 'subject' => (string) $h['subject'], 'due_date' => $h['due_date'], 'status' => $status );
+				$out[] = array( 'id' => (int) $h['id'], 'title' => (string) $h['title'], 'subject' => (string) $h['subject'], 'description' => (string) $h['description'], 'due_date' => $h['due_date'], 'status' => $status, 'attachments' => method_exists( 'HS_Homework_DB', 'attachments' ) ? HS_Homework_DB::attachments( $h ) : array() );
 			}
 		}
 		return $out;

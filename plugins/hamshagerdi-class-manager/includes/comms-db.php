@@ -43,6 +43,8 @@ class HS_Comms_DB {
 			body text NOT NULL,
 			author_id bigint(20) unsigned DEFAULT NULL,
 			is_pinned tinyint(1) NOT NULL DEFAULT 0,
+			show_from datetime DEFAULT NULL,
+			show_until datetime DEFAULT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			KEY class_id (class_id),
@@ -86,7 +88,11 @@ class HS_Comms_DB {
 
 	/* ---------- اطلاعیه‌ها ---------- */
 
-	public static function add_announcement( $class_id, $title, $body, $author_id = null, $pinned = false ) {
+	/**
+	 * $show_from / $show_until: بازه‌ی نمایش (Y-m-d H:i:s یا Y-m-d)؛ خالی یعنی بدون محدودیت.
+	 * بعد از show_until اطلاعیه برای والدین و دانش‌آموزان پنهان و برای معلم «بایگانی» می‌شود.
+	 */
+	public static function add_announcement( $class_id, $title, $body, $author_id = null, $pinned = false, $show_from = null, $show_until = null ) {
 		global $wpdb;
 		$wpdb->insert(
 			self::announcements_table(),
@@ -96,20 +102,75 @@ class HS_Comms_DB {
 				'body'       => wp_kses_post( $body ),
 				'author_id'  => $author_id ? absint( $author_id ) : get_current_user_id(),
 				'is_pinned'  => $pinned ? 1 : 0,
+				'show_from'  => self::dt( $show_from ),
+				'show_until' => self::dt( $show_until, true ),
 			),
-			array( '%d', '%s', '%s', '%d', '%d' )
+			array( '%d', '%s', '%s', '%d', '%d', '%s', '%s' )
 		);
-		return (int) $wpdb->insert_id;
+		$id = (int) $wpdb->insert_id;
+		if ( $id ) {
+			do_action( 'hs_announcement_created', $id, absint( $class_id ), $author_id ? absint( $author_id ) : get_current_user_id() );
+		}
+		return $id;
 	}
 
-	public static function get_announcements( $class_id, $limit = 30 ) {
+	/** تاریخ ورودی ← datetime معتبر یا null؛ تاریخ بدون ساعت برای پایان، آخر همان روز است */
+	public static function dt( $v, $end = false ) {
+		$v = trim( (string) $v );
+		if ( '' === $v ) {
+			return null;
+		}
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $v ) ) {
+			$v .= $end ? ' 23:59:59' : ' 00:00:00';
+		}
+		return preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $v ) ? $v : null;
+	}
+
+	/**
+	 * اطلاعیه‌های کلاس. پیش‌فرض فقط آن‌هایی که الان در بازه‌ی نمایش‌اند؛ $all=true همه (برای معلم: بایگانی هم)
+	 */
+	public static function get_announcements( $class_id, $limit = 30, $all = false ) {
 		global $wpdb;
+		$now   = current_time( 'mysql' );
+		$where = $all ? '' : $wpdb->prepare( ' AND (show_from IS NULL OR show_from <= %s) AND (show_until IS NULL OR show_until >= %s)', $now, $now );
 		return $wpdb->get_results( $wpdb->prepare(
 			'SELECT * FROM ' . self::announcements_table() .
-			' WHERE class_id = %d ORDER BY is_pinned DESC, created_at DESC LIMIT %d',
+			' WHERE class_id = %d' . $where . ' ORDER BY is_pinned DESC, created_at DESC LIMIT %d', // phpcs:ignore
 			absint( $class_id ),
 			absint( $limit )
 		), ARRAY_A );
+	}
+
+	/** وضعیت نمایش: active | scheduled | archived */
+	public static function ann_state( $a ) {
+		$now = current_time( 'mysql' );
+		if ( ! empty( $a['show_from'] ) && $a['show_from'] > $now ) {
+			return 'scheduled';
+		}
+		if ( ! empty( $a['show_until'] ) && $a['show_until'] < $now ) {
+			return 'archived';
+		}
+		return 'active';
+	}
+
+	public static function update_announcement( $id, $data ) {
+		global $wpdb;
+		$f = array();
+		foreach ( array( 'title', 'body' ) as $k ) {
+			if ( isset( $data[ $k ] ) ) {
+				$f[ $k ] = 'body' === $k ? wp_kses_post( $data[ $k ] ) : sanitize_text_field( $data[ $k ] );
+			}
+		}
+		if ( isset( $data['pinned'] ) ) {
+			$f['is_pinned'] = $data['pinned'] ? 1 : 0;
+		}
+		if ( array_key_exists( 'show_from', $data ) ) {
+			$f['show_from'] = self::dt( $data['show_from'] );
+		}
+		if ( array_key_exists( 'show_until', $data ) ) {
+			$f['show_until'] = self::dt( $data['show_until'], true );
+		}
+		return $f ? $wpdb->update( self::announcements_table(), $f, array( 'id' => absint( $id ) ) ) : 0;
 	}
 
 	public static function delete_announcement( $id ) {
@@ -175,6 +236,21 @@ class HS_Comms_DB {
 		 */
 		do_action( 'hs_message_sent', absint( $sender_id ), absint( $recipient_id ), $body, absint( $class_id ), absint( $student_id ), $id );
 		return $id;
+	}
+
+	public static function get_message( $id ) {
+		global $wpdb;
+		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::messages_table() . ' WHERE id = %d', absint( $id ) ), ARRAY_A );
+	}
+
+	/** حذف یک پیام (بررسی اجازه با فراخواننده است) */
+	public static function delete_message( $id ) {
+		global $wpdb;
+		$ok = $wpdb->delete( self::messages_table(), array( 'id' => absint( $id ) ), array( '%d' ) );
+		if ( $ok ) {
+			do_action( 'hs_message_deleted', absint( $id ) );
+		}
+		return $ok;
 	}
 
 	/**

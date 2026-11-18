@@ -6,6 +6,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
+import '../../core/widgets/confirm.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 
@@ -39,11 +40,25 @@ class InboxView extends ConsumerWidget {
                       ref.invalidate(getProvider('/messages'));
                     },
                     leading: HsAvatar(name: '${m['name']}', url: '${m['avatar'] ?? ''}', size: 46),
-                    title: Text('${m['name']}', style: TextStyle(fontWeight: m['unread'] == true ? FontWeight.w700 : FontWeight.w500)),
-                    subtitle: Text('${m['preview'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    title: Text.rich(
+                      TextSpan(children: [
+                        TextSpan(text: '${m['name']}', style: TextStyle(fontWeight: m['unread'] == true ? FontWeight.w700 : FontWeight.w500)),
+                        if ('${m['label'] ?? ''}'.isNotEmpty) TextSpan(text: '  ${m['label']}', style: const TextStyle(fontSize: 12, color: HsColors.blue)),
+                      ]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      ((m['unread_count'] as num?) ?? 0) > 1 ? '${Fa.faDigits(m['unread_count'])} پیام جدید' : '${m['preview'] ?? ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: ((m['unread_count'] as num?) ?? 0) > 1 ? HsColors.orangeDark : null, fontWeight: ((m['unread_count'] as num?) ?? 0) > 1 ? FontWeight.w700 : null),
+                    ),
                     trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
                       Text(Fa.date('${m['at'] ?? ''}', withYear: false), style: const TextStyle(fontSize: 11, color: Colors.black45)),
-                      if (m['unread'] == true) const Icon(Icons.circle, size: 10, color: HsColors.orange),
+                      const SizedBox(height: 4),
+                      if (((m['unread_count'] as num?) ?? 0) > 0)
+                        Badge(key: Key('unread_${m['user_id']}'), backgroundColor: HsColors.orange, label: Text(Fa.faDigits(m['unread_count']))),
                     ]),
                   ),
                 ),
@@ -90,13 +105,40 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
     }
   }
 
+  /// حذف پیام (با نگه‌داشتن انگشت روی پیام): فرستنده، معلم کلاس، مدیر مدرسه، نماینده‌ی والدین
+  Future<void> _delete(Map m) async {
+    if (!await confirmDanger(context, title: 'حذف پیام', text: 'این پیام برای هر دو طرف حذف می‌شود.', ok: 'حذف')) return;
+    try {
+      await ref.read(apiProvider).delete<Object?>('/messages/item/${m['id']}');
+      ref.invalidate(getProvider(_path));
+      ref.invalidate(getProvider('/messages'));
+    } on ApiException catch (e) {
+      if (mounted) showMessage(context, e.message, error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final res = ref.watch(getProvider(_path));
     final d = (res.valueOrNull?.data as Map?) ?? const {};
     final canReply = d['can_reply'] != false;
+    final partner = (d['partner'] as Map?) ?? const {};
+    final name = '${partner['name'] ?? ''}'.isNotEmpty ? '${partner['name']}' : widget.name;
+    final label = '${partner['label'] ?? ''}';
     return Scaffold(
-      appBar: AppBar(title: Text(widget.name.isEmpty ? 'گفتگو' : widget.name)),
+      appBar: AppBar(
+        titleSpacing: 0,
+        title: Row(children: [
+          HsAvatar(name: name.isEmpty ? '؟' : name, url: '${partner['avatar'] ?? ''}', size: 38),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name.isEmpty ? 'گفتگو' : 'گفتگو با $name', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
+              if (label.isNotEmpty) Text(label, style: const TextStyle(fontSize: 12, color: HsColors.blue, fontFamily: 'Vazirmatn')),
+            ]),
+          ),
+        ]),
+      ),
       body: Column(children: [
         Expanded(
           child: res.when(
@@ -114,7 +156,9 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
                   final mine = m['mine'] == true;
                   return Align(
                     alignment: mine ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
-                    child: Container(
+                    child: GestureDetector(
+                      onLongPress: m['can_delete'] == true ? () => _delete(m) : null,
+                      child: Container(
                       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
@@ -126,6 +170,7 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
                         Text('${m['body']}', style: TextStyle(color: mine ? Colors.white : HsColors.navy, height: 1.7)),
                         Text(Fa.date('${m['at'] ?? ''}', withYear: false), style: TextStyle(fontSize: 10, color: mine ? Colors.white70 : Colors.black38)),
                       ]),
+                    ),
                     ),
                   );
                 },

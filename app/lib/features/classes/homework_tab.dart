@@ -5,6 +5,8 @@ import '../../core/api/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
+import '../../core/widgets/attachments.dart';
+import '../../core/widgets/date_pickers.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
@@ -83,6 +85,10 @@ class HomeworkCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if ('${h['subject'] ?? ''}'.isNotEmpty) Text('${h['subject']}', style: const TextStyle(color: HsColors.orangeDark, fontWeight: FontWeight.w700)),
         if ('${h['description'] ?? ''}'.isNotEmpty) Text('${h['description']}', style: const TextStyle(height: 1.8)),
+        if (((h['attachments'] as List?) ?? const []).isNotEmpty) ...[
+          const SizedBox(height: 6),
+          AttachmentChips(items: ((h['attachments'] as List?) ?? const []).cast<Map>()),
+        ],
         if (sum != null) ...[
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
@@ -108,7 +114,8 @@ class _NewHomeworkSheetState extends ConsumerState<_NewHomeworkSheet> {
   final _t = TextEditingController();
   final _d = TextEditingController();
   final _s = TextEditingController();
-  int? _days = 1;
+  DateTime? _due = Week.addSchoolDays(DateTime.now(), 1);
+  final List<Map<String, dynamic>> _att = [];
   bool _busy = false;
 
   @override
@@ -126,8 +133,13 @@ class _NewHomeworkSheetState extends ConsumerState<_NewHomeworkSheet> {
     }
     setState(() => _busy = true);
     try {
-      final due = _days == null ? null : Fa.ymd(_dueDate(_days!));
-      await ref.read(apiProvider).post<Object?>('/classes/${widget.classId}/homework', data: {'title': _t.text.trim(), 'description': _d.text.trim(), 'subject': _s.text.trim(), 'due_date': due});
+      await ref.read(apiProvider).post<Object?>('/classes/${widget.classId}/homework', data: {
+        'title': _t.text.trim(),
+        'description': _d.text.trim(),
+        'subject': _s.text.trim(),
+        'due_date': _due == null ? null : Fa.ymd(_due!),
+        'attachments': _att,
+      });
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) showMessage(context, e.message, error: true);
@@ -136,38 +148,57 @@ class _NewHomeworkSheetState extends ConsumerState<_NewHomeworkSheet> {
     }
   }
 
-  /// «یک هفته» = ۷ روز تقویمی؛ بقیه = روز مدرسه‌ی بعدی (پنجشنبه و جمعه رد می‌شود)
-  DateTime _dueDate(int days) {
-    if (days >= 7) return Week.lastSchoolDay(DateTime.now().add(Duration(days: days)));
-    return Week.addSchoolDays(DateTime.now(), days);
-  }
-
   @override
   Widget build(BuildContext context) {
-    const choices = <int?, String>{1: 'جلسه‌ی بعد', 2: 'دو روز بعد', 7: 'یک هفته', null: 'بدون موعد'};
+    final next = Week.addSchoolDays(DateTime.now(), 1);
+    final week = Week.lastSchoolDay(DateTime.now().add(const Duration(days: 7)));
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('تکلیف تازه', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
-        TextField(controller: _t, autofocus: true, decoration: const InputDecoration(labelText: 'عنوان *', hintText: 'مثلاً تمرین صفحه‌ی ۲۴')),
-        const SizedBox(height: 10),
-        TextField(controller: _s, decoration: const InputDecoration(labelText: 'درس')),
-        const SizedBox(height: 10),
-        TextField(controller: _d, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'توضیح')),
-        const SizedBox(height: 10),
-        const Text('مهلت', style: TextStyle(fontWeight: FontWeight.w700)),
-        Wrap(spacing: 8, children: [
-          for (final e in choices.entries)
-            ChoiceChip(
-              label: Text(e.key == null ? e.value : '${e.value} (${Fa.weekday(_dueDate(e.key!))} ${Fa.date(Fa.ymd(_dueDate(e.key!)), withYear: false)})'),
-              selected: _days == e.key,
-              onSelected: (_) => setState(() => _days = e.key),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('تکلیف تازه', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          TextField(controller: _t, autofocus: true, decoration: const InputDecoration(labelText: 'عنوان *', hintText: 'مثلاً تمرین صفحه‌ی ۲۴')),
+          const SizedBox(height: 10),
+          TextField(controller: _s, decoration: const InputDecoration(labelText: 'درس')),
+          const SizedBox(height: 10),
+          TextField(controller: _d, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'توضیح')),
+          const SizedBox(height: 10),
+          const Text('پیوست (عکس، فایل یا لینک)', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          AttachmentChips(items: _att, onRemove: (i) => setState(() => _att.removeAt(i))),
+          AttachmentAdder(count: _att.length, onAdded: (a) => setState(() => _att.add(a))),
+          const SizedBox(height: 10),
+          Row(children: [
+            const Text('مهلت', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _due == null ? 'بدون مهلت' : '${Fa.weekday(_due!)} ${Fa.date(Fa.ymd(_due!), withYear: false)}',
+                style: const TextStyle(color: HsColors.orangeDark, fontWeight: FontWeight.w700),
+              ),
             ),
+          ]),
+          const SizedBox(height: 6),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            ChoiceChip(label: const Text('جلسه‌ی بعد'), selected: WeekDayPicker.same(_due, next), onSelected: (_) => setState(() => _due = next)),
+            ChoiceChip(label: const Text('یک هفته'), selected: WeekDayPicker.same(_due, week), onSelected: (_) => setState(() => _due = week)),
+            ChoiceChip(label: const Text('بدون مهلت'), selected: _due == null, onSelected: (_) => setState(() => _due = null)),
+            ActionChip(
+              avatar: const Icon(Icons.calendar_month_rounded, size: 18),
+              label: const Text('تاریخ دیگر'),
+              onPressed: () async {
+                final d = await pickWeekDay(context, initial: _due, title: 'مهلت تکلیف');
+                if (d != null) setState(() => _due = d);
+              },
+            ),
+          ]),
+          const SizedBox(height: 8),
+          WeekDayPicker(selected: _due, weeks: 2, onPick: (d) => setState(() => _due = d)),
+          const SizedBox(height: 14),
+          FilledButton(key: const Key('hw_save'), onPressed: _busy ? null : _save, child: busyLabel(_busy, 'ثبت تکلیف')),
         ]),
-        const SizedBox(height: 14),
-        FilledButton(onPressed: _busy ? null : _save, child: busyLabel(_busy, 'ثبت تکلیف')),
-      ]),
+      ),
     );
   }
 }

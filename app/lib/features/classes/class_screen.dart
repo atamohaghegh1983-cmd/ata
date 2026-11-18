@@ -14,8 +14,9 @@ import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/confirm.dart';
+import '../../core/widgets/date_pickers.dart';
 import '../../core/widgets/ui.dart';
-import '../portfolio/portfolio.dart' show WallView;
+import '../portfolio/portfolio.dart' show WallView, wallTitle;
 import 'attendance_tab.dart';
 import 'class_providers.dart';
 import 'homework_tab.dart';
@@ -23,8 +24,9 @@ import 'student_sheet.dart';
 
 /// صفحه‌ی کلاس: دانش‌آموزان، حضور و غیاب، تکالیف، اطلاعیه‌ها
 class ClassScreen extends ConsumerWidget {
-  const ClassScreen({super.key, required this.id});
+  const ClassScreen({super.key, required this.id, this.initialTab = 0});
   final int id;
+  final int initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,6 +35,7 @@ class ClassScreen extends ConsumerWidget {
     final canWrite = info['access'] == 'write';
     return DefaultTabController(
       length: 5,
+      initialIndex: initialTab.clamp(0, 4),
       child: Scaffold(
         appBar: AppBar(
           title: Text('${info['title'] ?? 'کلاس'}'),
@@ -66,18 +69,18 @@ class ClassScreen extends ConsumerWidget {
                 ],
               ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             labelColor: HsColors.orangeDark,
             indicatorColor: HsColors.orange,
-            labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.w700, fontSize: 13),
+            labelStyle: const TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.w700, fontSize: 13),
             tabs: [
-              Tab(icon: Icon(Icons.groups_rounded), text: 'دانش‌آموزان'),
-              Tab(icon: Icon(Icons.fact_check_rounded), text: 'حضور'),
-              Tab(icon: Icon(Icons.menu_book_rounded), text: 'تکالیف'),
-              Tab(icon: Icon(Icons.campaign_rounded), text: 'اطلاعیه'),
-              Tab(icon: Icon(Icons.photo_album_rounded), text: 'دیوار'),
+              const Tab(icon: Icon(Icons.groups_rounded), text: 'دانش‌آموزان'),
+              const Tab(icon: Icon(Icons.fact_check_rounded), text: 'حضور'),
+              const Tab(icon: Icon(Icons.menu_book_rounded), text: 'تکالیف'),
+              const Tab(icon: Icon(Icons.campaign_rounded), text: 'اطلاعیه'),
+              Tab(icon: const Icon(Icons.photo_album_rounded), text: wallTitle('${info['title'] ?? ''}')),
             ],
           ),
         ),
@@ -353,13 +356,26 @@ class AnnouncementsTab extends ConsumerWidget {
           loading: () => const LoadingView(),
           error: (e, _) => ListView(children: [const SizedBox(height: 80), ErrorView(error: e, onRetry: () => ref.invalidate(getProvider(path)))]),
           data: (r) {
-            final list = ((r.data as List?) ?? const []).cast<Map>();
+            final all = ((r.data as List?) ?? const []).cast<Map>();
+            final list = all.where((a) => a['state'] != 'archived').toList();
+            final archived = all.where((a) => a['state'] == 'archived').toList();
             return ListView(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 96),
               children: [
                 if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
-                if (list.isEmpty) const EmptyView(icon: Icons.campaign_rounded, title: 'هنوز اطلاعیه‌ای نیست'),
+                if (list.isEmpty) const EmptyView(icon: Icons.campaign_rounded, title: 'اطلاعیه‌ی فعالی نیست'),
                 for (final a in list) Padding(padding: const EdgeInsets.only(bottom: 10), child: AnnouncementCard(a: a, onChanged: () => ref.invalidate(getProvider(path)))),
+                if (archived.isNotEmpty)
+                  ExpansionTile(
+                    key: const Key('ann_archive'),
+                    tilePadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.inventory_2_rounded, color: Colors.black45),
+                    title: Text('بایگانی (${Fa.faDigits(archived.length)})', style: const TextStyle(color: Colors.black54)),
+                    subtitle: const Text('مهلت نمایش این‌ها تمام شده و والدین دیگر نمی‌بینند.', style: TextStyle(fontSize: 12)),
+                    children: [
+                      for (final a in archived) Padding(padding: const EdgeInsets.only(bottom: 10), child: Opacity(opacity: 0.7, child: AnnouncementCard(a: a, onChanged: () => ref.invalidate(getProvider(path))))),
+                    ],
+                  ),
               ],
             );
           },
@@ -407,7 +423,15 @@ class AnnouncementCard extends ConsumerWidget {
                 ],
               ),
             ]),
-      child: Text('${a['body'] ?? ''}', style: const TextStyle(height: 1.8)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${a['body'] ?? ''}', style: const TextStyle(height: 1.8)),
+        if (a['state'] == 'scheduled')
+          Padding(padding: const EdgeInsets.only(top: 6), child: Pill('⏳ نمایش از ${Fa.date('${a['show_from']}', withYear: false)}', color: HsColors.blue)),
+        if (a['state'] == 'archived')
+          const Padding(padding: EdgeInsets.only(top: 6), child: Pill('🗄️ بایگانی شده', color: Colors.black45)),
+        if (a['state'] == 'active' && '${a['show_until'] ?? ''}'.length >= 10 && '${a['show_until']}' != 'null')
+          Padding(padding: const EdgeInsets.only(top: 6), child: Pill('⏱️ تا ${Fa.weekday(DateTime.parse('${a['show_until']}'.substring(0, 10)))} ${Fa.date('${a['show_until']}', withYear: false)}', color: HsColors.orangeDark)),
+      ]),
     );
   }
 }
@@ -427,6 +451,13 @@ class _NewAnnouncementSheetState extends ConsumerState<_NewAnnouncementSheet> {
   late final _b = TextEditingController(text: '${widget.edit?['body'] ?? ''}');
   late bool _pin = widget.edit?['pinned'] == true;
   bool _busy = false;
+  late DateTime? _from = _parse(widget.edit?['show_from']);
+  late DateTime? _until = _parse(widget.edit?['show_until']);
+
+  static DateTime? _parse(Object? v) {
+    final s = '${v ?? ''}';
+    return s.length >= 10 ? DateTime.tryParse(s.substring(0, 10)) : null;
+  }
 
   @override
   void dispose() {
@@ -442,7 +473,13 @@ class _NewAnnouncementSheetState extends ConsumerState<_NewAnnouncementSheet> {
     }
     setState(() => _busy = true);
     try {
-      final data = {'title': _t.text.trim(), 'body': _b.text.trim(), 'pinned': _pin};
+      final data = {
+        'title': _t.text.trim(),
+        'body': _b.text.trim(),
+        'pinned': _pin,
+        'show_from': _from == null ? '' : Fa.ymd(_from!),
+        'show_until': _until == null ? '' : Fa.ymd(_until!),
+      };
       final e = widget.edit;
       await ref.read(apiProvider).post<Object?>(e != null ? '/announcements/${e['id']}' : '/classes/${widget.classId}/announcements', data: data);
       if (mounted) Navigator.pop(context, true);
@@ -464,6 +501,35 @@ class _NewAnnouncementSheetState extends ConsumerState<_NewAnnouncementSheet> {
         const SizedBox(height: 10),
         TextField(controller: _b, minLines: 3, maxLines: 6, decoration: const InputDecoration(labelText: 'متن')),
         SwitchListTile(contentPadding: EdgeInsets.zero, value: _pin, onChanged: (v) => setState(() => _pin = v), title: const Text('سنجاق شود (بالای فهرست بماند)')),
+        const Text('مدت نمایش', style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final e in const {0: 'همیشه', 1: 'تا فردا', 3: 'سه روز', 7: 'یک هفته'}.entries)
+            ChoiceChip(
+              label: Text(e.value),
+              selected: e.key == 0 ? _until == null : WeekDayPicker.same(_until, DateUtils.dateOnly(DateTime.now()).add(Duration(days: e.key))),
+              onSelected: (_) => setState(() => _until = e.key == 0 ? null : DateUtils.dateOnly(DateTime.now()).add(Duration(days: e.key))),
+            ),
+          ActionChip(
+            key: const Key('ann_until'),
+            avatar: const Icon(Icons.event_rounded, size: 18),
+            label: Text(_until == null ? 'تا تاریخ…' : 'تا ${Fa.weekday(_until!)} ${Fa.date(Fa.ymd(_until!), withYear: false)}'),
+            onPressed: () async {
+              final d = await pickWeekDay(context, initial: _until, allowHolidays: true, title: 'آخرین روز نمایش (مثلاً روز جلسه)');
+              if (d != null) setState(() => _until = d);
+            },
+          ),
+          ActionChip(
+            avatar: const Icon(Icons.schedule_rounded, size: 18),
+            label: Text(_from == null ? 'نمایش از الان' : 'نمایش از ${Fa.date(Fa.ymd(_from!), withYear: false)}'),
+            onPressed: () async {
+              final d = await pickWeekDay(context, initial: _from, allowHolidays: true, title: 'شروع نمایش');
+              setState(() => _from = d);
+            },
+          ),
+        ]),
+        const Text('بعد از پایان مدت، اطلاعیه برای والدین پنهان و برای شما «بایگانی» می‌شود.', style: TextStyle(fontSize: 12, color: Colors.black45, height: 1.7)),
+        const SizedBox(height: 10),
         FilledButton(onPressed: _busy ? null : _save, child: busyLabel(_busy, widget.edit != null ? 'ذخیره' : 'انتشار')),
       ]),
     );

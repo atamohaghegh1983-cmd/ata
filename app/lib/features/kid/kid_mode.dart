@@ -187,7 +187,7 @@ class KidModeScreen extends ConsumerWidget {
                 label: const Text('بخش والدین'),
               ),
             ],
-            bottom: const TabBar(labelColor: HsColors.orangeDark, indicatorColor: HsColors.orange, tabs: [Tab(text: 'امروز من'), Tab(text: 'پورتفولیو من')]),
+            bottom: const TabBar(labelColor: HsColors.orangeDark, indicatorColor: HsColors.orange, tabs: [Tab(text: 'امروز من'), Tab(text: 'دیوار همشاگردی من')]),
           ),
           body: TabBarView(children: [
             RefreshIndicator(

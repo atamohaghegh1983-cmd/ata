@@ -21,9 +21,14 @@ class HS_API_Notify {
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'maybe_install' ), 5 );
 		add_action( 'hs_api_attendance_saved', array( __CLASS__, 'on_attendance' ), 10, 4 );
+		// هم از اپ و هم از سایت (افزونه‌ی مدیریت کلاس ۱.۷.۴+)؛ تکراری‌ها یک بار حساب می‌شوند
 		add_action( 'hs_api_homework_created', array( __CLASS__, 'on_homework' ), 10, 3 );
+		add_action( 'hs_homework_created', array( __CLASS__, 'on_homework' ), 10, 3 );
 		add_action( 'hs_api_announcement_created', array( __CLASS__, 'on_announcement' ), 10, 3 );
-		add_action( 'hs_api_message_sent', array( __CLASS__, 'on_message' ), 10, 3 );
+		add_action( 'hs_announcement_created', array( __CLASS__, 'on_announcement' ), 10, 3 );
+		// هر پیام خصوصی (اپ، سایت، پیام گروهی معلم)
+		add_action( 'hs_message_sent', array( __CLASS__, 'on_site_message' ), 10, 6 );
+		add_action( 'shutdown', array( __CLASS__, 'flush' ), 0 );
 		add_action( 'hs_api_points_awarded_to', array( __CLASS__, 'on_points' ), 10, 4 );
 		add_action( 'hs_api_push', array( __CLASS__, 'push_now' ), 10, 1 );
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
@@ -66,10 +71,40 @@ class HS_API_Notify {
 			) );
 			$push[] = (int) $wpdb->insert_id;
 		}
-		if ( self::fcm_ready() && $push ) {
-			// ارسال در پس‌زمینه تا پاسخ اپ معلم کند نشود
-			wp_schedule_single_event( time(), 'hs_api_push', array( $push ) );
+		self::queue( $push );
+	}
+
+	/** شناسه‌های اعلانی که باید به گوشی فرستاده شوند (در پایان همین درخواست) */
+	private static $queue = array();
+	private static $seen  = array();
+
+	private static function queue( $ids ) {
+		if ( $ids && self::fcm_ready() ) {
+			self::$queue = array_merge( self::$queue, $ids );
 		}
+	}
+
+	/** یک رویداد را فقط یک بار حساب کن (اپ و سایت هر دو خبر می‌دهند) */
+	private static function once( $key ) {
+		if ( isset( self::$seen[ $key ] ) ) { return false; }
+		self::$seen[ $key ] = true;
+		return true;
+	}
+
+	/**
+	 * ارسال فوری بعد از فرستادن پاسخ (نه با کران وردپرس که در سایت کم‌بازدید دیر اجرا می‌شود)
+	 */
+	public static function flush() {
+		if ( ! self::$queue ) { return; }
+		$ids         = array_values( array_unique( self::$queue ) );
+		self::$queue = array();
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request();
+		} elseif ( function_exists( 'litespeed_finish_request' ) ) {
+			litespeed_finish_request();
+		}
+		ignore_user_abort( true );
+		self::push_now( $ids );
 	}
 
 	/** والدینی از این دانش‌آموز که این بخش برایشان باز است */
@@ -98,6 +133,7 @@ class HS_API_Notify {
 	}
 
 	public static function on_homework( $hid, $cid, $by ) {
+		if ( ! self::once( 'hw' . $hid ) ) { return; }
 		$h     = class_exists( 'HS_Homework_DB' ) ? HS_Homework_DB::get( $hid ) : null;
 		$title = $h ? (string) $h['title'] : 'تکلیف تازه';
 		$users = array();
@@ -109,6 +145,7 @@ class HS_API_Notify {
 	}
 
 	public static function on_announcement( $aid, $cid, $by ) {
+		if ( ! self::once( 'ann' . $aid ) ) { return; }
 		$users = array();
 		foreach ( HS_API_Access::class_members( $cid ) as $sid ) {
 			$users = array_merge( $users, self::parents_for( $sid, 'announce', $cid ) );
@@ -118,9 +155,50 @@ class HS_API_Notify {
 		self::add( $users, 'announce', 'اطلاعیه‌ی ' . get_the_title( $cid ), $a ? (string) $a['title'] : 'اطلاعیه‌ی تازه', array( 'class' => (int) $cid ) );
 	}
 
-	public static function on_message( $mid, $from, $to ) {
-		$u = get_userdata( $from );
-		self::add( array( $to ), 'message', 'پیام تازه', ( $u ? $u->display_name : '' ) . ' برایتان پیام فرستاد.', array( 'user' => (int) $from ) );
+	public static function on_site_message( $from, $to, $body, $cid = 0, $sid = 0, $mid = 0 ) {
+		self::on_message( $mid, $from, $to, $body );
+	}
+
+	/**
+	 * پیام‌های یک فرستنده در یک اعلان جمع می‌شوند: «پیام از فلانی — ۵ پیام جدید»
+	 */
+	public static function on_message( $mid, $from, $to, $body = '' ) {
+		global $wpdb;
+		$from = (int) $from;
+		$to   = (int) $to;
+		if ( ! $from || ! $to || ! self::once( 'msg' . $mid . '_' . $to ) ) { return; }
+		$u     = get_userdata( $from );
+		$name  = $u ? $u->display_name : '';
+		$label = HS_API_Routes_Teach::partner_label( $to, $from );
+		$title = 'پیام از ' . $name . ( $label ? ' (' . $label . ')' : '' );
+		$prev  = trim( wp_strip_all_tags( (string) $body ) );
+		$prev  = mb_strlen( $prev ) > 80 ? mb_substr( $prev, 0, 80 ) . '…' : $prev;
+		$row   = $wpdb->get_row( $wpdb->prepare( 'SELECT id, data FROM ' . self::t() . " WHERE user_id = %d AND type = 'message' AND is_read = 0 AND data LIKE %s ORDER BY id DESC LIMIT 1", $to, '%"user":' . $from . '%' ), ARRAY_A ); // phpcs:ignore
+		if ( $row ) {
+			$d      = json_decode( (string) $row['data'], true );
+			$d      = is_array( $d ) ? $d : array();
+			$n      = max( 1, (int) ( $d['count'] ?? 1 ) ) + 1;
+			$d['count'] = $n;
+			$wpdb->update( self::t(), array(
+				'title'      => mb_substr( $title, 0, 190 ),
+				'body'       => mb_substr( self::fa( $n ) . ' پیام جدید' . ( $prev ? ' — آخرین: ' . $prev : '' ), 0, 500 ),
+				'data'       => wp_json_encode( $d ),
+				'created_at' => current_time( 'mysql' ),
+			), array( 'id' => (int) $row['id'] ) );
+			self::queue( array( (int) $row['id'] ) );
+			return;
+		}
+		self::add( array( $to ), 'message', $title, $prev ? $prev : 'پیام تازه', array( 'user' => $from, 'count' => 1 ) );
+	}
+
+	public static function fa( $n ) {
+		return strtr( (string) $n, array( '0' => '۰', '1' => '۱', '2' => '۲', '3' => '۳', '4' => '۴', '5' => '۵', '6' => '۶', '7' => '۷', '8' => '۸', '9' => '۹' ) );
+	}
+
+	/** خواندن گفت‌وگو ← اعلان پیام‌های همان فرستنده خوانده شود */
+	public static function read_messages_from( $uid, $from ) {
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::t() . " SET is_read = 1 WHERE user_id = %d AND type = 'message' AND is_read = 0 AND data LIKE %s", (int) $uid, '%"user":' . (int) $from . '%' ) ); // phpcs:ignore
 	}
 
 	/** فقط امتیاز منفی به والدین خبر داده می‌شود (امتیاز مثبت در خلاصه‌ی روز دیده می‌شود) */
@@ -198,7 +276,7 @@ class HS_API_Notify {
 			return;
 		}
 		$in   = implode( ',', array_map( 'intval', (array) $ids ) );
-		$rows = $in ? $wpdb->get_results( 'SELECT id, user_id, type, title, body FROM ' . self::t() . " WHERE id IN ($in)", ARRAY_A ) : array(); // phpcs:ignore
+		$rows = $in ? $wpdb->get_results( 'SELECT id, user_id, type, title, body, data FROM ' . self::t() . " WHERE id IN ($in)", ARRAY_A ) : array(); // phpcs:ignore
 		$url  = 'https://fcm.googleapis.com/v1/projects/' . rawurlencode( $sa['project_id'] ) . '/messages:send';
 		foreach ( (array) $rows as $n ) {
 			foreach ( HS_API_Devices::tokens( (int) $n['user_id'], 'fcm' ) as $device ) {
@@ -208,8 +286,9 @@ class HS_API_Notify {
 					'body'    => wp_json_encode( array( 'message' => array(
 						'token'        => $device,
 						'notification' => array( 'title' => $n['title'], 'body' => $n['body'] ),
-						'data'         => array( 'type' => (string) $n['type'], 'id' => (string) $n['id'] ),
-						'android'      => array( 'priority' => 'high', 'notification' => array( 'channel_id' => 'hs_default' ) ),
+						'data'         => array( 'type' => (string) $n['type'], 'id' => (string) $n['id'], 'data' => (string) $n['data'] ),
+						// برچسب ثابت: اعلان تازه‌ی همان فرستنده جای قبلی را می‌گیرد (نه زیر هم)
+						'android'      => array( 'priority' => 'high', 'notification' => array( 'channel_id' => 'hs_default', 'tag' => 'hs' . (int) $n['id'] ) ),
 					) ) ),
 				) );
 				$code = is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );

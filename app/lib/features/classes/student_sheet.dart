@@ -181,7 +181,7 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                   context.push('/portfolio/${widget.studentId}', extra: '${s['name']}');
                 },
                 icon: const Icon(Icons.photo_album_rounded),
-                label: const Text('پورتفولیو'),
+                label: const Text('دیوار همشاگردی'),
               ),
               if (widget.canWrite) ...[
                 const SizedBox(height: 10),

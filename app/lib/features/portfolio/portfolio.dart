@@ -298,3 +298,10 @@ class WallView extends ConsumerWidget {
     );
   }
 }
+
+/// «دیوار کلاس سوم الف» (بدون تکرار «کلاس» اگر در نام هست)
+String wallTitle(String classTitle) {
+  final t = classTitle.trim();
+  if (t.isEmpty) return 'دیوار کلاس';
+  return t.startsWith('کلاس') ? 'دیوار $t' : 'دیوار کلاس $t';
+}

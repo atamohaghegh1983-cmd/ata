@@ -73,7 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 'student':
         return [
           const _Tab('من', Icons.emoji_events_rounded, 'امتیازها و تکالیف من', StudentHome()),
-          _Tab('پورتفولیو', Icons.photo_album_rounded, 'پورتفولیوی من', PortfolioView(studentId: me.id)),
+          _Tab('دیوار من', Icons.photo_album_rounded, 'دیوار همشاگردی من', PortfolioView(studentId: me.id)),
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView()),
         ];
     }
@@ -225,7 +225,7 @@ class _Menu extends ConsumerWidget {
                 content: SingleChildScrollView(
                   child: Text(
                     'اطلاعات شما و فرزندتان فقط برای معلم، مدیر مدرسه و والدین همان دانش‌آموز نمایش داده می‌شود و به هیچ شخص یا شرکت دیگری فروخته یا داده نمی‌شود. '
-                    'شماره‌ی موبایل فقط برای ورود و اطلاع‌رسانی استفاده می‌شود. عکس‌ها و پست‌های پورتفولیو فقط برای معلم و والدین همان دانش‌آموز دیده می‌شود، مگر معلم آن را روی «دیوار کلاس» بگذارد. '
+                    'شماره‌ی موبایل فقط برای ورود و اطلاع‌رسانی استفاده می‌شود. عکس‌ها و پست‌های «دیوار همشاگردی» فقط برای معلم و والدین همان دانش‌آموز دیده می‌شود، مگر معلم آن را روی «دیوار کلاس» بگذارد. '
                     'هر زمان بخواهید می‌توانید از منو «حذف حساب» را بزنید.\n\nمتن کامل: ${AppConfig.site}/privacy',
                     style: const TextStyle(height: 1.9),
                   ),
