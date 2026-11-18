@@ -1,4 +1,4 @@
-# مستندات API همشاگردی (نسخه‌ی ۲.۳.۰)
+# مستندات API همشاگردی (نسخه‌ی ۲.۴.۰)
 
 پایه: `https://SITE/wp-json/hamshagerdi/v1` (یا `https://SITE/?rest_route=/hamshagerdi/v1/...`).
 همه‌ی پاسخ‌ها JSON است. خطا: `{ "code", "message", "data": { "status", ... } }` و `message` همیشه فارسی و قابل نمایش به کاربر است.
@@ -133,6 +133,73 @@
 | GET | `/school` | ناظر/مدیر: اطلاعات کامل + `classes[]`؛ مدیر: + `staff[]` و `invites[]`. عضو کادر بدون اجازه‌ی نظارت: فقط `id, name`. |
 | GET | `/school/tasks` | مدیر: همه؛ بقیه: وظایف خودشان |
 | POST | `/school/tasks/{id}/status` | `status, report` (فقط مسئول انجام) |
+
+## تازه‌های ۲.۴.۰
+
+همه‌ی مسیرها زیر `/wp-json/hamshagerdi/v1` و با توکن ورود. دسترسی‌ها در سرور بررسی می‌شود.
+
+### اطلاعیه
+| روش | مسیر | توضیح |
+|---|---|---|
+| POST | `/announcements/{id}` | ویرایش `{title, body, pinned}` — نویسنده، معلم کلاس، مدیر مدرسه، مدیر سایت |
+| DELETE | `/announcements/{id}` | حذف (همان افراد) |
+
+فهرست اطلاعیه‌ها حالا فیلد `can_edit` دارد.
+
+### اتصال والد با کد کلاس (یک کد برای کل کلاس)
+| روش | مسیر | توضیح |
+|---|---|---|
+| POST | `/join/students` | `{code}` ← `{class, students:[{id,name,avatar,mine}]}` |
+| POST | `/children/join-class` | `{code, student_id}` ← اگر موبایل والد در پرونده باشد `status=linked`، وگرنه `status=request` (درخواست برای معلم) |
+| GET | `/requests` | درخواست‌های منتظر معلم با `candidates` |
+| POST | `/requests/{id}` | `{approve: true/false, student_id}` |
+
+در ورود پیامکی، والدی که معلم شماره‌اش را ثبت کرده خودکار وصل می‌شود (بدون تأیید).
+
+### کلاس
+| روش | مسیر | توضیح |
+|---|---|---|
+| GET | `/classes?mine=1` | فقط کلاس‌هایی که کاربر معلم آن است |
+| POST | `/classes/{id}/students/import` | `{rows:[{first_name,last_name,parent_phone,parent_name,class_number}]}` حداکثر ۱۵۰ |
+| POST | `/classes/{id}/broadcast` | `{body}` پیام خصوصی به همه‌ی والدین کلاس |
+| POST | `/classes/{id}/students/{sid}/avatar` | عکس دانش‌آموز (multipart، فیلد `photo`) |
+| GET | `/classes/{id}/wall` | دیوار کلاس (پست‌های تأییدشده) |
+| GET | `/classes/{id}/portfolio` | همه‌ی پست‌های کلاس (فقط معلم) |
+
+### پورتفولیو
+| روش | مسیر | توضیح |
+|---|---|---|
+| GET/POST | `/portfolio/student/{id}` | دیدن / پست تازه (multipart: `title, text, photo`) — حداکثر ۲ پست در روز |
+| POST | `/portfolio/student/{id}/about` | `{about}` معرفی کوتاه |
+| POST | `/portfolio/{id}/wall` | `{on: true/false}` گذاشتن روی دیوار کلاس (معلم) |
+| POST | `/portfolio/{id}/cheer` | تشویق ❤️ (دوباره زدن ← برداشتن) |
+| DELETE | `/portfolio/{id}` | حذف |
+
+پست‌ها اول فقط برای معلم و والدین همان دانش‌آموز دیده می‌شوند.
+
+### عکس
+`POST /children/{id}/avatar` (والد) و `POST /me/avatar` (خود کاربر) — multipart، فیلد `photo`، jpg/png/webp تا ۵ مگابایت.
+
+### مدرسه
+| روش | مسیر | توضیح |
+|---|---|---|
+| GET/POST | `/school/profile` | ثبت/ویرایش مدرسه توسط مدیر (حتی پیش از تأیید). کد مدرسه یکتا و معتبر بررسی می‌شود |
+| POST | `/school/staff` | `{first,last,mobile,position}` افزودن معلم/معاون |
+| GET | `/school/claims` | کلاس‌هایی که معلم‌ها برای اتصال فرستاده‌اند |
+| POST | `/school/claims/{id}` | تأیید، یا `{reject:true}` |
+| POST | `/me/school` | معلم: `{school_code}` یا `{manager_mobile}` ← بعد از تأیید مدیر وصل می‌شود |
+
+### اعلان و حساب
+| روش | مسیر | توضیح |
+|---|---|---|
+| GET | `/notifications` | `{unread, items}` |
+| POST | `/notifications/read` | `{ids?}` بدون ids ← همه |
+| POST | `/me/delete` | درخواست حذف حساب؛ همه‌ی نشست‌ها باطل می‌شود |
+
+ارسال به گوشی با Firebase (FCM HTTP v1): فایل JSON حساب سرویس را در «تنظیمات ← اعلان اپ» وارد کنید (یا ثابت `HS_API_FCM_JSON` در wp-config). بدون آن، فقط مرکز اعلان داخل اپ کار می‌کند.
+
+### نقش دانش‌آموز در تکمیل ثبت‌نام
+`POST /onboarding` با `{role: "student", first_name, last_name, code}` (کد کلاس).
 
 ## نمونه
 ```bash

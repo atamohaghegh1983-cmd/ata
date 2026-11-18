@@ -15,7 +15,10 @@ final onboardingInfoProvider = FutureProvider.autoDispose<Map<String, dynamic>>(
 
 /// تکمیل ثبت‌نام: انتخاب نقش و چند سؤال کوتاه (همان فرم سایت)
 class OnboardingScreen extends ConsumerStatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({super.key, this.change = false});
+
+  /// از منو برای تغییر/تکمیل نقش باز شده (نه اجباری)
+  final bool change;
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -70,6 +73,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           'school_code': v('school_code'),
           'school_phone': v('school_phone'),
         });
+      case 'student':
+        p.addAll({'first_name': v('first'), 'last_name': v('last'), 'code': v('code').toUpperCase()});
     }
     return p;
   }
@@ -80,7 +85,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       final r = await ref.read(apiProvider).post<Map<String, dynamic>>('/onboarding', data: _payload());
       await ref.read(authProvider.notifier).reloadMe();
-      if (mounted) showMessage(context, (r['message'] ?? 'ثبت شد.') as String);
+      if (!mounted) return;
+      showMessage(context, (r['message'] ?? 'ثبت شد.') as String);
+      if (widget.change && Navigator.of(context).canPop()) Navigator.of(context).pop();
     } on ApiException catch (e) {
       if (mounted) showMessage(context, e.message, error: true);
     } finally {
@@ -108,9 +115,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final info = ref.watch(onboardingInfoProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تکمیل ثبت‌نام'),
+        title: Text(widget.change ? 'انتخاب نقش' : 'تکمیل ثبت‌نام'),
         actions: [
-          IconButton(tooltip: 'خروج', onPressed: () => ref.read(authProvider.notifier).logout(), icon: const Icon(Icons.logout_rounded)),
+          if (!widget.change)
+            IconButton(tooltip: 'خروج', onPressed: () => ref.read(authProvider.notifier).logout(), icon: const Icon(Icons.logout_rounded)),
         ],
       ),
       body: info.when(
@@ -215,8 +223,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _field('city', 'شهر'),
           _field('address', 'آدرس مدرسه', validator: (s) => (s ?? '').trim().length < 8 ? 'آدرس کامل مدرسه را بنویسید' : null),
           _field('postal', 'کد پستی مدرسه', type: TextInputType.number, validator: (s) => Fa.enDigits(s ?? '').replaceAll(RegExp(r'\D'), '').length != 10 ? 'کد پستی باید ۱۰ رقم باشد' : null),
-          _field('school_code', 'کد مدرسه', type: TextInputType.number),
+          _field('school_code', 'کد مدرسه', type: TextInputType.number, validator: (s) => RegExp(r'^\d{7}$').hasMatch(Fa.enDigits(s ?? '').trim()) ? null : 'کد مدرسه معتبر نیست'),
           _field('school_phone', 'تلفن مدرسه', required: false, type: TextInputType.phone),
+        ];
+      case 'student':
+        return [
+          _field('first', 'نام'),
+          _field('last', 'نام خانوادگی'),
+          _field('code', 'کد کلاس', hint: 'از معلمت بگیر'),
         ];
     }
     return const [];
@@ -234,6 +248,7 @@ class _RoleCard extends StatelessWidget {
   IconData get _icon => switch (id) {
         'parent' => Icons.family_restroom_rounded,
         'teacher' => Icons.co_present_rounded,
+        'student' => Icons.backpack_rounded,
         _ => Icons.account_balance_rounded,
       };
 

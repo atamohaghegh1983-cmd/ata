@@ -86,6 +86,8 @@ class HsTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
+        // متن راهنمای داخل کادر خیلی کم‌رنگ باشد تا با متن واقعی اشتباه نشود
+        hintStyle: const TextStyle(color: Color(0x33000000), fontWeight: FontWeight.w400),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0x22000000))),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0x22000000))),

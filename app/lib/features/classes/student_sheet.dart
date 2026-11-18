@@ -11,6 +11,7 @@ import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/confirm.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
+import '../portfolio/portfolio.dart' show pickAndUpload;
 import 'class_providers.dart';
 import 'class_screen.dart';
 
@@ -76,7 +77,19 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
             children: [
               Row(children: [
-                HsAvatar(name: '${s['name']}', url: '${s['avatar'] ?? ''}', size: 64),
+                GestureDetector(
+                  key: const Key('student_photo'),
+                  onTap: widget.canWrite ? _photo : null,
+                  child: Stack(clipBehavior: Clip.none, children: [
+                    HsAvatar(name: '${s['name']}', url: '${s['avatar'] ?? ''}', size: 64),
+                    if (widget.canWrite)
+                      const PositionedDirectional(
+                        bottom: -2,
+                        end: -2,
+                        child: CircleAvatar(radius: 13, backgroundColor: HsColors.orange, child: Icon(Icons.photo_camera_rounded, size: 15, color: Colors.white)),
+                      ),
+                  ]),
+                ),
                 const SizedBox(width: 14),
                 Expanded(child: Text('${s['name']}', style: Theme.of(context).textTheme.titleLarge)),
                 Column(children: [
@@ -161,8 +174,17 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                     ),
                 ]),
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.push('/portfolio/${widget.studentId}', extra: '${s['name']}');
+                },
+                icon: const Icon(Icons.photo_album_rounded),
+                label: const Text('پورتفولیو'),
+              ),
               if (widget.canWrite) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 OutlinedButton.icon(
                   key: const Key('remove_student'),
                   style: OutlinedButton.styleFrom(foregroundColor: HsColors.red, side: const BorderSide(color: HsColors.red)),
@@ -176,6 +198,18 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
         },
       ),
     );
+  }
+
+  Future<void> _photo() async {
+    try {
+      final r = await pickAndUpload(context, ref, '/classes/${widget.classId}/students/${widget.studentId}/avatar');
+      if (r == null) return;
+      ref.invalidate(getProvider(_path));
+      ref.invalidate(classStudentsProvider(widget.classId));
+      if (mounted) showMessage(context, 'عکس ذخیره شد ✅');
+    } on ApiException catch (e) {
+      if (mounted) showMessage(context, e.message, error: true);
+    }
   }
 
   Future<void> _remove(String name) async {

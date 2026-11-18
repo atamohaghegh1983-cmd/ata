@@ -89,6 +89,7 @@ class HS_API_Routes {
 		HS_API_Routes_Parent::register();
 		HS_API_Routes_Articles::register();
 		HS_API_Routes_Dashboard::register();
+		HS_API_Routes_More::register();
 	}
 
 	/* ---------- دسترسی ---------- */
@@ -160,6 +161,7 @@ class HS_API_Routes {
 		$u   = wp_get_current_user();
 		$out = HS_API_Access::profile( $u );
 		$out['unread_messages'] = class_exists( 'HS_Comms_DB' ) ? (int) HS_Comms_DB::count_unread( $u->ID ) : 0;
+		$out['unread_notifications'] = HS_API_Notify::unread( $u->ID );
 		return $out;
 	}
 
@@ -177,6 +179,7 @@ class HS_API_Routes {
 				array( 'id' => 'parent', 'title' => 'والدین', 'hint' => 'فرزندم در کلاس است' ),
 				array( 'id' => 'teacher', 'title' => 'معلم', 'hint' => 'کلاس دارم یا می‌سازم' ),
 				array( 'id' => 'school_admin', 'title' => 'مدیر مدرسه', 'hint' => 'مدرسه را مدیریت می‌کنم (نیاز به تأیید)' ),
+				array( 'id' => 'student', 'title' => 'دانش‌آموز', 'hint' => 'با کد کلاسی که معلم داده' ),
 			),
 			'relations' => array( 'father' => 'پدر', 'mother' => 'مادر', 'parent' => 'سرپرست' ),
 			'provinces' => class_exists( 'HS_Util' ) && method_exists( 'HS_Util', 'provinces' ) ? array_values( HS_Util::provinces() ) : array(),
@@ -216,6 +219,9 @@ class HS_API_Routes {
 		if ( ! empty( $in['code'] ) ) {
 			$in['code'] = HS_API_Util::extract_code( $in['code'] );
 		}
+		if ( 'student' === ( $in['role'] ?? '' ) ) {
+			return self::onboard_student( $uid, $in );
+		}
 		$res = HSUM_Onboard::process( $uid, $in );
 		if ( is_wp_error( $res ) ) {
 			return HS_API_Util::err( $res->get_error_message(), 400, 'hs_onboarding' );
@@ -227,6 +233,31 @@ class HS_API_Routes {
 			'role'    => $res['role'],
 			'user'    => HS_API_Access::profile( $u ),
 		);
+	}
+
+	/** دانش‌آموزی که با شماره‌ی خودش وارد شده: نام + کد کلاس */
+	private static function onboard_student( $uid, $in ) {
+		$u = get_userdata( $uid );
+		if ( array_intersect( (array) $u->roles, array( 'teacher', 'school_admin', 'parent' ) ) || HS_API_Access::children_ids( $uid ) ) {
+			return HS_API_Util::err( 'این حساب نقش دیگری دارد و نمی‌تواند دانش‌آموز شود.', 400, 'hs_onboarding' );
+		}
+		$first = HS_API_Util::text( $in['first_name'] ?? '', 60 );
+		$last  = HS_API_Util::text( $in['last_name'] ?? '', 60 );
+		$code  = (string) ( $in['code'] ?? '' );
+		if ( '' === $first || '' === $last ) { return HS_API_Util::err( 'نام و نام خانوادگی لازم است.', 400, 'hs_onboarding' ); }
+		if ( '' === $code ) { return HS_API_Util::err( 'کد کلاس را از معلمت بگیر و وارد کن.', 400, 'hs_onboarding' ); }
+		$cls = get_posts( array( 'post_type' => 'hs_class', 'post_status' => 'publish', 'fields' => 'ids', 'numberposts' => 1, 'meta_key' => '_hs_invite_code', 'meta_value' => strtoupper( $code ) ) ); // phpcs:ignore
+		if ( ! $cls && class_exists( 'HSUM_Invites' ) ) {
+			$inv = HSUM_Invites::by_code( $code );
+			$cls = $inv ? array( (int) $inv['class_id'] ) : array();
+		}
+		if ( ! $cls ) { return HS_API_Util::err( 'کد کلاس معتبر نیست.', 400, 'hs_onboarding' ); }
+		$u->set_role( 'student' );
+		wp_update_user( array( 'ID' => $uid, 'first_name' => $first, 'last_name' => $last, 'display_name' => $first . ' ' . $last ) );
+		if ( class_exists( 'HS_Student_Profile' ) ) { HS_Student_Profile::save( $uid, array( 'first_name' => $first, 'last_name' => $last ) ); }
+		HS_Class_Students::add_student( (int) $cls[0], $uid );
+		if ( class_exists( 'HSUM_Onboard' ) ) { update_user_meta( $uid, HSUM_Onboard::DONE, time() ); }
+		return array( 'ok' => true, 'message' => 'به کلاس «' . get_the_title( (int) $cls[0] ) . '» پیوستی 🎉', 'role' => 'student', 'user' => HS_API_Access::profile( get_userdata( $uid ) ) );
 	}
 
 	public static function device_add( WP_REST_Request $r ) {
@@ -255,9 +286,12 @@ class HS_API_Routes {
 		);
 	}
 
-	public static function classes() {
-		$uid = get_current_user_id();
-		return array_map( function ( $cid ) use ( $uid ) { return self::class_row( $cid, $uid ); }, HS_API_Access::class_ids( $uid ) );
+	/** ?mine=1 ← فقط کلاس‌هایی که کاربر معلم آن است (نه کلاس فرزندان یا کلاس‌های زیر نظر) */
+	public static function classes( WP_REST_Request $r ) {
+		$uid  = get_current_user_id();
+		$mine = rest_sanitize_boolean( $r->get_param( 'mine' ) );
+		$rows = array_map( function ( $cid ) use ( $uid ) { return self::class_row( $cid, $uid ); }, HS_API_Access::class_ids( $uid ) );
+		return $mine ? array_values( array_filter( $rows, function ( $c ) { return HS_API_Access::WRITE === $c['access']; } ) ) : $rows;
 	}
 
 	/** فقط معلم (یا مدیر مدرسه‌ی تأییدشده برای کلاس‌های مدرسه) — همان قاعده‌ی سایت */
@@ -323,6 +357,10 @@ class HS_API_Routes {
 		do_action( 'hs_class_location_saved', $post_id, $school, $city, $province );
 		update_post_meta( $post_id, '_hs_teacher_id', $uid );
 		update_post_meta( $post_id, '_hs_students', array() );
+		$msid = class_exists( 'HS_SO_Store' ) ? (int) HS_SO_Store::manager_school_id( $uid ) : 0;
+		if ( $msid ) {
+			update_post_meta( $post_id, '_hs_school_id', $msid ); // کلاس ساخته‌شده توسط مدیر، کلاس همان مدرسه است
+		}
 		if ( class_exists( 'HS_Class_Meta' ) && method_exists( 'HS_Class_Meta', 'generate_invite_code' ) ) {
 			update_post_meta( $post_id, '_hs_invite_code', HS_Class_Meta::generate_invite_code() );
 		}
@@ -530,9 +568,10 @@ class HS_API_Routes {
 		if ( HS_API_Access::PARENT === $r['_level'] && ! HS_API_Access::children_in_class( get_current_user_id(), (int) $r['id'], 'announce' ) ) {
 			return HS_API_Util::err( 'مدرسه دیدن اطلاعیه‌های این کلاس را برای شما بسته است.', 403, 'hs_feature_locked', array( 'feature' => 'announce' ) );
 		}
-		return array_map( function ( $a ) {
+		$uid = get_current_user_id();
+		return array_map( function ( $a ) use ( $uid ) {
 			$au = get_userdata( (int) $a['author_id'] );
-			return array( 'id' => (int) $a['id'], 'title' => $a['title'], 'body' => wp_strip_all_tags( $a['body'] ), 'pinned' => (bool) $a['is_pinned'], 'author' => $au ? $au->display_name : '', 'created_at' => $a['created_at'] );
+			return array( 'id' => (int) $a['id'], 'title' => $a['title'], 'body' => wp_strip_all_tags( $a['body'] ), 'pinned' => (bool) $a['is_pinned'], 'author' => $au ? $au->display_name : '', 'created_at' => $a['created_at'], 'can_edit' => HS_API_Routes_More::can_edit_ann( $a, $uid ) );
 		}, (array) HS_Comms_DB::get_announcements( (int) $r['id'], 30 ) );
 	}
 
@@ -611,6 +650,7 @@ class HS_API_Routes {
 		foreach ( array_unique( array_map( 'intval', $ids ) ) as $sid ) {
 			if ( in_array( $sid, $members, true ) ) {
 				HS_Points_DB::award( $cid, $sid, $bid, null, $note, get_current_user_id() );
+				do_action( 'hs_api_points_awarded_to', $cid, $sid, (int) $beh['points'], (string) $beh['name'] );
 				$n++;
 			}
 		}

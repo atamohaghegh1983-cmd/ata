@@ -6,6 +6,11 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase: فایل google-services.json در گیت نیست؛ در GitHub Actions از Secret ساخته می‌شود
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // کلید امضا: فقط از android/key.properties (در گیت نیست؛ در GitHub Actions از Secrets ساخته می‌شود)
 val keyProps = Properties().apply {
     val f = rootProject.file("key.properties")

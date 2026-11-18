@@ -241,7 +241,7 @@ class HS_API_Routes_Dashboard {
 			foreach ( (array) HSUM_Staff::rows( $sid ) as $x ) { $pending += 'active' === $x['status'] ? 1 : 0; }
 		}
 		return array(
-			'school'         => array( 'id' => $sid, 'name' => get_the_title( $sid ) ),
+			'school'         => array( 'id' => $sid, 'name' => get_the_title( $sid ), 'code' => (string) get_post_meta( $sid, '_hs_school_code', true ) ),
 			'is_manager'     => HS_SO_Store::is_manager( $sid, $uid ),
 			'totals'         => $tot,
 			'classes'        => $rows,

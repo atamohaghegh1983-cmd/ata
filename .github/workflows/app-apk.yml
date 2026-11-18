@@ -68,12 +68,23 @@ jobs:
             echo "::warning::کلید امضا در Secrets نیست؛ APK با کلید آزمایشی امضا شد (برای انتشار در بازار مناسب نیست)."
           fi
 
+      - name: Firebase config (from Secret, optional)
+        env:
+          GS_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GS_JSON" ]; then
+            printf '%s' "$GS_JSON" > android/app/google-services.json
+            echo "✅ اعلان Firebase فعال"
+          else
+            echo "::warning::GOOGLE_SERVICES_JSON در Secrets نیست؛ اعلان گوشی خاموش است (مرکز اعلان داخل اپ کار می‌کند)."
+          fi
+
       - name: Build APK
         run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
 
       - name: Remove key
         if: always()
-        run: rm -f android/key.properties "$RUNNER_TEMP/upload.jks"
+        run: rm -f android/key.properties "$RUNNER_TEMP/upload.jks" android/app/google-services.json
 
       - uses: actions/upload-artifact@v4
         with:

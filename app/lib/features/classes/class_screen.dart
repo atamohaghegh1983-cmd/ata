@@ -1,5 +1,8 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,7 +13,9 @@ import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
+import '../../core/widgets/confirm.dart';
 import '../../core/widgets/ui.dart';
+import '../portfolio/portfolio.dart' show WallView;
 import 'attendance_tab.dart';
 import 'class_providers.dart';
 import 'homework_tab.dart';
@@ -27,7 +32,7 @@ class ClassScreen extends ConsumerWidget {
     final info = (cls.valueOrNull?.data as Map?) ?? const {};
     final canWrite = info['access'] == 'write';
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: Text('${info['title'] ?? 'کلاس'}'),
@@ -39,9 +44,31 @@ class ClassScreen extends ConsumerWidget {
                 icon: const Icon(Icons.qr_code_2_rounded),
                 onPressed: () => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, builder: (_) => InviteSheet(classId: id)),
               ),
+            if (canWrite)
+              PopupMenuButton<String>(
+                key: const Key('class_menu'),
+                onSelected: (v) async {
+                  switch (v) {
+                    case 'import':
+                      await context.push('/class/$id/import');
+                      ref.invalidate(classStudentsProvider(id));
+                    case 'broadcast':
+                      await broadcastToParents(context, ref, id);
+                    case 'requests':
+                      await context.push('/requests');
+                      ref.invalidate(classStudentsProvider(id));
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'broadcast', child: Text('پیام به همه‌ی والدین کلاس')),
+                  PopupMenuItem(value: 'import', child: Text('افزودن دانش‌آموزان از اکسل')),
+                  PopupMenuItem(value: 'requests', child: Text('درخواست‌های اتصال والدین')),
+                ],
+              ),
           ],
           bottom: const TabBar(
-            isScrollable: false,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             labelColor: HsColors.orangeDark,
             indicatorColor: HsColors.orange,
             labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.w700, fontSize: 13),
@@ -50,6 +77,7 @@ class ClassScreen extends ConsumerWidget {
               Tab(icon: Icon(Icons.fact_check_rounded), text: 'حضور'),
               Tab(icon: Icon(Icons.menu_book_rounded), text: 'تکالیف'),
               Tab(icon: Icon(Icons.campaign_rounded), text: 'اطلاعیه'),
+              Tab(icon: Icon(Icons.photo_album_rounded), text: 'دیوار'),
             ],
           ),
         ),
@@ -58,6 +86,7 @@ class ClassScreen extends ConsumerWidget {
           AttendanceTab(classId: id, canWrite: canWrite),
           HomeworkTab(classId: id, canWrite: canWrite),
           AnnouncementsTab(classId: id, canWrite: canWrite),
+          WallView(classId: id, teacher: canWrite),
         ]),
       ),
     );
@@ -330,7 +359,7 @@ class AnnouncementsTab extends ConsumerWidget {
               children: [
                 if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
                 if (list.isEmpty) const EmptyView(icon: Icons.campaign_rounded, title: 'هنوز اطلاعیه‌ای نیست'),
-                for (final a in list) Padding(padding: const EdgeInsets.only(bottom: 10), child: AnnouncementCard(a: a)),
+                for (final a in list) Padding(padding: const EdgeInsets.only(bottom: 10), child: AnnouncementCard(a: a, onChanged: () => ref.invalidate(getProvider(path)))),
               ],
             );
           },
@@ -340,32 +369,63 @@ class AnnouncementsTab extends ConsumerWidget {
   }
 }
 
-class AnnouncementCard extends StatelessWidget {
-  const AnnouncementCard({super.key, required this.a});
+class AnnouncementCard extends ConsumerWidget {
+  const AnnouncementCard({super.key, required this.a, this.onChanged});
   final Map a;
+  final VoidCallback? onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final date = Text(Fa.date('${a['created_at'] ?? ''}', withYear: false), style: const TextStyle(color: Colors.black45, fontSize: 12));
     return SectionCard(
       title: '${a['title']}',
       icon: a['pinned'] == true ? Icons.push_pin_rounded : Icons.campaign_rounded,
-      trailing: Text(Fa.date('${a['created_at'] ?? ''}', withYear: false), style: const TextStyle(color: Colors.black45, fontSize: 12)),
+      trailing: a['can_edit'] != true
+          ? date
+          : Row(mainAxisSize: MainAxisSize.min, children: [
+              date,
+              PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.more_vert_rounded, size: 20),
+                onSelected: (v) async {
+                  final api = ref.read(apiProvider);
+                  try {
+                    if (v == 'edit') {
+                      final ok = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, showDragHandle: true, builder: (_) => _NewAnnouncementSheet(classId: 0, edit: a));
+                      if (ok == true) onChanged?.call();
+                    } else if (await confirmDanger(context, title: 'حذف اطلاعیه', text: 'این اطلاعیه برای همه حذف می‌شود.', ok: 'حذف')) {
+                      await api.delete<Object?>('/announcements/${a['id']}');
+                      onChanged?.call();
+                    }
+                  } on ApiException catch (e) {
+                    if (context.mounted) showMessage(context, e.message, error: true);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('ویرایش')),
+                  PopupMenuItem(value: 'delete', child: Text('حذف', style: TextStyle(color: HsColors.red))),
+                ],
+              ),
+            ]),
       child: Text('${a['body'] ?? ''}', style: const TextStyle(height: 1.8)),
     );
   }
 }
 
 class _NewAnnouncementSheet extends ConsumerStatefulWidget {
-  const _NewAnnouncementSheet({required this.classId});
+  const _NewAnnouncementSheet({required this.classId, this.edit});
   final int classId;
+
+  /// اطلاعیه‌ای که ویرایش می‌شود
+  final Map? edit;
   @override
   ConsumerState<_NewAnnouncementSheet> createState() => _NewAnnouncementSheetState();
 }
 
 class _NewAnnouncementSheetState extends ConsumerState<_NewAnnouncementSheet> {
-  final _t = TextEditingController();
-  final _b = TextEditingController();
-  bool _pin = false;
+  late final _t = TextEditingController(text: '${widget.edit?['title'] ?? ''}');
+  late final _b = TextEditingController(text: '${widget.edit?['body'] ?? ''}');
+  late bool _pin = widget.edit?['pinned'] == true;
   bool _busy = false;
 
   @override
@@ -382,7 +442,9 @@ class _NewAnnouncementSheetState extends ConsumerState<_NewAnnouncementSheet> {
     }
     setState(() => _busy = true);
     try {
-      await ref.read(apiProvider).post<Object?>('/classes/${widget.classId}/announcements', data: {'title': _t.text.trim(), 'body': _b.text.trim(), 'pinned': _pin});
+      final data = {'title': _t.text.trim(), 'body': _b.text.trim(), 'pinned': _pin};
+      final e = widget.edit;
+      await ref.read(apiProvider).post<Object?>(e != null ? '/announcements/${e['id']}' : '/classes/${widget.classId}/announcements', data: data);
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) showMessage(context, e.message, error: true);
@@ -396,13 +458,13 @@ class _NewAnnouncementSheetState extends ConsumerState<_NewAnnouncementSheet> {
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('اطلاعیه برای والدین کلاس', style: Theme.of(context).textTheme.titleLarge),
+        Text(widget.edit != null ? 'ویرایش اطلاعیه' : 'اطلاعیه برای والدین کلاس', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         TextField(controller: _t, autofocus: true, decoration: const InputDecoration(labelText: 'عنوان')),
         const SizedBox(height: 10),
         TextField(controller: _b, minLines: 3, maxLines: 6, decoration: const InputDecoration(labelText: 'متن')),
         SwitchListTile(contentPadding: EdgeInsets.zero, value: _pin, onChanged: (v) => setState(() => _pin = v), title: const Text('سنجاق شود (بالای فهرست بماند)')),
-        FilledButton(onPressed: _busy ? null : _save, child: busyLabel(_busy, 'انتشار')),
+        FilledButton(onPressed: _busy ? null : _save, child: busyLabel(_busy, widget.edit != null ? 'ذخیره' : 'انتشار')),
       ]),
     );
   }
@@ -450,8 +512,17 @@ class InviteSheet extends ConsumerWidget {
               const SizedBox(height: 14),
               if (code.isNotEmpty) Center(child: SelectableText(code, textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: 3, color: HsColors.orangeDark))),
               const SizedBox(height: 12),
+              const Text('این کد برای همه‌ی والدین کلاس یکی است.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54, fontSize: 12)),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                key: const Key('share_qr_image'),
+                onPressed: qr.isEmpty ? null : () => _shareQrImage(context, qr, code),
+                icon: const Icon(Icons.image_rounded),
+                label: const Text('ارسال تصویر QR'),
+              ),
+              const SizedBox(height: 8),
               OutlinedButton.icon(
-                onPressed: () => SharePlus.instance.share(ShareParams(text: 'کد کلاس در اپ همشاگردی: $code\n${p['url'] ?? ''}')),
+                onPressed: () => SharePlus.instance.share(ShareParams(text: 'برای اتصال به کلاس فرزندتان، اپ همشاگردی را نصب کنید و در «افزودن فرزند» این کد را بزنید: $code\n${p['url'] ?? ''}')),
                 icon: const Icon(Icons.send_rounded),
                 label: const Text('ارسال کد و لینک'),
               ),
@@ -460,5 +531,69 @@ class InviteSheet extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// ساخت تصویر PNG از QR کلاس (با زمینه‌ی سفید و کد زیر آن) و اشتراک‌گذاری
+Future<void> _shareQrImage(BuildContext context, String data, String code) async {
+  try {
+    const size = 720.0;
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    canvas.drawRect(const Rect.fromLTWH(0, 0, size, size + 140), Paint()..color = Colors.white);
+    final painter = QrPainter(
+      data: data,
+      version: QrVersions.auto,
+      eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: HsColors.navy),
+      dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: HsColors.navy),
+    );
+    canvas.save();
+    canvas.translate(60, 40);
+    painter.paint(canvas, const Size(size - 120, size - 120));
+    canvas.restore();
+    final tp = TextPainter(
+      text: TextSpan(text: code, style: const TextStyle(color: HsColors.orangeDark, fontSize: 56, fontWeight: FontWeight.w700, letterSpacing: 6)),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: size);
+    tp.paint(canvas, Offset((size - tp.width) / 2, size - 50));
+    final img = await rec.endRecording().toImage(size.toInt(), (size + 140).toInt());
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    if (bytes == null) return;
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile.fromData(bytes.buffer.asUint8List(), mimeType: 'image/png', name: 'hamshagerdi-class-$code.png')],
+      fileNameOverrides: ['hamshagerdi-class-$code.png'],
+      text: 'کد کلاس در اپ همشاگردی: $code',
+    ));
+  } catch (_) {
+    if (context.mounted) showMessage(context, 'ساخت تصویر ممکن نشد.', error: true);
+  }
+}
+
+/// پیام گروهی به همه‌ی والدین کلاس
+Future<void> broadcastToParents(BuildContext context, WidgetRef ref, int classId) async {
+  final c = TextEditingController();
+  final ok = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (s) => Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(s).viewInsets.bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('پیام به همه‌ی والدین', style: Theme.of(s).textTheme.titleLarge),
+        const SizedBox(height: 6),
+        const Text('برای هر والد به‌صورت پیام خصوصی فرستاده می‌شود و جواب‌ها فقط برای شما می‌آید.', style: TextStyle(color: Colors.black54, fontSize: 13, height: 1.7)),
+        const SizedBox(height: 10),
+        TextField(key: const Key('broadcast_body'), controller: c, autofocus: true, minLines: 3, maxLines: 6, decoration: const InputDecoration(labelText: 'متن پیام')),
+        const SizedBox(height: 14),
+        FilledButton.icon(onPressed: () => Navigator.pop(s, true), icon: const Icon(Icons.send_rounded), label: const Text('ارسال')),
+      ]),
+    ),
+  );
+  if (ok != true || c.text.trim().isEmpty) return;
+  try {
+    final r = await ref.read(apiProvider).post<Map<String, dynamic>>('/classes/$classId/broadcast', data: {'body': c.text.trim()});
+    if (context.mounted) showMessage(context, '${r['message'] ?? 'ارسال شد.'}');
+  } on ApiException catch (e) {
+    if (context.mounted) showMessage(context, e.message, error: true);
   }
 }

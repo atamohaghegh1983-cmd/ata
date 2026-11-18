@@ -64,6 +64,9 @@ class HS_API_Auth {
 		if ( self::is_suspended( $user->ID ) ) {
 			return HS_API_Util::err( 'حساب شما تعلیق شده است. با مدیر سایت تماس بگیرید.', 403, 'hs_suspended' );
 		}
+		if ( get_user_meta( $user->ID, '_hs_delete_requested', true ) ) {
+			return HS_API_Util::err( 'برای این حساب درخواست حذف ثبت شده است. برای بازگرداندن با پشتیبانی تماس بگیرید.', 403, 'hs_deleted' );
+		}
 		// افزونه‌های دیگر (مثل ورود پیامکی سایت) می‌توانند ورود را ببندند
 		$ok = apply_filters( 'hsma_can_login', true, $user );
 		if ( is_wp_error( $ok ) ) {
@@ -121,7 +124,7 @@ class HS_API_Auth {
 			self::$error = new WP_Error( 'hs_token_revoked', 'نشست شما پایان یافته است. دوباره وارد شوید.' );
 			return $user_id;
 		}
-		if ( self::is_admin_account( $u ) || self::is_suspended( $u->ID ) ) {
+		if ( self::is_admin_account( $u ) || self::is_suspended( $u->ID ) || get_user_meta( $u->ID, '_hs_delete_requested', true ) ) {
 			self::$error = new WP_Error( 'hs_token_revoked', 'دسترسی این حساب از اپ بسته است.' );
 			return $user_id;
 		}

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
+import '../../core/config.dart';
+import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
@@ -14,6 +16,11 @@ import '../classes/class_screen.dart' show AnnouncementsTab;
 import '../classes/homework_tab.dart' show HomeworkTab;
 import '../dashboard/dashboard.dart';
 import '../dashboard/manager_views.dart';
+import '../kid/kid_mode.dart';
+import '../kid/parent_lock.dart';
+import '../notifications/notifications.dart';
+import '../portfolio/portfolio.dart' show PortfolioView;
+import '../school/school_screens.dart';
 import '../magazine/magazine.dart';
 import '../messages/messages_screens.dart';
 import '../parent/parent_home.dart';
@@ -64,9 +71,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
         ];
       case 'student':
-        return const [
-          _Tab('من', Icons.emoji_events_rounded, 'امتیازها و تکالیف من', StudentHome()),
-          _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView()),
+        return [
+          const _Tab('من', Icons.emoji_events_rounded, 'امتیازها و تکالیف من', StudentHome()),
+          _Tab('پورتفولیو', Icons.photo_album_rounded, 'پورتفولیوی من', PortfolioView(studentId: me.id)),
+          const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView()),
         ];
     }
     return [_Tab('خانه', Icons.home_rounded, 'همشاگردی', _StatusBody(me: me))];
@@ -75,6 +83,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+    final lock = ref.watch(parentLockProvider);
+    if (lock.kidMode) return const KidModeScreen();
     final me = auth.me;
     if (me == null) {
       return Scaffold(body: ErrorView(error: ApiException(ApiException.offlineMessage, offline: true), onRetry: () => ref.read(authProvider.notifier).restore()));
@@ -86,7 +96,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: Text(t.title),
         leading: Padding(padding: const EdgeInsetsDirectional.only(start: 12), child: Center(child: HsAvatar(name: me.name, url: me.avatar, size: 36))),
-        actions: [_Menu(me: me)],
+        actions: [const NotificationBell(), _Menu(me: me)],
       ),
       floatingActionButton: me.homeKind == 'teacher' && _i == 1
           ? FloatingActionButton.extended(
@@ -136,30 +146,116 @@ class _Menu extends ConsumerWidget {
   const _Menu({required this.me});
   final Me me;
 
+  Future<bool> _confirm(BuildContext context, String title, String text, String ok, {bool danger = false}) async {
+    final r = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(title),
+        content: Text(text, style: const TextStyle(height: 1.8)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('انصراف')),
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(90, 44), backgroundColor: danger ? HsColors.red : null),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(ok),
+          ),
+        ],
+      ),
+    );
+    return r == true;
+  }
+
+  Future<void> _logout(BuildContext context, WidgetRef ref, bool all) async {
+    if (!await _confirm(context, 'خروج از حساب', all ? 'از همه‌ی گوشی‌ها و دستگاه‌ها خارج می‌شوید.' : 'از حساب خود خارج می‌شوید.', 'خروج')) return;
+    await ref.read(parentLockProvider.notifier).clearAll();
+    await ref.read(authProvider.notifier).logout(everywhere: all);
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    if (!await _confirm(
+      context,
+      'حذف حساب کاربری',
+      'درخواست حذف حساب ثبت می‌شود و از همه‌ی دستگاه‌ها خارج می‌شوید. اطلاعات شما پس از بررسی پاک می‌شود و این کار برگشت ندارد.',
+      'حذف حساب',
+      danger: true,
+    )) {
+      return;
+    }
+    try {
+      await ref.read(apiProvider).post<Object?>('/me/delete', data: {'confirm': true});
+    } on ApiException catch (e) {
+      if (context.mounted) showMessage(context, e.message, error: true);
+      return;
+    }
+    await ref.read(parentLockProvider.notifier).clearAll();
+    await ref.read(authProvider.notifier).logout(everywhere: true);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final kind = me.homeKind;
     return PopupMenuButton<String>(
+      key: const Key('home_menu'),
       icon: const Icon(Icons.more_vert_rounded),
       onSelected: (v) async {
-        final all = v == 'logout_all';
-        final ok = await showDialog<bool>(
-          context: context,
-          builder: (c) => AlertDialog(
-            title: const Text('خروج از حساب'),
-            content: Text(all ? 'از همه‌ی گوشی‌ها و دستگاه‌ها خارج می‌شوید.' : 'از حساب خود خارج می‌شوید.'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('انصراف')),
-              FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(c, true), child: const Text('خروج')),
-            ],
-          ),
-        );
-        if (ok == true) await ref.read(authProvider.notifier).logout(everywhere: all);
+        switch (v) {
+          case 'logout' || 'logout_all':
+            await _logout(context, ref, v == 'logout_all');
+          case 'delete':
+            await _delete(context, ref);
+          case 'role':
+            await context.push('/role');
+          case 'school':
+            await context.push('/school/form');
+          case 'staff':
+            await addStaff(context, ref);
+          case 'link_school':
+            await linkTeacherToSchool(context, ref);
+          case 'requests':
+            await context.push('/requests');
+          case 'kid':
+            await startKidMode(context, ref);
+          case 'pin':
+            await parentPinSettings(context, ref);
+          case 'privacy':
+            await showDialog<void>(
+              context: context,
+              builder: (c) => AlertDialog(
+                title: const Text('حریم خصوصی'),
+                content: SingleChildScrollView(
+                  child: Text(
+                    'اطلاعات شما و فرزندتان فقط برای معلم، مدیر مدرسه و والدین همان دانش‌آموز نمایش داده می‌شود و به هیچ شخص یا شرکت دیگری فروخته یا داده نمی‌شود. '
+                    'شماره‌ی موبایل فقط برای ورود و اطلاع‌رسانی استفاده می‌شود. عکس‌ها و پست‌های پورتفولیو فقط برای معلم و والدین همان دانش‌آموز دیده می‌شود، مگر معلم آن را روی «دیوار کلاس» بگذارد. '
+                    'هر زمان بخواهید می‌توانید از منو «حذف حساب» را بزنید.\n\nمتن کامل: ${AppConfig.site}/privacy',
+                    style: const TextStyle(height: 1.9),
+                  ),
+                ),
+                actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('باشه'))],
+              ),
+            );
+        }
       },
       itemBuilder: (_) => [
         PopupMenuItem(enabled: false, child: Text('${me.name}\n${Fa.faDigits(me.mobile)}', style: const TextStyle(color: Colors.black54, height: 1.6))),
         const PopupMenuDivider(),
+        if (kind == 'teacher') ...[
+          const PopupMenuItem(value: 'requests', child: Text('درخواست‌های اتصال والدین')),
+          const PopupMenuItem(value: 'link_school', child: Text('اتصال به مدرسه')),
+        ],
+        if (kind == 'manager' || me.roles.contains('school_admin')) ...[
+          const PopupMenuItem(value: 'school', child: Text('اطلاعات مدرسه')),
+          if (kind == 'manager') const PopupMenuItem(value: 'staff', child: Text('افزودن معلم یا معاون')),
+        ],
+        if (kind == 'parent') ...[
+          const PopupMenuItem(value: 'kid', child: Text('حالت کودک (سپردن گوشی به فرزند)')),
+          const PopupMenuItem(value: 'pin', child: Text('رمز والدین')),
+        ],
+        const PopupMenuItem(value: 'role', child: Text('انتخاب یا تغییر نقش')),
+        const PopupMenuItem(value: 'privacy', child: Text('حریم خصوصی')),
+        const PopupMenuDivider(),
         const PopupMenuItem(value: 'logout', child: Text('خروج')),
         const PopupMenuItem(value: 'logout_all', child: Text('خروج از همه‌ی دستگاه‌ها')),
+        const PopupMenuItem(value: 'delete', child: Text('حذف حساب کاربری', style: TextStyle(color: HsColors.red))),
       ],
     );
   }
@@ -280,9 +376,18 @@ class _StatusBody extends ConsumerWidget {
       'rejected' => (Icons.block_rounded, 'درخواست تأیید نشد', 'برای پیگیری با پشتیبانی سایت تماس بگیرید.'),
       _ => (Icons.waving_hand_rounded, 'خوش آمدید', 'هنوز به کلاس یا مدرسه‌ای وصل نیستید.'),
     };
+    final manager = me.roles.contains('school_admin');
     return RefreshIndicator(
       onRefresh: () => ref.read(authProvider.notifier).reloadMe(),
-      child: ListView(children: [const SizedBox(height: 60), EmptyView(icon: icon, title: title, text: text)]),
+      child: ListView(padding: const EdgeInsets.symmetric(horizontal: 24), children: [
+        const SizedBox(height: 40),
+        EmptyView(icon: icon, title: title, text: manager ? 'اطلاعات مدرسه را کامل کنید تا بعد از تأیید، مدیریت مدرسه از همین اپ فعال شود.' : text),
+        const SizedBox(height: 12),
+        if (manager)
+          FilledButton.icon(key: const Key('school_form_btn'), onPressed: () => context.push('/school/form'), icon: const Icon(Icons.account_balance_rounded), label: const Text('ثبت اطلاعات مدرسه'))
+        else if (me.status != 'pending')
+          FilledButton.icon(onPressed: () => context.push('/role'), icon: const Icon(Icons.how_to_reg_rounded), label: const Text('انتخاب نقش')),
+      ]),
     );
   }
 }

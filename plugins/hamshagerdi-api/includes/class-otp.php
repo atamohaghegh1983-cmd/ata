@@ -98,7 +98,8 @@ class HS_API_OTP {
 				'user_email'   => $m . '@hamshagerdi.local',
 				'display_name' => $m,
 				'nickname'     => $m,
-				'role'         => get_option( 'default_role', 'subscriber' ),
+				// نقش را خود کاربر در «تکمیل ثبت‌نام» انتخاب می‌کند (نقش پیش‌فرض سایت ممکن است «دانش‌آموز» باشد)
+				'role'         => get_role( 'subscriber' ) ? 'subscriber' : get_option( 'default_role', 'subscriber' ),
 				'meta_input'   => array( '_hs_mobile' => $m, '_hs_registered_via' => 'app' ),
 			) );
 			if ( is_wp_error( $uid ) ) {
@@ -125,6 +126,8 @@ class HS_API_OTP {
 		} elseif ( ! class_exists( 'HSUM_Phone' ) ) {
 			do_action( 'hsum_mobile_known', $user->ID, $m ); // در حالت عادی user_register همین را اجرا کرده است
 		}
+		// معلم همین شماره را برای دانش‌آموزی ثبت کرده ← اتصال خودکار، بی‌نیاز از فرم و تأیید
+		HS_API_Routes_More::auto_link( $user->ID );
 		do_action( 'hs_api_login', $user, 'otp' );
 
 		$user = get_userdata( $user->ID ); // نقش‌ها ممکن است با اتصال‌های خودکار عوض شده باشند

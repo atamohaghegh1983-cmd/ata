@@ -12,6 +12,7 @@ import '../../core/widgets/confirm.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
 import '../classes/class_screen.dart' show AnnouncementCard;
+import '../portfolio/portfolio.dart' show pickAndUpload;
 import '../classes/homework_tab.dart' show HomeworkCard;
 
 /// جزئیات فرزند برای والد: امروز، این هفته، تکالیف، اطلاعیه‌ها، پیام، رمز ورود
@@ -52,7 +53,24 @@ class ChildScreen extends ConsumerWidget {
               children: [
                 if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
                 Row(children: [
-                  HsAvatar(name: '${d['name'] ?? name}', url: '${d['avatar'] ?? ''}', size: 64),
+                  GestureDetector(
+                    key: const Key('child_photo'),
+                    onTap: () async {
+                      try {
+                        final x = await pickAndUpload(context, ref, '/children/$id/avatar');
+                        if (x == null) return;
+                        ref.invalidate(getProvider('/children/$id/today'));
+                        ref.invalidate(getProvider('/children'));
+                        if (context.mounted) showMessage(context, 'عکس ذخیره شد ✅');
+                      } on ApiException catch (e) {
+                        if (context.mounted) showMessage(context, e.message, error: true);
+                      }
+                    },
+                    child: Stack(clipBehavior: Clip.none, children: [
+                      HsAvatar(name: '${d['name'] ?? name}', url: '${d['avatar'] ?? ''}', size: 64),
+                      const PositionedDirectional(bottom: -2, end: -2, child: CircleAvatar(radius: 13, backgroundColor: HsColors.orange, child: Icon(Icons.photo_camera_rounded, size: 15, color: Colors.white))),
+                    ]),
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -61,6 +79,13 @@ class ChildScreen extends ConsumerWidget {
                     ]),
                   ),
                 ]),
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  key: const Key('child_portfolio'),
+                  onPressed: () => context.push('/portfolio/$id', extra: '${d['name'] ?? name}'),
+                  icon: const Icon(Icons.photo_album_rounded),
+                  label: const Text('پورتفولیو و کارهای فرزندم'),
+                ),
                 const SizedBox(height: 14),
                 if (classes.isEmpty) const EmptyView(icon: Icons.class_rounded, title: 'هنوز در کلاسی ثبت نشده'),
                 for (final c in classes) ...[
@@ -121,8 +146,11 @@ class _ClassBlock extends ConsumerWidget {
             label: const Text('پیام به معلم'),
           ),
       ]),
-      Text('معلم: ${c['teacher']}', style: const TextStyle(color: Colors.black54)),
-      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: Text('معلم: ${c['teacher']}', style: const TextStyle(color: Colors.black54))),
+        TextButton.icon(onPressed: () => context.push('/wall/$cid', extra: '${c['title']}'), icon: const Icon(Icons.photo_album_rounded, size: 18), label: const Text('دیوار کلاس')),
+      ]),
+      const SizedBox(height: 6),
       SectionCard(
         title: 'امروز',
         icon: Icons.today_rounded,

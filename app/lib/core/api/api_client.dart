@@ -141,7 +141,11 @@ class ApiClient {
       final res = await _dio.request<Object?>(
         path,
         data: data,
-        options: Options(method: method, extra: auth ? null : {_noAuth: true}),
+        options: Options(
+          method: method,
+          extra: auth ? null : {_noAuth: true},
+          contentType: data is FormData ? Headers.multipartFormDataContentType : null,
+        ),
       );
       return res.data as T;
     } on DioException catch (e) {

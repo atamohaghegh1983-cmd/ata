@@ -8,6 +8,7 @@ import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
+import '../school/school_screens.dart' show ClaimsCard;
 
 /// داشبورد: معلم، والد یا مدیر (از /dashboard)
 class DashboardView extends ConsumerWidget {
@@ -70,7 +71,7 @@ class DashboardView extends ConsumerWidget {
           onTap: () => onOpenTab?.call(1),
         ),
       if (((t['parent_requests'] as num?) ?? 0) > 0)
-        _Alert(icon: Icons.person_add_rounded, color: HsColors.blue, text: '${Fa.faDigits(t['parent_requests'])} درخواست اتصال والد منتظر تأیید شماست (از پنل سایت).'),
+        _Alert(icon: Icons.person_add_rounded, color: HsColors.blue, text: '${Fa.faDigits(t['parent_requests'])} درخواست اتصال والد منتظر تأیید شماست.', action: 'بررسی', onTap: () => context.push('/requests')),
       _Grid(tiles: [
         _Tile('دانش‌آموز', '${tot['students'] ?? 0}', Icons.groups_rounded, HsColors.blue),
         _Tile('غایب امروز', '${tot['absent_today'] ?? 0}', Icons.person_off_rounded, HsColors.red),
@@ -184,7 +185,10 @@ class DashboardView extends ConsumerWidget {
 
   List<Widget> _manager(BuildContext context, Map m) {
     if (m['school'] == null) {
-      return const [EmptyView(icon: Icons.account_balance_rounded, title: 'مدرسه‌ای برای شما فعال نیست', text: 'اگر مدیر مدرسه هستید، پس از تأیید مدیر سامانه داشبورد مدرسه فعال می‌شود.')];
+      return [
+        const EmptyView(icon: Icons.account_balance_rounded, title: 'مدرسه‌ی خود را ثبت کنید', text: 'اطلاعات مدرسه را وارد کنید؛ بعد از تأیید، کلاس‌ها و کادر مدرسه همین‌جا نمایش داده می‌شود.'),
+        FilledButton.icon(key: const Key('dash_school_form'), onPressed: () => context.push('/school/form'), icon: const Icon(Icons.account_balance_rounded), label: const Text('ثبت اطلاعات مدرسه')),
+      ];
     }
     final tot = (m['totals'] as Map?) ?? const {};
     final classes = ((m['classes'] as List?) ?? const []).cast<Map>();
@@ -193,8 +197,12 @@ class DashboardView extends ConsumerWidget {
     String pct(Object? v) => v == null ? '—' : '${Fa.faDigits(v)}٪';
     return [
       Text('${(m['school'] as Map)['name']}', style: Theme.of(context).textTheme.titleLarge),
-      const Text('نمای فقط‌خواندنی مدرسه', style: TextStyle(color: HsColors.blue, fontSize: 12)),
-      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: Text('کد مدرسه: ${Fa.faDigits((m['school'] as Map)['code'] ?? '—')}', style: const TextStyle(color: HsColors.blue, fontSize: 12))),
+        TextButton.icon(onPressed: () => context.push('/school/form'), icon: const Icon(Icons.edit_rounded, size: 16), label: const Text('ویرایش')),
+      ]),
+      const SizedBox(height: 6),
+      const ClaimsCard(),
       if (notRec > 0) _Alert(icon: Icons.fact_check_rounded, color: HsColors.orangeDark, text: 'حضور و غیاب امروز ${Fa.faDigits(notRec)} کلاس هنوز ثبت نشده است.'),
       _Grid(tiles: [
         _Tile('کلاس', '${tot['classes'] ?? 0}', Icons.class_rounded, HsColors.blue, onTap: () => onOpenTab?.call(1)),

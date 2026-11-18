@@ -4,3 +4,8 @@ plugins/_zips/
 *.jks
 *.keystore
 key.properties
+
+# Firebase (never commit)
+google-services.json
+firebase-adminsdk*.json
+*service-account*.json

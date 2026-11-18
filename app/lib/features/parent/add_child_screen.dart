@@ -7,6 +7,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
+import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
 
@@ -30,6 +31,24 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
     super.dispose();
   }
 
+  bool _isClassCode(String c) => c.contains('/join/') || c.toUpperCase().startsWith('K-') || c.contains('://');
+
+  Future<void> _done(Map<String, dynamic> r) async {
+    ref.invalidate(getProvider('/children'));
+    ref.invalidate(getProvider('/dashboard'));
+    if (!mounted) return;
+    final linked = r['status'] == 'linked';
+    await showDialog<void>(
+      context: context,
+      builder: (c) => AlertDialog(
+        icon: Icon(linked ? Icons.check_circle_rounded : Icons.hourglass_top_rounded, color: linked ? HsColors.green : HsColors.orange, size: 48),
+        content: Text('${r['message']}', textAlign: TextAlign.center, style: const TextStyle(height: 1.8)),
+        actions: [FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(c), child: const Text('باشه'))],
+      ),
+    );
+    if (mounted) Navigator.pop(context);
+  }
+
   Future<void> _submit() async {
     final code = Fa.enDigits(_code.text.trim());
     if (code.length < 4) {
@@ -41,19 +60,53 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
       return;
     }
     setState(() => _busy = true);
+    final api = ref.read(apiProvider);
     try {
-      final r = await ref.read(apiProvider).post<Map<String, dynamic>>('/children/join', data: {'code': code, 'child_name': _name.text.trim()});
-      ref.invalidate(getProvider('/children'));
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (c) => AlertDialog(
-          icon: Icon(r['status'] == 'linked' ? Icons.check_circle_rounded : Icons.hourglass_top_rounded, color: r['status'] == 'linked' ? HsColors.green : HsColors.orange, size: 48),
-          content: Text('${r['message']}', textAlign: TextAlign.center, style: const TextStyle(height: 1.8)),
-          actions: [FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(c), child: const Text('باشه'))],
-        ),
-      );
-      if (mounted) Navigator.pop(context);
+      if (_isClassCode(code) && !_needName) {
+        // کد کلاس: فهرست بچه‌های کلاس ← انتخاب فرزند
+        final l = await api.post<Map<String, dynamic>>('/join/students', data: {'code': code});
+        if (!mounted) return;
+        final kids = ((l['students'] as List?) ?? const []).cast<Map>();
+        final cls = (l['class'] as Map?) ?? const {};
+        final pick = await showModalBottomSheet<Object>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (c) => SizedBox(
+            height: MediaQuery.of(c).size.height * 0.75,
+            child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
+              Text('${cls['title'] ?? 'کلاس'}', textAlign: TextAlign.center, style: Theme.of(c).textTheme.titleLarge),
+              if ('${cls['teacher'] ?? ''}'.isNotEmpty) Text('معلم: ${cls['teacher']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
+              const SizedBox(height: 8),
+              const Text('فرزندتان کدام است؟', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              for (final k in kids)
+                Card(
+                  child: ListTile(
+                    key: Key('pick_${k['id']}'),
+                    leading: HsAvatar(name: '${k['name']}', url: '${k['avatar'] ?? ''}', size: 40),
+                    title: Text('${k['name']}'),
+                    trailing: k['mine'] == true ? const Icon(Icons.check_circle_rounded, color: HsColors.green) : null,
+                    onTap: () => Navigator.pop(c, k),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              TextButton(onPressed: () => Navigator.pop(c, 'other'), child: const Text('نام فرزندم در فهرست نیست')),
+            ]),
+          ),
+        );
+        if (pick == null || !mounted) return;
+        if (pick == 'other') {
+          setState(() => _needName = true);
+          showMessage(context, 'نام و نام خانوادگی فرزند را بنویسید و «اتصال» را بزنید؛ درخواست برای معلم می‌رود.');
+          return;
+        }
+        final r = await api.post<Map<String, dynamic>>('/children/join-class', data: {'code': code, 'student_id': (pick as Map)['id']});
+        await _done(r);
+        return;
+      }
+      final r = await api.post<Map<String, dynamic>>('/children/join', data: {'code': code, 'child_name': _name.text.trim()});
+      await _done(r);
     } on ApiException catch (e) {
       if (e.code == 'hs_need_name') {
         setState(() => _needName = true);
@@ -66,9 +119,8 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
 
   void _gotCode(String raw) {
     _code.text = raw.trim();
-    // QR کلاس (لینک /join/…) نام فرزند لازم دارد؛ کد اتصال والد نه
-    setState(() => _needName = raw.contains('/join/') || raw.toUpperCase().startsWith('K-'));
-    if (!_needName) _submit();
+    setState(() => _needName = false);
+    _submit();
   }
 
   Future<void> _scan() async {
@@ -103,10 +155,10 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           SectionCard(
-            title: 'کد اتصال از معلم',
+            title: 'کد کلاس یا کد اتصال',
             icon: Icons.key_rounded,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text('کدی را که معلم برایتان فرستاده وارد کنید.', style: TextStyle(color: Colors.black54, height: 1.7)),
+              const Text('کد کلاس (مثل K-AB12CD) یا کد اتصالی را که معلم فرستاده وارد کنید. اگر معلم شماره‌ی شما را ثبت کرده باشد، فوراً وصل می‌شوید.', style: TextStyle(color: Colors.black54, height: 1.7)),
               const SizedBox(height: 10),
               Directionality(
                 textDirection: TextDirection.ltr,
@@ -116,7 +168,7 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
                   textAlign: TextAlign.center,
                   textCapitalization: TextCapitalization.characters,
                   style: const TextStyle(fontSize: 22, letterSpacing: 3, fontWeight: FontWeight.w700),
-                  decoration: const InputDecoration(hintText: 'ABCD1234'),
+                  decoration: const InputDecoration(hintText: 'K-AB12CD'),
                 ),
               ),
               if (_needName) ...[

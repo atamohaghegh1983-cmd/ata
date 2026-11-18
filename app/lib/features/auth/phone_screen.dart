@@ -91,12 +91,12 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
               onPressed: _busy ? null : _submit,
               child: _busy ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Text('دریافت کد'),
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
+            const SizedBox(height: 28),
+            TextButton(
               key: const Key('kid_login'),
+              style: TextButton.styleFrom(foregroundColor: Colors.black38),
               onPressed: () => context.push('/kid'),
-              icon: const Text('🎒', style: TextStyle(fontSize: 20)),
-              label: const Text('ورود دانش‌آموز با کارت کلاس'),
+              child: const Text('ورود دانش‌آموز با کارت کلاس', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),

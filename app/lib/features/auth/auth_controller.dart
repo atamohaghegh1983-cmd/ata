@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../core/push.dart';
 import 'me.dart';
 
 enum AuthStatus { unknown, loggedOut, loggedIn }
@@ -40,6 +41,7 @@ class AuthController extends Notifier<AuthState> {
     }
     try {
       await reloadMe();
+      Push.register(ref.read(apiProvider));
     } on ApiException catch (e) {
       if (e.isUnauthorized || !tokens.hasSession) {
         await tokens.clear();
@@ -74,12 +76,18 @@ class AuthController extends Notifier<AuthState> {
       auth: false,
     );
     await api.saveTokens(d);
-    return reloadMe();
+    final me = await reloadMe();
+    Push.register(api);
+    return me;
   }
 
   Future<void> logout({bool everywhere = false}) async {
     final api = ref.read(apiProvider);
     final tokens = ref.read(tokenStoreProvider);
+    try {
+      final t = await Push.token();
+      if (t != null) await api.delete<Object?>('/devices', data: {'token': t});
+    } catch (_) {}
     try {
       await api.post<Object?>('/auth/logout', data: {'refresh_token': tokens.refresh, 'all': everywhere});
     } catch (_) {

@@ -24,6 +24,10 @@ import 'package:hamshagerdi/features/magazine/magazine.dart';
 import 'package:hamshagerdi/features/parent/add_child_screen.dart';
 import 'package:hamshagerdi/features/parent/child_screen.dart';
 import 'package:hamshagerdi/features/onboarding/onboarding_screen.dart';
+import 'package:hamshagerdi/features/notifications/notifications.dart';
+import 'package:hamshagerdi/features/portfolio/portfolio.dart';
+import 'package:hamshagerdi/features/school/school_screens.dart';
+import 'package:hamshagerdi/features/classes/import_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 final on = Platform.environment['HS_SHOTS'] == '1';
@@ -88,6 +92,23 @@ class FakeApi extends ApiClient {
       '/student/summary' => {'classes': [{'id': 9, 'title': 'کلاس سوم الف', 'teacher': 'خانم احمدی', 'points_total': 41,
           'points_recent': [{'points': 2, 'behavior': 'همکاری', 'icon': '🤝', 'at': '2026-11-17'}],
           'homework': [{'id': 1, 'title': 'تمرین ریاضی', 'subject': 'ریاضی', 'due_date': '2026-11-21', 'status': 'pending', 'feedback': ''}, {'id': 2, 'title': 'املا', 'subject': 'فارسی', 'due_date': '2026-11-15', 'status': 'done', 'feedback': 'آفرین'}]}]},
+      '/classes?mine=1' => [
+          {'id': 9, 'title': 'کلاس سوم الف', 'grade': 'سوم', 'teacher': 'زهرا احمدی', 'students': 24, 'access': 'write'},
+        ],
+      '/notifications' => {'unread': 2, 'items': [
+          {'id': 1, 'type': 'attendance', 'title': 'غیبت', 'body': 'سارا امروز غایب ثبت شد.', 'is_read': false, 'created_at': '2026-11-17', 'data': {'child': 5}},
+          {'id': 2, 'type': 'portfolio', 'title': 'دیوار کلاس', 'body': 'نقاشی سارا روی دیوار کلاس رفت 🎉', 'is_read': false, 'created_at': '2026-11-16', 'data': {'class': 9}},
+          {'id': 3, 'type': 'homework', 'title': 'تکلیف تازه', 'body': 'تمرین ریاضی صفحه‌ی ۲۴', 'is_read': true, 'created_at': '2026-11-15', 'data': {}},
+        ]},
+      '/requests' => [
+          {'id': 4, 'parent': 'رضا کریمی', 'parent_mobile': '09351234567', 'child_name': 'علی کریمی', 'class': 'کلاس سوم الف',
+            'candidates': [{'id': 21, 'name': 'علی کریمی', 'class': 'کلاس سوم الف'}, {'id': 22, 'name': 'علی کاظمی', 'class': 'کلاس سوم الف'}]},
+        ],
+      '/school/profile' => {'can_edit': true, 'approved': false, 'school': null, 'levels': {'': '— انتخاب —', 'primary': 'ابتدایی'}, 'provinces': ['تهران', 'اصفهان'], 'positions': {'teacher': 'معلم'}},
+      '/portfolio/student/5' => {'student': {'id': 5, 'name': 'سارا رضایی', 'avatar': '', 'about': 'عاشق نقاشی و کتاب‌های داستان'}, 'can_post': true, 'today': 0, 'limit': 2, 'posts': [
+          {'id': 1, 'student_id': 5, 'student': 'سارا ر.', 'avatar': '', 'class_id': 9, 'title': 'نقاشی پاییز', 'text': 'درخت‌های حیاط مدرسه', 'type': 'image', 'image': '', 'on_wall': true, 'cheers': 7, 'cheered': false, 'at': '2026-11-16 10:00:00'},
+          {'id': 2, 'student_id': 5, 'student': 'سارا ر.', 'avatar': '', 'class_id': 9, 'title': 'کتابی که خواندم', 'text': 'شازده کوچولو را تمام کردم', 'type': 'text', 'image': '', 'on_wall': false, 'cheers': 2, 'cheered': true, 'at': '2026-11-17 18:00:00'},
+        ]},
       _ when path.startsWith('/messages') => <Object>[],
       _ => <String, Object>{},
     };
@@ -162,5 +183,11 @@ void main() {
   testWidgets('dash-parent', (t) => shot(t, '12-dash-parent', const Scaffold(body: DashboardView(kind: 'parent'))), skip: !on);
   testWidgets('dash-manager', (t) => shot(t, '13-dash-manager', const Scaffold(body: DashboardView(kind: 'manager'))), skip: !on);
   testWidgets('student', (t) => shot(t, '14-student', const Scaffold(body: StudentHome())), skip: !on);
+  testWidgets('notifications', (t) => shot(t, '15-notifications', const NotificationsScreen()), skip: !on);
+  testWidgets('requests', (t) => shot(t, '16-requests', const RequestsScreen(), teacher: true), skip: !on);
+  testWidgets('school', (t) => shot(t, '17-school-form', const SchoolFormScreen()), skip: !on);
+  testWidgets('portfolio', (t) => shot(t, '18-portfolio', const Scaffold(body: PortfolioView(studentId: 5))), skip: !on);
+  testWidgets('import', (t) => shot(t, '19-import', const ImportStudentsScreen(classId: 9), teacher: true), skip: !on);
+  testWidgets('teacher-home', (t) => shot(t, '20-teacher-home', const HomeScreen(), teacher: true), skip: !on);
   testWidgets('magazine', (t) => shot(t, '10-magazine', const Scaffold(body: MagazineView(showMineFilter: true))), skip: !on);
 }

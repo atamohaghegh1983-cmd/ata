@@ -5,7 +5,7 @@ import '../../core/providers.dart';
 
 /// کلاس‌های من (خانه‌ی معلم)
 final myClassesProvider = FutureProvider.autoDispose<ApiResult<Object?>>((ref) {
-  return ref.read(apiProvider).get<Object?>('/classes');
+  return ref.read(apiProvider).get<Object?>('/classes?mine=1');
 });
 
 final classProvider = FutureProvider.autoDispose.family<ApiResult<Object?>, int>((ref, id) {
