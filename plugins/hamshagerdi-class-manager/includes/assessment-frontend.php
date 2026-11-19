@@ -40,6 +40,9 @@ class HS_Assessment_Frontend {
 					<h2>ارزیابی و نمرات</h2>
 					<p class="hs-muted">ساخت ارزیابی گروهی و ثبت وضعیت همه دانش‌آموزان در یک صفحه</p>
 				</div>
+				<?php if ( ! empty( $classes ) ) : ?>
+					<a class="hs-btn hs-btn-ghost" href="<?php echo esc_url( add_query_arg( 'class_id', $selected_class, HS_Shell::url( 'insights' ) ) ); ?>">📊 تحلیل نمرات و نمودارها</a>
+				<?php endif; ?>
 			</div>
 
 			<?php if ( empty( $classes ) ) : ?>

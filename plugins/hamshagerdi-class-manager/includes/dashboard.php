@@ -511,6 +511,7 @@ class HS_Dashboard {
 			array( 'attendance', 'حضور و غیاب', '✅', 'green' ),
 			array( 'points', 'تشویق و امتیاز', '⭐', 'orange' ),
 			array( 'assessment', 'ارزیابی', '📝', 'pink' ),
+			array( 'insights', 'تحلیل نمرات', '📊', 'violet' ),
 			array( 'online-builder', 'تکلیف‌ساز', '🧪', 'violet' ),
 			array( 'calendar', 'تقویم', '📅', 'teal' ),
 			array( 'timetable', 'برنامه هفتگی', '🗓️', 'blue' ),

@@ -61,6 +61,13 @@ class HS_Setup_Pages {
 				'template' => '',
 				'parent'   => 'panel',
 			),
+			'insights' => array(
+				'title'    => 'تحلیل نمرات',
+				'slug'     => 'insights',
+				'content'  => '[hamshagerdi_grades_insights]',
+				'template' => '',
+				'parent'   => 'panel',
+			),
 			'reports' => array(
 				'title'    => 'گزارش پیشرفت',
 				'slug'     => 'reports',

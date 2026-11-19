@@ -2,7 +2,7 @@
 /**
  * Plugin Name: مدیریت کلاس
  * Description: مدیریت کلاس و پرونده دانش‌آموز، حضور، امتیاز، ارتباط، ارزیابی، گزارش، تکالیف، پورتفولیو و ابزارها
- * Version:     1.7.5
+ * Version:     1.7.6
  * Text Domain: hamshagerdi-class
  * Requires at least: 5.8
  * Requires PHP: 7.4
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HS_CLASS_VERSION', '1.7.5' );
+define( 'HS_CLASS_VERSION', '1.7.6' );
 define( 'HS_CLASS_FILE', __FILE__ );
 define( 'HS_CLASS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'HS_CLASS_URL', plugin_dir_url( __FILE__ ) );
@@ -25,7 +25,7 @@ $hs_includes = array(
 	'attendance-db.php', 'attendance-handlers.php', 'attendance-frontend.php',
 	'points-db.php', 'points-handlers.php', 'points-frontend.php',
 	'comms-db.php', 'comms-handlers.php', 'comms-frontend.php',
-	'assessment-db.php', 'assessment-handlers.php', 'assessment-frontend.php',
+	'assessment-db.php', 'assessment-handlers.php', 'assessment-frontend.php', 'grades-insights.php',
 	'reports-db.php', 'reports-handlers.php', 'reports-frontend.php',
 	'homework-db.php', 'homework-handlers.php', 'homework-frontend.php',
 	'portfolio-db.php', 'portfolio-handlers.php', 'portfolio-frontend.php',
@@ -142,7 +142,7 @@ function hs_class_enqueue_assets() {
 	$codes = array(
 		'hamshagerdi_classes', 'hamshagerdi_class_detail', 'hamshagerdi_attendance',
 		'hamshagerdi_points', 'hamshagerdi_comms', 'hamshagerdi_announcements',
-		'hamshagerdi_messages', 'hamshagerdi_assessment', 'hamshagerdi_reports',
+		'hamshagerdi_messages', 'hamshagerdi_assessment', 'hamshagerdi_grades_insights', 'hamshagerdi_reports',
 		'hamshagerdi_homework', 'hamshagerdi_portfolio', 'hamshagerdi_tools', 'hamshagerdi_worksheets', 'hamshagerdi_online_hw', 'hamshagerdi_online_builder', 'hamshagerdi_notebook', 'hamshagerdi_content_studio', 'hamshagerdi_student_world', 'hamshagerdi_parent_panel', 'hamshagerdi_parent_chat', 'hamshagerdi_calendar', 'hamshagerdi_bale_link', 'hamshagerdi_join_class',
 	);
 	$has_shortcode = false;
@@ -154,7 +154,7 @@ function hs_class_enqueue_assets() {
 			}
 		}
 	}
-	$pages = array( 'panel', 'attendance', 'classes', 'points', 'messages', 'assessment', 'reports', 'homework', 'portfolio', 'tools', 'worksheets', 'online-builder', 'online-hw', 'notebook', 'content-studio', 'student', 'parent', 'parent-chat', 'calendar' );
+	$pages = array( 'panel', 'attendance', 'classes', 'points', 'messages', 'assessment', 'insights', 'reports', 'homework', 'portfolio', 'tools', 'worksheets', 'online-builder', 'online-hw', 'notebook', 'content-studio', 'student', 'parent', 'parent-chat', 'calendar' );
 	$is_panel = is_page( $pages ) || $has_shortcode;
 	if ( ! $is_panel && is_page() && $post ) {
 		$parent = $post->post_parent ? get_post( $post->post_parent ) : null;

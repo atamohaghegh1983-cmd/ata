@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class HS_Shell {
 
 	const PANEL_SLUGS = array(
-		'panel', 'attendance', 'classes', 'points', 'messages', 'assessment', 'reports', 'homework', 'portfolio',
+		'panel', 'attendance', 'classes', 'points', 'messages', 'assessment', 'insights', 'reports', 'homework', 'portfolio',
 		'tools', 'worksheets', 'online-builder', 'online-hw', 'notebook', 'content-studio', 'student', 'parent',
 		'parent-chat', 'calendar', 'budget', 'weekly', 'timetable',
 	);
@@ -224,6 +224,7 @@ class HS_Shell {
 						array( 'attendance', 'حضور و غیاب', '✅', 'green' ),
 						array( 'points', 'تشویق و امتیاز', '⭐', 'orange' ),
 						array( 'assessment', 'ارزیابی و نمرات', '📝', 'pink' ),
+						array( 'insights', 'تحلیل نمرات', '📊', 'violet' ),
 						array( 'reports', 'گزارش پیشرفت', '📈', 'teal' ),
 						array( 'budget', 'بودجه‌بندی کلاس', '📐', 'violet' ),
 					) ),
