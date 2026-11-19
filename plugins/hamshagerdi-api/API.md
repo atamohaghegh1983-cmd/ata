@@ -1,4 +1,4 @@
-# مستندات API همشاگردی (نسخه‌ی ۲.۵.۰)
+# مستندات API همشاگردی (نسخه‌ی ۲.۶.۰)
 
 پایه: `https://SITE/wp-json/hamshagerdi/v1` (یا `https://SITE/?rest_route=/hamshagerdi/v1/...`).
 همه‌ی پاسخ‌ها JSON است. خطا: `{ "code", "message", "data": { "status", ... } }` و `message` همیشه فارسی و قابل نمایش به کاربر است.
@@ -133,6 +133,41 @@
 | GET | `/school` | ناظر/مدیر: اطلاعات کامل + `classes[]`؛ مدیر: + `staff[]` و `invites[]`. عضو کادر بدون اجازه‌ی نظارت: فقط `id, name`. |
 | GET | `/school/tasks` | مدیر: همه؛ بقیه: وظایف خودشان |
 | POST | `/school/tasks/{id}/status` | `status, report` (فقط مسئول انجام) |
+
+## تازه‌های ۲.۶.۰ (نیاز به «مدیریت کلاس» ۱.۷.۵)
+
+### برنامه‌ی هفتگی و زنگ‌بندی
+| روش | مسیر | توضیح |
+|---|---|---|
+| GET | `/classes/{id}/timetable` | `{bells{days,periods,slots,day_names,source}, cells[{day,period,subject,teacher_id,teacher}], can_edit, teachers, score}` — معلم کلاس، مدیر و ناظر مدرسه، دانش‌آموزان و والدینشان |
+| POST | `/classes/{id}/timetable` | `{cells:[{day,period,subject,teacher_id}]}` کل برنامه جایگزین می‌شود. تداخل معلم ← 409 `hs_timetable_conflict` با `data.conflicts` و هیچ چیز ذخیره نمی‌شود |
+| POST | `/classes/{id}/bells` | `{days, slots:[{type: class|break, start, end}]}` یا `{reset:true}` |
+| GET/POST | `/school/bells` | زنگ‌بندی مدرسه (فقط مدیر) |
+| GET | `/me/timetable` | معلم: زنگ‌های خودش در همه‌ی کلاس‌ها؛ دانش‌آموز: کلاس خودش؛ والد: `?child=ID` |
+
+روزها: ۰ = شنبه. `score`: امتیاز ۰ تا ۱۰۰ با `checks` (تداخل، زنگ خالی، تعادل روزانه، پراکندگی، استراحت معلم).
+
+### پیام
+- هر پیام در گفت‌وگو: `receipt` = `sent | delivered | read`، `delivered_at`، `read_at`، `edited`، `can_edit`.
+- «رسید» وقتی ثبت می‌شود که اپ گیرنده صندوق، گفت‌وگو یا داشبورد را بگیرد؛ «خوانده شد» با باز کردن گفت‌وگو.
+- `POST /messages/item/{id}` `{body}` ویرایش (فقط فرستنده، تا ۲۴ ساعت).
+
+### دیوار کلاس
+`POST /portfolio/{id}/pin {on}` سنجاق (معلم کلاس)؛ پست سنجاق‌شده بالای دیوار و `pinned: true`.
+`GET /teacher/feed?class_id=` دیوار و اطلاعیه‌های اخیر برای داشبورد معلم.
+
+### ترتیب دانش‌آموزان
+`POST /classes/{id}/students/order {mode: first|last|custom, order:[ids]}`.
+
+### بودجه‌بندی
+`GET /classes/{id}/budget` حالا `suggestions` (دروس پایه یا فهرست مدرسه)، `mine` (منابع معلم)، `units` و `unit` هر ردیف را دارد.
+`POST /me/budget-sources {sources:[{name,unit,total}]}`؛ مدیر: `GET/POST /school/budget-subjects?grade=N`.
+
+### تقویم
+`GET /calendar?tasks=1` برای معلم موعد تکالیف و ارزیابی‌ها را هم در `tasks` می‌دهد.
+
+### نسخه‌ی اپ
+`GET /app/latest` (بدون ورود) ← `{available, version, build, url, size, notes, min_build}`. بارگذاری فایل در پیشخوان: تنظیمات ← «اپ موبایل»؛ دکمه‌ی دانلود: `[hamshagerdi_app_download]`.
 
 ## تازه‌های ۲.۵.۰ (نیاز به «مدیریت کلاس» ۱.۷.۴)
 

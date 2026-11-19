@@ -17,9 +17,159 @@ class HS_Budget {
 		add_action( 'wp_ajax_hs_budget_save', array( __CLASS__, 'ajax_save' ) );
 	}
 
-	/** دروس پیشنهادی دوره ابتدایی */
-	public static function default_subjects() {
+	/** واحدهای سنجش پیشرفت */
+	public static function units() {
+		return array( 'lesson' => 'درس', 'chapter' => 'فصل', 'page' => 'صفحه', 'session' => 'جلسه' );
+	}
+
+	/** شماره‌ی پایه (۰ = پیش‌دبستانی، ۱ تا ۱۲) از متن پایه‌ی کلاس */
+	public static function grade_number( $grade ) {
+		$g = str_replace( array( 'ي', 'ك' ), array( 'ی', 'ک' ), trim( (string) $grade ) );
+		if ( '' === $g ) {
+			return -1;
+		}
+		if ( false !== mb_strpos( $g, 'پیش' ) ) {
+			return 0;
+		}
+		$map = array( 'دوازدهم' => 12, 'یازدهم' => 11, 'دهم' => 10, 'نهم' => 9, 'هشتم' => 8, 'هفتم' => 7, 'ششم' => 6, 'پنجم' => 5, 'چهارم' => 4, 'سوم' => 3, 'دوم' => 2, 'اول' => 1 );
+		foreach ( $map as $k => $v ) {
+			if ( false !== mb_strpos( $g, $k ) ) {
+				return $v;
+			}
+		}
+		$d = strtr( $g, array( '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9' ) );
+		return preg_match( '/\d+/', $d, $m ) ? min( 12, (int) $m[0] ) : -1;
+	}
+
+	/**
+	 * دروس پیشنهادی هر پایه (برنامه‌ی درسی رسمی). بدون پایه: دروس عمومی ابتدایی.
+	 * دبیرستان: دروس عمومی + همه‌ی رشته‌ها؛ معلم درس‌های نامربوط را برمی‌دارد.
+	 */
+	public static function default_subjects( $grade = '' ) {
+		$n = self::grade_number( $grade );
+		if ( 0 === $n ) {
+			return array( 'آموزش مفاهیم پایه', 'قصه و شعر', 'نقاشی و کاردستی', 'بازی و حرکت' );
+		}
+		if ( $n >= 1 && $n <= 6 ) {
+			$s = array( 'فارسی (خوانداری)', 'ریاضی', 'علوم تجربی', 'قرآن', 'هنر', 'تربیت‌بدنی' );
+			if ( $n >= 2 ) {
+				array_splice( $s, 1, 0, array( 'نگارش فارسی' ) );
+				$s[] = 'هدیه‌های آسمان';
+			} else {
+				array_splice( $s, 1, 0, array( 'فارسی (نوشتاری)' ) );
+			}
+			if ( $n >= 3 ) {
+				$s[] = 'مطالعات اجتماعی';
+			}
+			if ( 6 === $n ) {
+				$s[] = 'کار و فناوری';
+				$s[] = 'تفکر و پژوهش';
+			}
+			return $s;
+		}
+		if ( $n >= 7 && $n <= 9 ) {
+			$s = array( 'ادبیات فارسی', 'نگارش', 'ریاضی', 'علوم تجربی', 'مطالعات اجتماعی', 'پیام‌های آسمان', 'قرآن', 'عربی', 'زبان انگلیسی', 'کار و فناوری', 'فرهنگ و هنر', 'تربیت‌بدنی' );
+			if ( $n <= 8 ) {
+				$s[] = 'تفکر و سبک زندگی';
+			} else {
+				$s[] = 'آمادگی دفاعی';
+			}
+			return $s;
+		}
+		if ( $n >= 10 ) {
+			$k = array( 10 => '۱', 11 => '۲', 12 => '۳' )[ $n ];
+			$s = array( 'فارسی ' . $k, 'نگارش ' . $k, 'عربی ' . $k, 'دین و زندگی ' . $k, 'زبان انگلیسی ' . $k, 'تربیت‌بدنی' );
+			// رشته‌ی ریاضی و تجربی
+			$s[] = 'فیزیک ' . $k;
+			$s[] = 'شیمی ' . $k;
+			$s[] = 10 === $n ? 'ریاضی ۱' : ( 11 === $n ? 'حسابان ۱' : 'حسابان ۲' );
+			$s[] = 10 === $n ? 'هندسه ۱' : ( 11 === $n ? 'هندسه ۲' : 'هندسه ۳' );
+			if ( 11 === $n ) {
+				$s[] = 'آمار و احتمال';
+				$s[] = 'زمین‌شناسی';
+			}
+			if ( 12 === $n ) {
+				$s[] = 'ریاضیات گسسته';
+			}
+			$s[] = 'زیست‌شناسی ' . $k;
+			// رشته‌ی انسانی
+			$s[] = 'ریاضی و آمار ' . $k;
+			$s[] = 'علوم و فنون ادبی ' . $k;
+			$s[] = 'عربی تخصصی ' . $k;
+			$s[] = 10 === $n ? 'منطق' : ( 11 === $n ? 'فلسفه' : 'فلسفه ۲' );
+			$s[] = 'جامعه‌شناسی ' . $k;
+			$s[] = 'تاریخ ' . $k;
+			$s[] = 'جغرافیا ' . $k;
+			if ( 10 === $n ) {
+				$s[] = 'اقتصاد';
+			}
+			if ( 11 === $n ) {
+				$s[] = 'روان‌شناسی';
+			}
+			return $s;
+		}
 		return array( 'فارسی', 'ریاضی', 'علوم تجربی', 'مطالعات اجتماعی', 'هدیه‌های آسمان', 'قرآن', 'هنر', 'تربیت‌بدنی' );
+	}
+
+	/** فهرست درس‌ها و منابع مدرسه برای یک پایه (مدیر تعیین می‌کند) */
+	public static function school_subjects( $school_id, $grade_number ) {
+		$all = $school_id ? get_post_meta( (int) $school_id, '_hs_budget_subjects', true ) : array();
+		return is_array( $all ) && ! empty( $all[ (int) $grade_number ] ) ? array_values( (array) $all[ (int) $grade_number ] ) : array();
+	}
+
+	public static function set_school_subjects( $school_id, $grade_number, $list ) {
+		$all = get_post_meta( (int) $school_id, '_hs_budget_subjects', true );
+		$all = is_array( $all ) ? $all : array();
+		$all[ (int) $grade_number ] = self::clean_sources( $list );
+		update_post_meta( (int) $school_id, '_hs_budget_subjects', $all );
+		return $all[ (int) $grade_number ];
+	}
+
+	/** منابع درسی شخصی معلم (کتاب کار، کمک‌آموزشی و…) */
+	public static function teacher_sources( $uid ) {
+		$v = get_user_meta( (int) $uid, '_hs_budget_sources', true );
+		return is_array( $v ) ? array_values( $v ) : array();
+	}
+
+	public static function set_teacher_sources( $uid, $list ) {
+		$clean = self::clean_sources( $list );
+		update_user_meta( (int) $uid, '_hs_budget_sources', $clean );
+		return $clean;
+	}
+
+	/** [{name, unit, total}] پاک‌شده؛ حداکثر ۴۰ مورد */
+	public static function clean_sources( $list ) {
+		$out  = array();
+		$seen = array();
+		foreach ( array_slice( (array) $list, 0, 40 ) as $x ) {
+			$x    = is_array( $x ) ? $x : array( 'name' => (string) $x );
+			$name = mb_substr( trim( sanitize_text_field( (string) ( $x['name'] ?? '' ) ) ), 0, 60 );
+			if ( '' === $name || isset( $seen[ $name ] ) ) {
+				continue;
+			}
+			$seen[ $name ] = 1;
+			$unit          = sanitize_key( (string) ( $x['unit'] ?? 'lesson' ) );
+			$out[]         = array( 'name' => $name, 'unit' => isset( self::units()[ $unit ] ) ? $unit : 'lesson', 'total' => min( 999, max( 0, (int) ( $x['total'] ?? 0 ) ) ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * پیشنهادهای بودجه‌بندی یک کلاس: فهرست مدرسه (اگر مدیر تعیین کرده) وگرنه دروس رسمی پایه، به‌اضافه‌ی منابع شخصی معلم
+	 */
+	public static function suggestions( $class_id, $uid ) {
+		$grade = (string) get_post_meta( (int) $class_id, '_hs_grade', true );
+		$n     = self::grade_number( $grade );
+		$sid   = (int) get_post_meta( (int) $class_id, '_hs_school_id', true );
+		$list  = $sid ? self::school_subjects( $sid, $n ) : array();
+		$from  = $list ? 'school' : 'default';
+		if ( ! $list ) {
+			foreach ( self::default_subjects( $grade ) as $name ) {
+				$list[] = array( 'name' => $name, 'unit' => 'lesson', 'total' => 0 );
+			}
+		}
+		$mine = self::teacher_sources( $uid );
+		return array( 'grade' => $grade, 'grade_number' => $n, 'source' => $from, 'subjects' => $list, 'mine' => $mine );
 	}
 
 	public static function get( $class_id ) {
@@ -34,6 +184,7 @@ class HS_Budget {
 				'subject' => (string) $r['subject'],
 				'planned' => $planned,
 				'done'    => min( $planned, max( 0, (int) $r['done'] ) ),
+				'unit'    => isset( $r['unit'], self::units()[ $r['unit'] ] ) ? $r['unit'] : 'lesson',
 			);
 		}
 		return $out;
@@ -119,7 +270,7 @@ class HS_Budget {
 		}
 		$rows = self::get( $cid );
 		if ( ! $rows ) {
-			foreach ( self::default_subjects() as $s ) {
+			foreach ( self::default_subjects( (string) get_post_meta( $cid, '_hs_grade', true ) ) as $s ) {
 				$rows[] = array( 'subject' => $s, 'planned' => 0, 'done' => 0 );
 			}
 		}
@@ -193,7 +344,8 @@ class HS_Budget {
 			}
 			$planned = min( 999, max( 0, (int) ( $r['planned'] ?? 0 ) ) );
 			$done    = min( $planned, max( 0, (int) ( $r['done'] ?? 0 ) ) );
-			$rows[]  = array( 'subject' => $subject, 'planned' => $planned, 'done' => $done );
+			$unit    = sanitize_key( (string) ( $r['unit'] ?? 'lesson' ) );
+			$rows[]  = array( 'subject' => $subject, 'planned' => $planned, 'done' => $done, 'unit' => isset( self::units()[ $unit ] ) ? $unit : 'lesson' );
 		}
 		update_post_meta( $cid, self::META, $rows );
 		wp_send_json_success( array( 'message' => 'بودجه‌بندی ذخیره شد ✅' ) );

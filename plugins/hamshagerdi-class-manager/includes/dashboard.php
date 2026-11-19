@@ -513,7 +513,12 @@ class HS_Dashboard {
 			array( 'assessment', 'ارزیابی', '📝', 'pink' ),
 			array( 'online-builder', 'تکلیف‌ساز', '🧪', 'violet' ),
 			array( 'calendar', 'تقویم', '📅', 'teal' ),
+			array( 'timetable', 'برنامه هفتگی', '🗓️', 'blue' ),
 		) );
+
+		if ( class_exists( 'HS_Timetable' ) ) {
+			$html .= HS_Timetable::teacher_week_html( $uid );
+		}
 
 		if ( count( $cids ) > 1 ) {
 			// چند کلاس: برای هر کلاس یک تب جدا (نه زیر هم)

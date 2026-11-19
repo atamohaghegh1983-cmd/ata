@@ -27,3 +27,24 @@ Future<void> markIntroSeen() async {
 final getProvider = FutureProvider.autoDispose.family<ApiResult<Object?>, String>((ref, path) {
   return ref.read(apiProvider).get<Object?>(path);
 });
+
+/// نحوه‌ی نمایش دانش‌آموزان هر کلاس روی این گوشی: grid | list
+final studentsViewProvider = NotifierProvider.family<StudentsView, String, int>(StudentsView.new);
+
+class StudentsView extends FamilyNotifier<String, int> {
+  @override
+  String build(int classId) {
+    SharedPreferences.getInstance().then((p) {
+      final v = p.getString('hs_sv_$classId');
+      if (v != null && v != state) state = v;
+    }).catchError((_) {});
+    return 'grid';
+  }
+
+  Future<void> set(String v) async {
+    state = v;
+    try {
+      (await SharedPreferences.getInstance()).setString('hs_sv_$arg', v);
+    } catch (_) {}
+  }
+}

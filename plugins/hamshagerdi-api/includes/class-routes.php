@@ -91,6 +91,7 @@ class HS_API_Routes {
 		HS_API_Routes_Dashboard::register();
 		HS_API_Routes_More::register();
 		HS_API_Routes_Teach::register();
+		HS_API_Routes_V26::register();
 	}
 
 	/* ---------- دسترسی ---------- */
@@ -730,6 +731,7 @@ class HS_API_Routes {
 		global $wpdb;
 		$uid = get_current_user_id();
 		$out = array();
+		if ( method_exists( 'HS_Comms_DB', 'mark_delivered' ) ) { HS_Comms_DB::mark_delivered( $uid ); } // ✓✓ برای فرستنده‌ها
 		// تعداد خوانده‌نشده از هر فرستنده (یک ردیف برای هر نفر: «۵ پیام جدید»)
 		$cnt = array();
 		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SELECT sender_id, COUNT(*) n FROM ' . HS_Comms_DB::messages_table() . ' WHERE recipient_id = %d AND is_read = 0 GROUP BY sender_id', $uid ), ARRAY_A ) as $x ) { // phpcs:ignore
@@ -749,6 +751,7 @@ class HS_API_Routes {
 		$uid = get_current_user_id();
 		$o   = (int) $r['id'];
 		if ( ! HS_API_Access::can_read_thread( $uid, $o ) ) { return HS_API_Util::err( 'دسترسی ندارید.', 403, 'hs_forbidden' ); }
+		if ( method_exists( 'HS_Comms_DB', 'mark_delivered' ) ) { HS_Comms_DB::mark_delivered( $uid ); }
 		HS_Comms_DB::mark_read( $uid, $o );
 		HS_API_Notify::read_messages_from( $uid, $o );
 		$u = get_userdata( $o );
@@ -756,7 +759,10 @@ class HS_API_Routes {
 			'partner'   => array( 'id' => $o, 'name' => $u ? $u->display_name : '', 'label' => HS_API_Routes_Teach::partner_label( $uid, $o ), 'avatar' => HS_API_Util::avatar( $o, 96 ) ),
 			'can_reply' => HS_API_Access::can_message( $uid, $o ),
 			'messages'  => array_map( function ( $m ) use ( $uid ) {
-				return array( 'id' => (int) $m['id'], 'mine' => (int) $m['sender_id'] === $uid, 'body' => (string) $m['body'], 'image' => $m['media_url'] ? esc_url_raw( $m['media_url'] ) : '', 'at' => $m['created_at'], 'can_delete' => HS_API_Routes_Teach::can_delete_message( $uid, $m ) );
+				return array_merge(
+					array( 'id' => (int) $m['id'], 'mine' => (int) $m['sender_id'] === $uid, 'body' => (string) $m['body'], 'image' => $m['media_url'] ? esc_url_raw( $m['media_url'] ) : '', 'at' => $m['created_at'], 'can_delete' => HS_API_Routes_Teach::can_delete_message( $uid, $m ) ),
+					HS_API_Routes_V26::message_meta( $m, $uid )
+				);
 			}, (array) HS_Comms_DB::get_conversation( $uid, $o, 0, 100 ) ),
 		);
 	}
@@ -774,7 +780,7 @@ class HS_API_Routes {
 		if ( $cid && ! HS_API_Access::class_level( $cid, $uid ) ) { $cid = 0; }
 		$id = HS_Comms_DB::send_message( $uid, $to, $body, $cid );
 		do_action( 'hs_api_message_sent', (int) $id, $uid, $to );
-		return self::json( array( 'id' => (int) $id ), 201 );
+		return self::json( array( 'id' => (int) $id, 'receipt' => 'sent' ), 201 );
 	}
 
 	/* ---------- مدرسه ---------- */

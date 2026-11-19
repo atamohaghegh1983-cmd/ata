@@ -72,6 +72,9 @@ class HS_Comms_DB {
 			body text NOT NULL,
 			media_url varchar(500) DEFAULT NULL,
 			is_read tinyint(1) NOT NULL DEFAULT 0,
+			delivered_at datetime DEFAULT NULL,
+			read_at datetime DEFAULT NULL,
+			edited_at datetime DEFAULT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			KEY sender (sender_id),
@@ -270,9 +273,10 @@ class HS_Comms_DB {
 		if ( $class_id ) {
 			$sql .= $wpdb->prepare( ' AND class_id = %d', absint( $class_id ) );
 		}
-		$sql .= $wpdb->prepare( ' ORDER BY created_at ASC LIMIT %d', absint( $limit ) );
+		// آخرین N پیام (نه قدیمی‌ترین‌ها)، به ترتیب زمان
+		$sql .= $wpdb->prepare( ' ORDER BY id DESC LIMIT %d', absint( $limit ) );
 
-		return $wpdb->get_results( $sql, ARRAY_A );
+		return array_reverse( (array) $wpdb->get_results( $sql, ARRAY_A ) );
 	}
 
 	/**
@@ -322,11 +326,40 @@ class HS_Comms_DB {
 
 	public static function mark_read( $user_id, $other_id ) {
 		global $wpdb;
+		// زمان‌ها با ساعت پایگاه داده (مثل created_at)
 		$wpdb->query( $wpdb->prepare(
 			'UPDATE ' . self::messages_table() .
-			' SET is_read = 1 WHERE recipient_id = %d AND sender_id = %d AND is_read = 0',
+			' SET is_read = 1, read_at = NOW(), delivered_at = COALESCE(delivered_at, NOW()) WHERE recipient_id = %d AND sender_id = %d AND is_read = 0',
 			absint( $user_id ),
 			absint( $other_id )
 		) );
+	}
+
+	/** «رسید»: پیام‌هایی که به دستگاه گیرنده رسیده‌اند (اپ صندوق را گرفت یا اعلان رسید) */
+	public static function mark_delivered( $user_id ) {
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare(
+			'UPDATE ' . self::messages_table() . ' SET delivered_at = NOW() WHERE recipient_id = %d AND delivered_at IS NULL',
+			absint( $user_id )
+		) );
+	}
+
+	/** وضعیت پیام برای فرستنده: sent | delivered | read */
+	public static function receipt( $m ) {
+		if ( ! empty( $m['is_read'] ) ) {
+			return 'read';
+		}
+		return ! empty( $m['delivered_at'] ) ? 'delivered' : 'sent';
+	}
+
+	/** ویرایش متن پیام (اجازه را فراخواننده بررسی می‌کند) */
+	public static function edit_message( $id, $body ) {
+		global $wpdb;
+		return $wpdb->query( $wpdb->prepare( 'UPDATE ' . self::messages_table() . ' SET body = %s, edited_at = NOW() WHERE id = %d', sanitize_textarea_field( $body ), absint( $id ) ) ); // phpcs:ignore
+	}
+
+	/** مهلت ویرایش پیام (ثانیه) */
+	public static function edit_window() {
+		return (int) apply_filters( 'hs_message_edit_window', DAY_IN_SECONDS );
 	}
 }

@@ -37,9 +37,48 @@ Future<Map?> pickClass(BuildContext context, WidgetRef ref, {String title = 'ک�
   );
 }
 
-/// ابزارهای معلم (مثل منوی پنل سایت)
-class TeacherTools extends ConsumerWidget {
-  const TeacherTools({super.key, this.onOpenTab});
+/// شبکه‌ی دکمه‌های ابزار
+class ToolGrid extends StatelessWidget {
+  const ToolGrid({super.key, required this.items, this.cols = 4});
+  final List<(String, IconData, Color, VoidCallback)> items;
+  final int cols;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: cols,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 0.86,
+      children: [
+        for (final it in items)
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              key: Key('tool_${it.$1}'),
+              borderRadius: BorderRadius.circular(16),
+              onTap: it.$4,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  CircleAvatar(radius: 20, backgroundColor: it.$3.withValues(alpha: 0.12), child: Icon(it.$2, color: it.$3, size: 22)),
+                  const SizedBox(height: 6),
+                  Text(it.$1, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontSize: 11.5, height: 1.3, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// ابزارهای کلاس (در زبانه‌ی «کلاس‌ها»)
+class ClassTools extends ConsumerWidget {
+  const ClassTools({super.key, this.onOpenTab});
   final void Function(int)? onOpenTab;
 
   @override
@@ -49,63 +88,55 @@ class TeacherTools extends ConsumerWidget {
       if (c != null && context.mounted) context.push(path(c), extra: '${c['title']}');
     }
 
-    final items = <(String, IconData, Color, VoidCallback)>[
-      ('کلاس‌ها', Icons.class_rounded, HsColors.blue, () => onOpenTab?.call(1)),
+    return ToolGrid(items: [
       ('افزودن دانش‌آموز', Icons.person_add_alt_1_rounded, const Color(0xFF0F9D8F), () => withClass((c) => '/class/${c['id']}')),
       ('حضور و غیاب', Icons.fact_check_rounded, HsColors.green, () => withClass((c) => '/class/${c['id']}?tab=1')),
       ('تشویق و امتیاز', Icons.stars_rounded, HsColors.orange, () => withClass((c) => '/class/${c['id']}')),
       ('ارزیابی و نمرات', Icons.grading_rounded, const Color(0xFFD9468F), () => withClass((c) => '/assessments/${c['id']}')),
       ('تکالیف', Icons.menu_book_rounded, HsColors.blue, () => withClass((c) => '/class/${c['id']}?tab=2')),
-      ('کتابخانه کاربرگ', Icons.collections_bookmark_rounded, HsColors.green, () => context.push('/worksheets')),
-      ('بودجه‌بندی', Icons.straighten_rounded, const Color(0xFF7C4DFF), () => withClass((c) => '/budget/${c['id']}')),
-      ('تقویم', Icons.calendar_month_rounded, HsColors.orangeDark, () => context.push('/calendar')),
-      ('ارتباط با والدین', Icons.forum_rounded, const Color(0xFFD9468F), () => onOpenTab?.call(2)),
-    ];
-    final site = <(String, String)>[
-      ('تکلیف‌ساز آنلاین', 'online-builder'),
-      ('دفتر تکالیف', 'notebook'),
-      ('استودیو محتوا', 'content-studio'),
-      ('گزارش پیشرفت', 'reports'),
-      ('ابزارهای کلاس', 'tools'),
-    ];
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      GridView.count(
-        crossAxisCount: 4,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.82,
-        children: [
-          for (final it in items)
-            Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                key: Key('tool_${it.$1}'),
-                borderRadius: BorderRadius.circular(16),
-                onTap: it.$4,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    CircleAvatar(radius: 20, backgroundColor: it.$3.withValues(alpha: 0.12), child: Icon(it.$2, color: it.$3, size: 22)),
-                    const SizedBox(height: 6),
-                    Text(it.$1, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontSize: 11.5, height: 1.3, fontWeight: FontWeight.w500)),
-                  ]),
-                ),
-              ),
-            ),
-        ],
-      ),
-      const SizedBox(height: 6),
-      Wrap(spacing: 6, runSpacing: 4, children: [
-        for (final s in site)
-          ActionChip(
-            avatar: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: Text('${s.$1} (سایت)', style: const TextStyle(fontSize: 12)),
-            onPressed: () => openUrl(context, '${AppConfig.site}/panel/${s.$2}/'),
-          ),
-      ]),
+      ('برنامه هفتگی', Icons.calendar_view_week_rounded, const Color(0xFF00838F), () => withClass((c) => '/timetable?class=${c['id']}')),
+      ('ارتباط با والدین', Icons.forum_rounded, const Color(0xFF7C4DFF), () => onOpenTab?.call(2)),
+      ('ابزارهای کلاس (سایت)', Icons.open_in_new_rounded, Colors.blueGrey, () => openUrl(context, '${AppConfig.site}/panel/tools/')),
+    ]);
+  }
+}
+
+/// ابزارهای داشبورد معلم
+class DashTools extends StatelessWidget {
+  const DashTools({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(builder: (context, ref, _) {
+      Future<void> withClass(String Function(Map c) path) async {
+        final c = await pickClass(context, ref);
+        if (c != null && context.mounted) context.push(path(c), extra: '${c['title']}');
+      }
+
+      return ToolGrid(items: [
+        ('برنامه هفتگی', Icons.calendar_view_week_rounded, const Color(0xFF00838F), () => context.push('/timetable')),
+        ('تقویم', Icons.calendar_month_rounded, HsColors.orangeDark, () => context.push('/calendar')),
+        ('بودجه‌بندی', Icons.straighten_rounded, const Color(0xFF7C4DFF), () => withClass((c) => '/budget/${c['id']}')),
+        ('کتابخانه کاربرگ', Icons.collections_bookmark_rounded, HsColors.green, () => context.push('/worksheets')),
+      ]);
+    });
+  }
+}
+
+/// ابزارهای سایت زیر زبانه‌ی تکالیف کلاس
+class SiteHomeworkTools extends StatelessWidget {
+  const SiteHomeworkTools({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const site = <(String, String)>[('تکلیف‌ساز آنلاین', 'online-builder'), ('استودیو محتوا', 'content-studio'), ('دفتر تکالیف', 'notebook'), ('ابزارهای کلاس', 'tools')];
+    return Wrap(spacing: 6, runSpacing: 4, children: [
+      for (final s in site)
+        ActionChip(
+          avatar: const Icon(Icons.open_in_new_rounded, size: 16),
+          label: Text(s.$1, style: const TextStyle(fontSize: 12)),
+          onPressed: () => openUrl(context, '${AppConfig.site}/panel/${s.$2}/'),
+        ),
     ]);
   }
 }
@@ -402,37 +433,129 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     }
   }
 
+  static const units = {'lesson': 'درس', 'chapter': 'فصل', 'page': 'صفحه', 'session': 'جلسه'};
+
+  /// منبع درسی تازه‌ی معلم (کتاب کار، کمک‌آموزشی…) — در فهرست شخصی او ذخیره می‌شود
+  Future<Map?> _newSource() async {
+    final name = TextEditingController();
+    final total = TextEditingController();
+    var unit = 'lesson';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => StatefulBuilder(
+        builder: (d, set) => AlertDialog(
+          title: const Text('منبع درسی تازه'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(key: const Key('src_name'), controller: name, autofocus: true, decoration: const InputDecoration(labelText: 'نام درس یا کتاب', hintText: 'مثلاً کتاب کار ریاضی')),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: TextField(controller: total, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'تعداد کل'))),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: unit,
+                  decoration: const InputDecoration(labelText: 'واحد'),
+                  items: [for (final e in units.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+                  onChanged: (v) => set(() => unit = v ?? unit),
+                ),
+              ),
+            ]),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('انصراف')),
+            FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(d, true), child: const Text('افزودن')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || name.text.trim().isEmpty) return null;
+    final src = {'name': name.text.trim(), 'unit': unit, 'total': int.tryParse(Fa.enDigits(total.text.trim())) ?? 0};
+    final mine = (((ref.read(getProvider(_path)).valueOrNull?.data as Map?)?['mine'] as List?) ?? const []).cast<Map>();
+    try {
+      await ref.read(apiProvider).post<Object?>('/me/budget-sources', data: {'sources': [...mine, src]});
+      ref.invalidate(getProvider(_path));
+    } on ApiException catch (e) {
+      if (mounted) showMessage(context, e.message, error: true);
+    }
+    return src;
+  }
+
   Future<void> _editRow([int? i]) async {
-    final row = i == null ? <String, dynamic>{'subject': '', 'planned': 20, 'done': 0} : Map<String, dynamic>.from(_rows[i]);
+    final row = i == null ? <String, dynamic>{'subject': '', 'planned': 20, 'done': 0, 'unit': 'lesson'} : Map<String, dynamic>.from(_rows[i]);
     final sub = TextEditingController(text: '${row['subject']}');
     final pl = TextEditingController(text: Fa.faDigits(row['planned']));
     final dn = TextEditingController(text: Fa.faDigits(row['done']));
-    final subjects = (((ref.read(getProvider(_path)).valueOrNull?.data as Map?)?['subjects'] as List?) ?? const []).map((e) => '$e').toList();
+    var unit = '${row['unit'] ?? 'lesson'}';
+    final d = (ref.read(getProvider(_path)).valueOrNull?.data as Map?) ?? const {};
+    final sugg = [...((d['suggestions'] as List?) ?? const []).cast<Map>(), ...((d['mine'] as List?) ?? const []).cast<Map>()];
+    final used = {for (final r in _rows) '${r['subject']}'};
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (c) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(c).viewInsets.bottom),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(i == null ? 'درس تازه' : 'ویرایش ${row['subject']}', style: Theme.of(c).textTheme.titleLarge),
-          const SizedBox(height: 10),
-          TextField(controller: sub, decoration: const InputDecoration(labelText: 'درس')),
-          if (i == null)
-            Wrap(spacing: 6, children: [for (final s in subjects) ActionChip(label: Text(s), onPressed: () => sub.text = s)]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: TextField(controller: pl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'کل جلسات/درس‌ها'))),
-            const SizedBox(width: 10),
-            Expanded(child: TextField(controller: dn, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'تدریس‌شده'))),
-          ]),
-          const SizedBox(height: 14),
-          Row(children: [
-            if (i != null) TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('حذف این درس', style: TextStyle(color: HsColors.red))),
-            const Spacer(),
-            FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(c, true), child: const Text('تأیید')),
-          ]),
-        ]),
+      builder: (c) => StatefulBuilder(
+        builder: (c, set) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(c).viewInsets.bottom),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text(i == null ? 'درس یا منبع تازه' : 'ویرایش ${row['subject']}', style: Theme.of(c).textTheme.titleLarge),
+              const SizedBox(height: 10),
+              TextField(key: const Key('budget_subject'), controller: sub, decoration: const InputDecoration(labelText: 'درس یا منبع')),
+              if (i == null) ...[
+                const SizedBox(height: 6),
+                Text(d['suggest_source'] == 'school' ? 'فهرست مدرسه و منابع شما:' : 'پیشنهاد برای پایه‌ی ${d['grade'] ?? ''} و منابع شما:', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                Wrap(spacing: 6, runSpacing: 4, children: [
+                  for (final x in sugg.where((x) => !used.contains('${x['name']}')))
+                    ActionChip(
+                      label: Text('${x['name']}'),
+                      onPressed: () => set(() {
+                        sub.text = '${x['name']}';
+                        unit = '${x['unit'] ?? 'lesson'}';
+                        if (((x['total'] as num?) ?? 0) > 0) pl.text = Fa.faDigits(x['total']);
+                      }),
+                    ),
+                  ActionChip(
+                    key: const Key('new_source'),
+                    avatar: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('منبع درسی تازه'),
+                    onPressed: () async {
+                      final x = await _newSource();
+                      if (x != null) {
+                        set(() {
+                          sub.text = '${x['name']}';
+                          unit = '${x['unit']}';
+                          if (((x['total'] as num?) ?? 0) > 0) pl.text = Fa.faDigits(x['total']);
+                        });
+                      }
+                    },
+                  ),
+                ]),
+              ],
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(child: TextField(controller: pl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'تعداد کل'))),
+                const SizedBox(width: 8),
+                Expanded(child: TextField(controller: dn, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'تدریس‌شده'))),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 96,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: units.containsKey(unit) ? unit : 'lesson',
+                    decoration: const InputDecoration(labelText: 'واحد'),
+                    items: [for (final e in units.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+                    onChanged: (v) => set(() => unit = v ?? unit),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                if (i != null) TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('حذف', style: TextStyle(color: HsColors.red))),
+                const Spacer(),
+                FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(c, true), child: const Text('تأیید')),
+              ]),
+            ]),
+          ),
+        ),
       ),
     );
     if (ok == null) return;
@@ -440,12 +563,21 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
       if (ok == false && i != null) {
         _rows.removeAt(i);
       } else if (ok == true && sub.text.trim().isNotEmpty) {
-        final n = {'subject': sub.text.trim(), 'planned': int.tryParse(Fa.enDigits(pl.text.trim())) ?? 0, 'done': int.tryParse(Fa.enDigits(dn.text.trim())) ?? 0};
+        final n = {'subject': sub.text.trim(), 'planned': int.tryParse(Fa.enDigits(pl.text.trim())) ?? 0, 'done': int.tryParse(Fa.enDigits(dn.text.trim())) ?? 0, 'unit': unit};
         if (i == null) {
           _rows.add(n);
         } else {
           _rows[i] = n;
         }
+      }
+    });
+  }
+
+  /// افزودن همه‌ی درس‌های پیشنهادی پایه (وقتی بودجه‌بندی خالی است)
+  void _fillDefaults(Map d) {
+    setState(() {
+      for (final x in ((d['suggestions'] as List?) ?? const []).cast<Map>()) {
+        _rows.add({'subject': '${x['name']}', 'planned': (x['total'] as num?)?.toInt() ?? 0, 'done': 0, 'unit': '${x['unit'] ?? 'lesson'}'});
       }
     });
   }
@@ -457,7 +589,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     final canEdit = d['can_edit'] == true;
     final expected = (d['expected'] as num?)?.toInt() ?? 0;
     if (res.hasValue && !_loaded) {
-      _rows = ((d['rows'] as List?) ?? const []).cast<Map>().map((m) => {'subject': m['subject'], 'planned': m['planned'], 'done': m['done']}).toList();
+      _rows = ((d['rows'] as List?) ?? const []).cast<Map>().map((m) => {'subject': m['subject'], 'planned': m['planned'], 'done': m['done'], 'unit': m['unit'] ?? 'lesson'}).toList();
       _loaded = true;
     }
     return Scaffold(
@@ -476,7 +608,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
             child: Text('تا امروز حدود ${Fa.faDigits(expected)}٪ سال تحصیلی گذشته است. پیشرفت هر درس با همین مقایسه می‌شود.', style: const TextStyle(color: Color(0xFF5B3CC4), height: 1.7)),
           ),
           const SizedBox(height: 10),
-          if (_rows.isEmpty) const EmptyView(icon: Icons.straighten_rounded, title: 'درسی ثبت نشده', text: 'با دکمه‌ی + درس‌ها و تعداد جلسات هر کدام را وارد کنید.'),
+          if (_rows.isEmpty) const EmptyView(icon: Icons.straighten_rounded, title: 'درسی ثبت نشده', text: 'با دکمه‌ی + درس‌ها و منابع را وارد کنید، یا درس‌های پیشنهادی همین پایه را یک‌جا اضافه کنید.'),
+          if (_rows.isEmpty && canEdit && ((d['suggestions'] as List?) ?? const []).isNotEmpty)
+            OutlinedButton.icon(key: const Key('budget_fill'), onPressed: () => _fillDefaults(d), icon: const Icon(Icons.playlist_add_rounded), label: Text('افزودن درس‌های پایه‌ی ${d['grade'] ?? ''}'.trim())),
           for (final (i, x) in _rows.indexed) BudgetRow(row: x, expected: expected, onTap: canEdit ? () => _editRow(i) : null),
         ]),
       ),
@@ -520,7 +654,7 @@ class BudgetRow extends StatelessWidget {
               ),
             ]),
             const SizedBox(height: 4),
-            Text('${Fa.faDigits(done)} از ${Fa.faDigits(planned)} (${Fa.faDigits(pct)}٪)', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            Text('${Fa.faDigits(done)} از ${Fa.faDigits(planned)} ${_BudgetScreenState.units[row['unit']] ?? 'درس'} (${Fa.faDigits(pct)}٪)', style: const TextStyle(fontSize: 12, color: Colors.black54)),
           ]),
         ),
       ),
@@ -926,6 +1060,87 @@ class _WorksheetsScreenState extends ConsumerState<WorksheetsScreen> {
             },
           ),
         ),
+      ]),
+    );
+  }
+}
+
+/* ============================== درس‌ها و منابع مدرسه (مدیر) ============================== */
+
+class SchoolSubjectsScreen extends ConsumerStatefulWidget {
+  const SchoolSubjectsScreen({super.key});
+  @override
+  ConsumerState<SchoolSubjectsScreen> createState() => _SchoolSubjectsScreenState();
+}
+
+class _SchoolSubjectsScreenState extends ConsumerState<SchoolSubjectsScreen> {
+  int _grade = 1;
+  List<Map<String, dynamic>> _list = [];
+  int? _loadedFor;
+  bool _busy = false;
+  static const grades = ['پیش‌دبستانی', 'اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم', 'هفتم', 'هشتم', 'نهم', 'دهم', 'یازدهم', 'دوازدهم'];
+
+  String get _path => '/school/budget-subjects?grade=$_grade';
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(apiProvider).post<Object?>('/school/budget-subjects', data: {'grade': _grade, 'subjects': _list});
+      ref.invalidate(getProvider(_path));
+      if (mounted) showMessage(context, 'فهرست پایه‌ی ${grades[_grade]} ذخیره شد ✅');
+    } on ApiException catch (e) {
+      if (mounted) showMessage(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _add() async {
+    final c = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('درس یا منبع تازه'),
+        content: TextField(controller: c, autofocus: true, decoration: const InputDecoration(labelText: 'نام')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('انصراف')),
+          FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(d, true), child: const Text('افزودن')),
+        ],
+      ),
+    );
+    if (ok == true && c.text.trim().isNotEmpty) setState(() => _list.add({'name': c.text.trim(), 'unit': 'lesson', 'total': 0}));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final res = ref.watch(getProvider(_path));
+    if (res.hasValue && _loadedFor != _grade) {
+      _list = (((res.value!.data as Map?)?['subjects'] as List?) ?? const []).cast<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      _loadedFor = _grade;
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('درس‌ها و منابع مدرسه')),
+      floatingActionButton: FloatingActionButton(backgroundColor: HsColors.orange, foregroundColor: Colors.white, onPressed: _add, child: const Icon(Icons.add_rounded)),
+      bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 10), child: FilledButton(onPressed: _busy ? null : _save, child: busyLabel(_busy, 'ذخیره برای پایه‌ی ${grades[_grade]}')))),
+      body: ListView(padding: const EdgeInsets.fromLTRB(14, 8, 14, 96), children: [
+        const Text('معلم‌های این مدرسه در بودجه‌بندی همین فهرست را برای هر پایه آماده می‌بینند و منابع خودشان را هم می‌توانند اضافه کنند.', style: TextStyle(color: Colors.black54, height: 1.7)),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<int>(
+          initialValue: _grade,
+          decoration: const InputDecoration(labelText: 'پایه'),
+          items: [for (final (i, g) in grades.indexed) DropdownMenuItem(value: i, child: Text(g))],
+          onChanged: (v) => setState(() => _grade = v ?? _grade),
+        ),
+        const SizedBox(height: 10),
+        if (res.isLoading) const LoadingView(),
+        for (final (i, x) in _list.indexed)
+          Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            child: ListTile(
+              title: Text('${x['name']}'),
+              trailing: IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => setState(() => _list.removeAt(i))),
+            ),
+          ),
       ]),
     );
   }

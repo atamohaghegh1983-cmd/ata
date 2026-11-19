@@ -10,6 +10,7 @@ import '../../core/widgets/date_pickers.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/ui.dart';
+import '../teach/teach_screens.dart' show SiteHomeworkTools;
 
 /// تکالیف کلاس (معلم: ساخت + علامت‌زدن وضعیت هر دانش‌آموز)
 class HomeworkTab extends ConsumerWidget {
@@ -48,6 +49,7 @@ class HomeworkTab extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 96),
               children: [
                 if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
+                if (canWrite) ...[const SiteHomeworkTools(), const SizedBox(height: 10)],
                 if (list.isEmpty) const EmptyView(icon: Icons.menu_book_rounded, title: 'هنوز تکلیفی نیست'),
                 for (final h in list)
                   Padding(

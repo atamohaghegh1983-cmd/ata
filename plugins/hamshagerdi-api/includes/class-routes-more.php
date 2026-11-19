@@ -380,6 +380,11 @@ class HS_API_Routes_More {
 		update_option( 'hs_api_cheers_db', '1', false );
 	}
 
+	/** سنجاق‌شده‌ها اول (مدیریت کلاس ۱.۷.۵+) */
+	private static function wall_order() {
+		return method_exists( 'HS_Portfolio_DB', 'set_pinned' ) ? 'is_pinned DESC, pinned_at DESC, id DESC' : 'id DESC';
+	}
+
 	private static function post_row( $p, $uid ) {
 		global $wpdb;
 		$n    = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::cheers_t() . ' WHERE item_id = %d', $p['id'] ) ); // phpcs:ignore
@@ -389,6 +394,7 @@ class HS_API_Routes_More {
 			'id' => (int) $p['id'], 'student_id' => (int) $p['student_id'], 'student' => $s ? self::short_name( $s ) : '', 'avatar' => HS_API_Util::avatar( (int) $p['student_id'], 96 ),
 			'class_id' => (int) $p['class_id'], 'title' => (string) $p['title'], 'text' => (string) $p['description'], 'type' => (string) $p['item_type'],
 			'image' => (string) $p['media_url'], 'on_wall' => 'approved' === $p['status'], 'cheers' => $n, 'cheered' => $mine, 'at' => $p['created_at'],
+			'pinned' => ! empty( $p['is_pinned'] ),
 		);
 	}
 
@@ -489,7 +495,7 @@ class HS_API_Routes_More {
 		$cid = (int) $r['id'];
 		if ( ! self::level( $cid ) || ! class_exists( 'HS_Portfolio_DB' ) ) { return self::forbid(); }
 		$uid  = get_current_user_id();
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . HS_Portfolio_DB::table() . " WHERE class_id = %d AND status = 'approved' ORDER BY id DESC LIMIT 60", $cid ), ARRAY_A ); // phpcs:ignore
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . HS_Portfolio_DB::table() .   " WHERE class_id = %d AND status = 'approved' ORDER BY " . self::wall_order() . ' LIMIT 60', $cid ), ARRAY_A ); // phpcs:ignore
 		return array_map( function ( $p ) use ( $uid ) { return self::post_row( $p, $uid ); }, (array) $rows );
 	}
 
@@ -499,7 +505,7 @@ class HS_API_Routes_More {
 		$cid = (int) $r['id'];
 		if ( ! in_array( self::level( $cid ), array( HS_API_Access::WRITE, HS_API_Access::SUPER ), true ) || ! class_exists( 'HS_Portfolio_DB' ) ) { return self::forbid(); }
 		$uid  = get_current_user_id();
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . HS_Portfolio_DB::table() . " WHERE class_id = %d AND status <> 'rejected' ORDER BY id DESC LIMIT 100", $cid ), ARRAY_A ); // phpcs:ignore
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . HS_Portfolio_DB::table() .   " WHERE class_id = %d AND status <> 'rejected' ORDER BY " . self::wall_order() . ' LIMIT 100', $cid ), ARRAY_A ); // phpcs:ignore
 		return array_map( function ( $p ) use ( $uid ) { return self::post_row( $p, $uid ); }, (array) $rows );
 	}
 

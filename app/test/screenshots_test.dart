@@ -31,6 +31,7 @@ import 'package:hamshagerdi/features/classes/import_screen.dart';
 import 'package:hamshagerdi/features/messages/messages_screens.dart';
 import 'package:hamshagerdi/features/parent/progress_screen.dart';
 import 'package:hamshagerdi/features/teach/teach_screens.dart';
+import 'package:hamshagerdi/features/timetable/timetable.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 final on = Platform.environment['HS_SHOTS'] == '1';
@@ -128,8 +129,10 @@ class FakeApi extends ApiClient {
           {'user_id': 8, 'name': 'رضا کریمی', 'label': 'والد علی کریمی', 'avatar': '', 'preview': 'ممنون', 'at': '2026-11-17', 'unread': false, 'unread_count': 0},
         ],
       '/messages/7' => {'partner': {'id': 7, 'name': 'مریم رضایی', 'label': 'والد سارا رضایی', 'avatar': ''}, 'can_reply': true, 'messages': [
-          {'id': 1, 'mine': false, 'body': 'سلام خانم احمدی، سارا امروز کمی تب داشت.', 'at': '2026-11-18', 'can_delete': true},
-          {'id': 2, 'mine': true, 'body': 'سلام، ممنون که خبر دادید. ان‌شاءالله زود خوب شود 🌷', 'at': '2026-11-18', 'can_delete': true},
+          {'id': 1, 'mine': false, 'body': 'سلام خانم احمدی، سارا امروز کمی تب داشت.', 'at': '2026-11-17 07:40:00', 'can_delete': true},
+          {'id': 2, 'mine': true, 'body': 'سلام، ممنون که خبر دادید. ان‌شاءالله زود خوب شود 🌷', 'at': '2026-11-17 08:05:00', 'can_delete': true, 'receipt': 'read', 'edited': true},
+          {'id': 3, 'mine': true, 'body': 'تکلیف امروز را برایش می‌فرستم.', 'at': '2026-11-19 10:15:00', 'can_delete': true, 'receipt': 'delivered'},
+          {'id': 4, 'mine': true, 'body': 'جلسه‌ی اولیا پنجشنبه است.', 'at': '2026-11-19 10:16:00', 'can_delete': true, 'receipt': 'sent'},
         ]},
       '/calendar' => {'events': [
           {'id': 1, 'title': 'امتحانات نوبت اول', 'date': '2026-12-21', 'end_date': '2027-01-08', 'type': 'academic', 'type_label': 'تقویم آموزشی', 'level_label': 'ابتدایی', 'class': '', 'can_delete': false},
@@ -150,6 +153,22 @@ class FakeApi extends ApiClient {
         ], 'grades': {'1': 'اول دبستان', '3': 'سوم دبستان'}, 'subjects': {'math': 'ریاضی', 'farsi': 'فارسی'}, 'classes': [{'id': 9, 'title': 'کلاس سوم الف'}]},
       _ when path.startsWith('/children/5/progress') => {'classes': [{'class_id': 9, 'class': 'کلاس سوم الف', 'attendance': {'present': 18, 'absent': 1, 'late': 1, 'excused': 0, 'rate': 95}, 'points_month': 14, 'points_total': 41, 'homework': {'done': 7, 'total': 9},
           'assessments': [{'title': 'املای هفته‌ی دوم', 'subject': 'فارسی', 'value': 'خیلی خوب', 'color': '#10B981', 'comment': 'آفرین'}], 'practice': 3}]},
+      '/me/timetable' || '/classes/9/timetable' => {'mode': 'teacher', 'can_edit': true, 'class': 'کلاس سوم الف',
+          'bells': {'days': 5, 'periods': 4, 'source': 'default', 'day_names': ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه'], 'slots': [
+            {'type': 'class', 'start': '07:45', 'end': '08:30', 'period': 1}, {'type': 'class', 'start': '08:35', 'end': '09:20', 'period': 2},
+            {'type': 'break', 'start': '09:20', 'end': '09:40', 'period': 0},
+            {'type': 'class', 'start': '09:40', 'end': '10:25', 'period': 3}, {'type': 'class', 'start': '10:30', 'end': '11:15', 'period': 4}]},
+          'cells': [
+            {'day': 0, 'period': 1, 'subject': 'ریاضی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 0, 'period': 2, 'subject': 'فارسی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'},
+            {'day': 1, 'period': 1, 'subject': 'علوم تجربی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 2, 'period': 3, 'subject': 'زبان انگلیسی', 'teacher': 'آقای صادقی', 'class': 'سوم ب'},
+            {'day': 3, 'period': 1, 'subject': 'هدیه‌های آسمان', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 4, 'period': 2, 'subject': 'هنر', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'},
+            {'day': 3, 'period': 4, 'subject': 'تربیت‌بدنی', 'teacher': 'آقای کریمی', 'class': 'سوم الف'}],
+          'teachers': [{'id': 2, 'name': 'زهرا احمدی'}],
+          'score': {'score': 87, 'checks': [{'label': 'بدون تداخل زمانی معلم', 'ok': true, 'detail': ''}, {'label': 'همه‌ی زنگ‌ها درس دارند', 'ok': false, 'detail': '۱۳ زنگ خالی'}, {'label': 'تعادل دروس در هر روز', 'ok': true, 'detail': ''}, {'label': 'استراحت کافی معلم‌ها', 'ok': true, 'detail': ''}]}},
+      _ when path.startsWith('/teacher/feed') => {'announcements': [{'id': 1, 'class_id': 9, 'class': 'کلاس سوم الف', 'title': 'جلسه‌ی اولیا', 'body': 'پنجشنبه ساعت ۱۰ در نمازخانه.', 'state': 'active', 'show_until': '2026-11-26', 'can_edit': true, 'created_at': '2026-11-18'}],
+          'wall': [{'id': 1, 'class_id': 9, 'title': 'نقاشی پاییز', 'student': 'سارا رضایی', 'image': '', 'pinned': true}, {'id': 2, 'class_id': 9, 'title': 'کاردستی', 'student': 'علی کریمی', 'image': '', 'pinned': false}]},
+      _ when path.startsWith('/calendar?') => {'events': [{'date': '2026-11-24', 'title': 'تعطیل رسمی', 'holiday': true}, {'date': '2026-11-26', 'title': 'جلسه‌ی اولیا', 'holiday': false}],
+          'tasks': [{'date': '2026-11-23', 'kind': 'hw', 'title': 'تمرین ریاضی', 'class': 'سوم الف', 'class_id': 9}, {'date': '2026-11-30', 'kind': 'assess', 'title': 'املا', 'class': 'سوم الف', 'class_id': 9}]},
       _ when path.startsWith('/messages') => <Object>[],
       _ => <String, Object>{},
     };
@@ -178,7 +197,7 @@ Future<void> loadFonts() async {
 }
 
 void main() {
-  Future<void> shot(WidgetTester t, String name, Widget screen, {bool onboarding = false, bool teacher = false, int tab = -1}) async {
+  Future<void> shot(WidgetTester t, String name, Widget screen, {bool onboarding = false, bool teacher = false, int tab = -1, Key? tapKey}) async {
     t.view.physicalSize = const Size(1080, 2340);
     t.view.devicePixelRatio = 2.625;
     addTearDown(t.view.reset);
@@ -203,6 +222,10 @@ void main() {
     if (tab >= 0) {
       await t.tap(find.byType(Tab).at(tab));
       await t.pumpAndSettle();
+    }
+    if (tapKey != null) {
+      await t.tap(find.byTooltip('جدول هفته'));
+      await t.pump(const Duration(milliseconds: 300));
     }
     if (onboarding) {
       await t.tap(find.byKey(const Key('role_parent')));
@@ -238,5 +261,8 @@ void main() {
   testWidgets('budget', (t) => shot(t, '26-budget', const BudgetScreen(classId: 9), teacher: true), skip: !on);
   testWidgets('worksheets', (t) => shot(t, '27-worksheets', const WorksheetsScreen(), teacher: true), skip: !on);
   testWidgets('progress', (t) => shot(t, '28-progress', const ChildProgressScreen(childId: 5, name: 'سارا')), skip: !on);
+  testWidgets('timetable-day', (t) => shot(t, '29-timetable-day', const TimetableScreen(), teacher: true), skip: !on);
+  testWidgets('timetable-week', (t) => shot(t, '30-timetable-week', const TimetableScreen(classId: 9), teacher: true, tapKey: const Key('grid')), skip: !on);
+  testWidgets('bells', (t) => shot(t, '31-bells', const BellsScreen(classId: 9, title: 'سوم الف'), teacher: true), skip: !on);
   testWidgets('magazine', (t) => shot(t, '10-magazine', const Scaffold(body: MagazineView(showMineFilter: true))), skip: !on);
 }

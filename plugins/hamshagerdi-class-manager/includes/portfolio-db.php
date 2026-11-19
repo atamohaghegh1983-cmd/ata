@@ -31,6 +31,8 @@ class HS_Portfolio_DB {
 			media_url varchar(500) DEFAULT NULL,
 			media_id bigint(20) unsigned DEFAULT NULL,
 			status varchar(20) NOT NULL DEFAULT 'approved',
+			is_pinned tinyint(1) NOT NULL DEFAULT 0,
+			pinned_at datetime DEFAULT NULL,
 			created_by bigint(20) unsigned DEFAULT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
@@ -99,6 +101,12 @@ class HS_Portfolio_DB {
 		);
 	}
 
+	/** سنجاق کردن پست روی دیوار کلاس */
+	public static function set_pinned( $id, $on ) {
+		global $wpdb;
+		return $wpdb->update( self::table(), array( 'is_pinned' => $on ? 1 : 0, 'pinned_at' => $on ? current_time( 'mysql' ) : null ), array( 'id' => absint( $id ) ) );
+	}
+
 	public static function delete( $id ) {
 		global $wpdb;
 		return $wpdb->delete( self::table(), array( 'id' => absint( $id ) ), array( '%d' ) );
@@ -134,7 +142,7 @@ class HS_Portfolio_DB {
 		$limit = isset( $args['limit'] ) ? absint( $args['limit'] ) : 60;
 
 		return $wpdb->get_results(
-			"SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC LIMIT {$limit}",
+			"SELECT * FROM {$table} WHERE {$where} ORDER BY is_pinned DESC, pinned_at DESC, created_at DESC LIMIT {$limit}",
 			ARRAY_A
 		);
 	}

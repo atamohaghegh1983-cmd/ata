@@ -139,6 +139,13 @@ class HS_Setup_Pages {
 				'parent'   => 'panel',
 			),
 			// صفحه‌های «پنل والدین» و «گروه والدین» را افزونه‌ی جداگانه‌ی «پنل والدین» می‌سازد
+			'timetable' => array(
+				'title'    => 'برنامه هفتگی کلاس',
+				'slug'     => 'timetable',
+				'content'  => '[hamshagerdi_timetable]',
+				'template' => '',
+				'parent'   => 'panel',
+			),
 			'budget' => array(
 				'title'    => 'بودجه‌بندی کلاس',
 				'slug'     => 'budget',

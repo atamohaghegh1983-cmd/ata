@@ -1015,9 +1015,13 @@ window.hsEsc = function (v) {
         $body.empty();
         (res.data.messages || []).forEach(function (m) {
           const cls = m.is_mine ? 'mine' : 'theirs';
+          // تیک مثل واتساپ: ✓ ارسال، ✓✓ رسید، ✓✓ سبز خوانده شد
+          const tick = !m.is_mine ? '' : (m.receipt === 'read'
+            ? ' <b style="color:#16a34a">✓✓</b>'
+            : (m.receipt === 'delivered' ? ' <b style="color:#94a3b8">✓✓</b>' : ' <b style="color:#94a3b8">✓</b>'));
           $body.append(
             '<div class="hs-msg-bubble ' + cls + '">' + msgBodyHtml(m) +
-            '<time>' + hsEsc(m.created_at) + '</time></div>'
+            '<time title="' + hsEsc(m.created_at) + '">' + (m.edited ? 'ویرایش‌شده · ' : '') + hsEsc(m.time || m.created_at) + tick + '</time></div>'
           );
         });
         $body.scrollTop($body[0].scrollHeight);

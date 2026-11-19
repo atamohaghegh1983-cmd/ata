@@ -30,7 +30,7 @@ class Push {
       // ignore: deprecated_member_use
       final token = await m.getToken();
       if (token != null) {
-        await api.post<Object?>('/devices', data: {'token': token, 'platform': 'android', 'provider': 'fcm', 'app_version': '0.5.0'});
+        await api.post<Object?>('/devices', data: {'token': token, 'platform': 'android', 'provider': 'fcm', 'app_version': '0.6.0'});
       }
       // ignore: deprecated_member_use
       m.onTokenRefresh.listen((t) => api.post<Object?>('/devices', data: {'token': t, 'platform': 'android', 'provider': 'fcm'}).catchError((_) => null));

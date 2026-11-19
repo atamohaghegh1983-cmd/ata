@@ -5,7 +5,14 @@ import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/ui.dart';
-import '../teach/teach_screens.dart' show BudgetRow, EventTile;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/providers.dart';
+import '../classes/class_screen.dart' show AnnouncementCard;
+import '../portfolio/portfolio.dart' show wallTitle;
+import '../teach/teach_screens.dart' show BudgetRow, DashTools, pickClass;
+import '../timetable/timetable.dart' show TodayTimetableCard;
+import 'month_calendar.dart';
 
 /// بدنه‌ی داشبورد معلم مثل سایت: انتخاب کلاس (اگر چند کلاس)، آمار، حضور این ماه، برترین‌ها، تکالیف پیش‌رو، بودجه‌بندی، مناسبت‌ها
 class _TeacherPanelState extends State<TeacherPanelBody> {
@@ -20,7 +27,6 @@ class _TeacherPanelState extends State<TeacherPanelBody> {
     final month = ((c ?? t)['month'] as Map?) ?? const {};
     final top = (((c ?? t)['top'] as List?) ?? const []).cast<Map>();
     final upcoming = (((c ?? t)['upcoming'] as List?) ?? const []).cast<Map>();
-    final events = ((t['events'] as List?) ?? const []).cast<Map>();
     final notRec = c == null ? ((tot['not_recorded'] as num?)?.toInt() ?? 0) : (c['recorded_today'] == true ? 0 : 1);
     final students = c == null ? tot['students'] : c['students'];
     final openHw = c == null ? tot['open_homework'] : c['open_homework'];
@@ -49,6 +55,14 @@ class _TeacherPanelState extends State<TeacherPanelBody> {
         StatTile('حضور این ماه', month['rate'] == null ? '—' : '${Fa.faDigits(month['rate'])}٪', Icons.fact_check_rounded, HsColors.blue, raw: true, sub: 'حاضر + با تأخیر'),
         StatTile('پیام خوانده‌نشده', '${widget.unread}', Icons.forum_rounded, const Color(0xFFD9468F), sub: '${Fa.faDigits(openHw ?? 0)} تکلیف باز', onTap: () => widget.onOpenTab?.call(2)),
       ]),
+      const SizedBox(height: 12),
+      const DashTools(),
+      const SizedBox(height: 12),
+      const TodayTimetableCard(),
+      const SizedBox(height: 12),
+      const MonthCalendarCard(),
+      const SizedBox(height: 12),
+      TeacherFeed(classId: _cid, classes: classes),
       const SizedBox(height: 12),
       SectionCard(
         title: 'وضعیت حضور این ماه',
@@ -116,21 +130,6 @@ class _TeacherPanelState extends State<TeacherPanelBody> {
                   for (final r in (((b['budget'] as Map)['rows'] as List?) ?? const []).cast<Map>().take(4))
                     BudgetRow(row: r, expected: ((b['budget'] as Map)['expected'] as num?)?.toInt() ?? 0),
                 ],
-              ]),
-      ),
-      const SizedBox(height: 12),
-      SectionCard(
-        title: 'مناسبت‌ها و تقویم پیش‌رو',
-        icon: Icons.calendar_month_rounded,
-        trailing: TextButton(onPressed: () => context.push('/calendar'), child: const Text('همه ←')),
-        child: events.isEmpty
-            ? const Text('رویدادی ثبت نشده است.', style: TextStyle(color: Colors.black45))
-            : Column(children: [
-                for (final e in events)
-                  Row(children: [
-                    SizedBox(width: 70, child: Text(Fa.date('${e['date']}', withYear: false), style: const TextStyle(fontSize: 12, color: Colors.black54))),
-                    Expanded(child: EventTile(e: e)),
-                  ]),
               ]),
       ),
       const SizedBox(height: 12),
@@ -324,6 +323,7 @@ class ParentChildCard extends StatelessWidget {
       if (!locked('homework')) ('تکالیف', Icons.menu_book_rounded, HsColors.blue, '/children/$id'),
       ('گزارش پیشرفت', Icons.insights_rounded, const Color(0xFF0F9D8F), '/progress/$id'),
       if (!locked('attendance')) ('حضور', Icons.fact_check_rounded, HsColors.green, '/children/$id'),
+      ('برنامه هفتگی', Icons.calendar_view_week_rounded, const Color(0xFF00838F), '/timetable?child=$id'),
       ('تقویم', Icons.calendar_month_rounded, HsColors.orangeDark, '/calendar?child=$id'),
       if (c0 != null && (c0['teacher_id'] ?? 0) != 0) ('پیام به معلم', Icons.forum_rounded, const Color(0xFFD9468F), '/messages/${c0['teacher_id']}'),
       ('دیوار همشاگردی', Icons.photo_album_rounded, const Color(0xFF7C4DFF), '/portfolio/$id'),
@@ -433,4 +433,84 @@ class ParentChildCard extends StatelessWidget {
           ]),
         ),
       );
+}
+
+/// داشبورد معلم: اطلاعیه‌ها و دیوار کلاس (همه‌ی کلاس‌ها یا کلاس انتخاب‌شده)
+class TeacherFeed extends ConsumerWidget {
+  const TeacherFeed({super.key, this.classId, required this.classes});
+  final int? classId;
+  final List<Map> classes;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final path = classId == null ? '/teacher/feed' : '/teacher/feed?class_id=$classId';
+    final d = (ref.watch(getProvider(path)).valueOrNull?.data as Map?) ?? const {};
+    final anns = ((d['announcements'] as List?) ?? const []).cast<Map>().where((a) => a['state'] != 'archived').toList();
+    final wall = ((d['wall'] as List?) ?? const []).cast<Map>();
+    Future<void> go(int tab) async {
+      final c = classId != null ? classes.firstWhere((x) => x['id'] == classId) : await pickClass(context, ref);
+      if (c != null && context.mounted) {
+        await context.push('/class/${c['id']}?tab=$tab');
+        ref.invalidate(getProvider(path));
+      }
+    }
+
+    final one = classId != null ? classes.where((x) => x['id'] == classId).firstOrNull : null;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SectionCard(
+        title: 'اطلاعیه‌ها',
+        icon: Icons.campaign_rounded,
+        trailing: TextButton.icon(key: const Key('dash_new_ann'), onPressed: () => go(3), icon: const Icon(Icons.add_rounded, size: 18), label: const Text('اطلاعیه‌ی تازه')),
+        child: anns.isEmpty
+            ? const Text('اطلاعیه‌ی فعالی نیست.', style: TextStyle(color: Colors.black45))
+            : Column(children: [
+                for (final a in anns.take(3))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      if (classId == null) Text('${a['class']}', style: const TextStyle(color: HsColors.orangeDark, fontSize: 12, fontWeight: FontWeight.w700)),
+                      AnnouncementCard(a: a, onChanged: () => ref.invalidate(getProvider(path))),
+                    ]),
+                  ),
+              ]),
+      ),
+      const SizedBox(height: 12),
+      SectionCard(
+        title: one != null ? wallTitle('${one['title']}') : 'دیوار کلاس‌ها',
+        icon: Icons.photo_album_rounded,
+        trailing: TextButton(onPressed: () => go(4), child: const Text('همه ←')),
+        child: wall.isEmpty
+            ? const Text('هنوز پستی روی دیوار نیست.', style: TextStyle(color: Colors.black45))
+            : SizedBox(
+                height: 150,
+                child: ListView(scrollDirection: Axis.horizontal, children: [
+                  for (final p in wall)
+                    GestureDetector(
+                      onTap: () => context.push('/class/${p['class_id']}?tab=4'),
+                      child: Container(
+                        width: 130,
+                        margin: const EdgeInsetsDirectional.only(end: 8),
+                        decoration: BoxDecoration(color: const Color(0xFFFFF8F2), borderRadius: BorderRadius.circular(14), border: p['pinned'] == true ? Border.all(color: HsColors.orange, width: 2) : null),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          Expanded(
+                            child: '${p['image'] ?? ''}'.isNotEmpty
+                                ? Image.network('${p['image']}', fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.image_rounded, color: Colors.black26))
+                                : const Icon(Icons.brush_rounded, size: 36, color: HsColors.orange),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('${p['pinned'] == true ? '📌 ' : ''}${p['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                              Text('${p['student']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                            ]),
+                          ),
+                        ]),
+                      ),
+                    ),
+                ]),
+              ),
+      ),
+    ]);
+  }
 }

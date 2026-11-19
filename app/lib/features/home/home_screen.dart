@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../core/update_check.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
@@ -25,6 +26,7 @@ import '../magazine/magazine.dart';
 import '../messages/messages_screens.dart';
 import '../parent/parent_home.dart';
 import '../student/student_screens.dart';
+import '../teach/teach_screens.dart' show ClassTools;
 
 /// خانه با نوار پایین؛ زبانه‌ها بر اساس نقش
 class HomeScreen extends ConsumerStatefulWidget {
@@ -44,6 +46,14 @@ class _Tab {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _i = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) UpdateCheck.run(context, ref.read(apiProvider));
+    });
+  }
+
   void _go(int i) => setState(() => _i = i);
 
   List<_Tab> _tabs(Me me) {
@@ -52,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 'teacher':
         return [
           _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد', DashboardView(kind: 'teacher', onOpenTab: _go)),
-          const _Tab('کلاس‌ها', Icons.class_rounded, 'کلاس‌های من', _ClassList(student: false)),
+          _Tab('کلاس‌ها', Icons.class_rounded, 'کلاس‌های من', _ClassList(student: false, onOpenTab: _go)),
           msgs,
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
         ];
@@ -263,8 +273,9 @@ class _Menu extends ConsumerWidget {
 
 /// فهرست کلاس‌ها (معلم: مدیریت کلاس؛ دانش‌آموز: تکالیف و اطلاعیه‌ها)
 class _ClassList extends ConsumerWidget {
-  const _ClassList({required this.student});
+  const _ClassList({required this.student, this.onOpenTab});
   final bool student;
+  final void Function(int)? onOpenTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -280,6 +291,7 @@ class _ClassList extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
             children: [
+              if (!student && items.isNotEmpty) ...[ClassTools(onOpenTab: onOpenTab), const SizedBox(height: 14)],
               if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
               if (items.isEmpty && student) const EmptyView(icon: Icons.class_rounded, title: 'هنوز در کلاسی نیستید'),
               if (items.isEmpty && !student) ...[

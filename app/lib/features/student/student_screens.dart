@@ -12,6 +12,7 @@ import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/attachments.dart';
+import '../timetable/timetable.dart' show TodayTimetableCard;
 import '../../core/widgets/ui.dart';
 import '../auth/auth_controller.dart';
 
@@ -58,6 +59,7 @@ class StudentHome extends ConsumerWidget {
                   ]),
                 ),
                 const SizedBox(height: 12),
+                if (c == classes.first) ...[const TodayTimetableCard(), const SizedBox(height: 12)],
                 SectionCard(
                   title: 'تکالیف من',
                   icon: Icons.menu_book_rounded,

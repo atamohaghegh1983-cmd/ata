@@ -75,6 +75,7 @@ class HS_API_Routes_Dashboard {
 	public static function dashboard() {
 		$uid   = get_current_user_id();
 		$view  = HS_API_Access::view( $uid );
+		if ( class_exists( 'HS_Comms_DB' ) && method_exists( 'HS_Comms_DB', 'mark_delivered' ) ) { HS_Comms_DB::mark_delivered( $uid ); }
 		$out   = array(
 			'role'            => $view,
 			'date'            => HS_API_Util::today(),

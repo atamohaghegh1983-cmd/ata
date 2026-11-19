@@ -57,15 +57,11 @@ class DashboardView extends ConsumerWidget {
     final classes = ((t['classes'] as List?) ?? const []).cast<Map>();
     if (classes.isEmpty) {
       return [
-        TeacherTools(onOpenTab: onOpenTab),
-        const SizedBox(height: 12),
         const EmptyView(icon: Icons.dashboard_rounded, title: 'هنوز کلاسی ندارید', text: 'اولین کلاس را بسازید تا داشبورد پر شود.'),
         FilledButton.icon(onPressed: () => context.push('/class/new'), icon: const Icon(Icons.add_rounded), label: const Text('ساخت کلاس')),
       ];
     }
     return [
-      TeacherTools(onOpenTab: onOpenTab),
-      const SizedBox(height: 12),
       TeacherPanelBody(t: t, unread: unread, onOpenTab: onOpenTab),
     ];
   }
@@ -150,6 +146,25 @@ class DashboardView extends ConsumerWidget {
       const SizedBox(height: 6),
       Wrap(spacing: 6, runSpacing: 6, children: [
         ActionChip(avatar: const Icon(Icons.calendar_month_rounded, size: 18), label: const Text('تقویم آموزشی و مناسبتی'), onPressed: () => context.push('/calendar')),
+        ActionChip(
+          key: const Key('mgr_timetable'),
+          avatar: const Icon(Icons.calendar_view_week_rounded, size: 18),
+          label: const Text('برنامه هفتگی کلاس‌ها'),
+          onPressed: () async {
+            final c = await showModalBottomSheet<Map>(
+              context: context,
+              showDragHandle: true,
+              builder: (b) => SafeArea(
+                child: ListView(shrinkWrap: true, children: [
+                  for (final c in classes) ListTile(leading: const Icon(Icons.class_rounded, color: HsColors.blue), title: Text('${c['title']}'), subtitle: Text('${c['teacher'] ?? ''}'), onTap: () => Navigator.pop(b, c)),
+                ]),
+              ),
+            );
+            if (c != null && context.mounted) context.push('/timetable?class=${c['id']}', extra: '${c['title']}');
+          },
+        ),
+        ActionChip(avatar: const Icon(Icons.schedule_rounded, size: 18), label: const Text('زنگ‌بندی مدرسه'), onPressed: () => context.push('/bells?school=1')),
+        ActionChip(avatar: const Icon(Icons.library_books_rounded, size: 18), label: const Text('درس‌ها و منابع مدرسه'), onPressed: () => context.push('/school/subjects')),
         ActionChip(avatar: const Icon(Icons.badge_rounded, size: 18), label: const Text('کادر مدرسه'), onPressed: () => onOpenTab?.call(2)),
         ActionChip(avatar: const Icon(Icons.edit_rounded, size: 18), label: const Text('اطلاعات مدرسه'), onPressed: () => context.push('/school/form')),
       ]),

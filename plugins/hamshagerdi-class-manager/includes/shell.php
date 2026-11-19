@@ -12,7 +12,7 @@ class HS_Shell {
 	const PANEL_SLUGS = array(
 		'panel', 'attendance', 'classes', 'points', 'messages', 'assessment', 'reports', 'homework', 'portfolio',
 		'tools', 'worksheets', 'online-builder', 'online-hw', 'notebook', 'content-studio', 'student', 'parent',
-		'parent-chat', 'calendar', 'budget', 'weekly',
+		'parent-chat', 'calendar', 'budget', 'weekly', 'timetable',
 	);
 
 	public static function init() {
@@ -220,6 +220,7 @@ class HS_Shell {
 					array( '', $root ),
 					array( 'مدیریت کلاس', array(
 						array( 'classes', 'کلاس‌ها', '🏫', 'blue' ),
+						array( 'timetable', 'برنامه هفتگی کلاس', '🗓️', 'teal' ),
 						array( 'attendance', 'حضور و غیاب', '✅', 'green' ),
 						array( 'points', 'تشویق و امتیاز', '⭐', 'orange' ),
 						array( 'assessment', 'ارزیابی و نمرات', '📝', 'pink' ),
@@ -248,6 +249,7 @@ class HS_Shell {
 					array( '', $root ),
 					array( 'مدیریت مدرسه', array(
 						array( 'classes', 'کلاس‌های مدرسه', '🏫', 'blue' ),
+						array( 'timetable', 'برنامه هفتگی', '🗓️', 'teal' ),
 						array( 'calendar', 'تقویم مناسبتی', '📅', 'orange' ),
 					) ),
 				);
@@ -256,6 +258,7 @@ class HS_Shell {
 					array( '', $root ),
 					// «پنل والدین» و «گروه والدین» را افزونه‌ی «پنل والدین» با فیلتر hs_shell_menu اضافه می‌کند
 					array( 'فرزندان من', array(
+						array( 'timetable', 'برنامه هفتگی کلاس', '🗓️', 'teal' ),
 						array( 'calendar', 'تقویم مناسبتی', '📅', 'orange' ),
 					) ),
 				);
@@ -265,6 +268,7 @@ class HS_Shell {
 					array( 'یادگیری', array(
 						array( 'student', 'دنیای من', '🎮', 'violet' ),
 						array( 'online-hw', 'تکلیف آنلاین', '📝', 'pink' ),
+						array( 'timetable', 'برنامه هفتگی', '🗓️', 'teal' ),
 						array( 'calendar', 'تقویم مناسبتی', '📅', 'orange' ),
 					) ),
 				);

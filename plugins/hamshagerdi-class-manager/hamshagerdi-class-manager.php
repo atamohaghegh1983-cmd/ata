@@ -2,7 +2,7 @@
 /**
  * Plugin Name: مدیریت کلاس
  * Description: مدیریت کلاس و پرونده دانش‌آموز، حضور، امتیاز، ارتباط، ارزیابی، گزارش، تکالیف، پورتفولیو و ابزارها
- * Version:     1.7.4
+ * Version:     1.7.5
  * Text Domain: hamshagerdi-class
  * Requires at least: 5.8
  * Requires PHP: 7.4
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HS_CLASS_VERSION', '1.7.4' );
+define( 'HS_CLASS_VERSION', '1.7.5' );
 define( 'HS_CLASS_FILE', __FILE__ );
 define( 'HS_CLASS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'HS_CLASS_URL', plugin_dir_url( __FILE__ ) );
@@ -46,7 +46,7 @@ $hs_includes = array(
 	'calendar-db.php',
 	'calendar-reminders.php',
 	'calendar-frontend.php',
-	'budget.php', 'avatar.php',
+	'budget.php', 'avatar.php', 'timetable.php',
 	'hubs.php', 'shell.php', 'guest-bg.php', 'guest-landing.php', 'dashboard.php',
 	'setup-pages.php',
 );
@@ -75,6 +75,9 @@ function hs_class_install_tables() {
 	}
 	if ( class_exists( 'HS_Calendar_DB' ) ) {
 		HS_Calendar_DB::create_table();
+	}
+	if ( class_exists( 'HS_Timetable' ) ) {
+		HS_Timetable::create_table();
 	}
 }
 

@@ -217,6 +217,9 @@ class HS_Comms_Handlers {
 				'media_url'  => isset( $m['media_url'] ) ? (string) $m['media_url'] : '',
 				'is_mine'    => (int) $m['sender_id'] === $me,
 				'created_at' => $m['created_at'],
+				'time'       => HS_Timetable::fa( substr( (string) $m['created_at'], 11, 5 ) ),
+				'receipt'    => HS_Comms_DB::receipt( $m ),
+				'edited'     => ! empty( $m['edited_at'] ),
 			);
 		}
 

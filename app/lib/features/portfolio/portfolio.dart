@@ -151,13 +151,15 @@ class PostCard extends ConsumerWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ListTile(
           leading: HsAvatar(name: '${p['student']}', url: '${p['avatar'] ?? ''}', size: 38),
-          title: Text('${p['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          title: Text('${p['pinned'] == true ? '📌 ' : ''}${p['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${p['student']}  •  ${Fa.date('${p['at'] ?? ''}', withYear: false)}'),
           trailing: PopupMenuButton<String>(
             onSelected: (v) async {
               try {
                 if (v == 'wall') {
                   await api.post<Object?>('/portfolio/${p['id']}/wall', data: {'on': p['on_wall'] != true});
+                } else if (v == 'pin') {
+                  await api.post<Object?>('/portfolio/${p['id']}/pin', data: {'on': p['pinned'] != true});
                 } else if (v == 'delete') {
                   if (!await confirmDanger(context, title: 'حذف پست', text: 'این پست پاک می‌شود.')) return;
                   await api.delete<Object?>('/portfolio/${p['id']}');
@@ -168,6 +170,7 @@ class PostCard extends ConsumerWidget {
               }
             },
             itemBuilder: (_) => [
+              if (teacher) PopupMenuItem(value: 'pin', child: Text(p['pinned'] == true ? 'برداشتن سنجاق' : '📌 سنجاق بالای دیوار کلاس')),
               if (teacher) PopupMenuItem(value: 'wall', child: Text(p['on_wall'] == true ? 'برداشتن از دیوار کلاس' : 'گذاشتن روی دیوار کلاس')),
               const PopupMenuItem(value: 'delete', child: Text('حذف', style: TextStyle(color: HsColors.red))),
             ],

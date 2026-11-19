@@ -131,6 +131,8 @@ class _StudentsTab extends ConsumerWidget {
           data: (r) {
             final list = ((r.data as List?) ?? const []).cast<Map>();
             final unlinked = list.where((s) => (s['parents'] ?? 0) == 0).length;
+            final view = ref.watch(studentsViewProvider(classId));
+            final sort = '${(ref.watch(classProvider(classId)).valueOrNull?.data as Map?)?['sort'] ?? 'first'}';
             return ListView(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 96),
               children: [
@@ -144,6 +146,55 @@ class _StudentsTab extends ConsumerWidget {
                         style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.7)),
                   ),
                 if (list.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(children: [
+                      SegmentedButton<String>(
+                        style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(value: 'grid', icon: Icon(Icons.grid_view_rounded, size: 18), tooltip: 'شبکه‌ای'),
+                          ButtonSegment(value: 'list', icon: Icon(Icons.view_list_rounded, size: 18), tooltip: 'ستونی'),
+                        ],
+                        selected: {view},
+                        onSelectionChanged: (v) => ref.read(studentsViewProvider(classId).notifier).set(v.first),
+                      ),
+                      const Spacer(),
+                      if (canWrite)
+                        PopupMenuButton<String>(
+                          key: const Key('students_sort'),
+                          tooltip: 'مرتب‌سازی',
+                          onSelected: (m) => _sort(context, ref, m, list),
+                          itemBuilder: (_) => [
+                            CheckedPopupMenuItem(value: 'first', checked: sort == 'first', child: const Text('الفبایی بر اساس نام')),
+                            CheckedPopupMenuItem(value: 'last', checked: sort == 'last', child: const Text('الفبایی بر اساس نام خانوادگی')),
+                            CheckedPopupMenuItem(value: 'custom', checked: sort == 'custom', child: const Text('ترتیب دلخواه…')),
+                          ],
+                          child: Chip(
+                            avatar: const Icon(Icons.sort_rounded, size: 18),
+                            label: Text(switch (sort) { 'last' => 'نام خانوادگی', 'custom' => 'دلخواه', _ => 'نام' }, style: const TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                    ]),
+                  ),
+                if (list.isNotEmpty && view == 'list')
+                  Card(
+                    child: Column(children: [
+                      for (final (i, s) in list.indexed)
+                        ListTile(
+                          key: Key('st_row_${s['id']}'),
+                          onTap: () => showStudentSheet(context, classId: classId, studentId: (s['id'] as num).toInt(), canWrite: canWrite),
+                          leading: Row(mainAxisSize: MainAxisSize.min, children: [
+                            SizedBox(width: 24, child: Text(Fa.faDigits(i + 1), style: const TextStyle(color: Colors.black38, fontSize: 12))),
+                            HsAvatar(name: '${s['name']}', url: '${s['avatar'] ?? ''}', size: 38),
+                          ]),
+                          title: Text('${s['name']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: (s['parents'] ?? 0) == 0 ? const Text('بدون والد', style: TextStyle(color: HsColors.orangeDark, fontSize: 12)) : null,
+                          trailing: Pill(Fa.faDigits(s['points'] ?? 0), color: ((s['points'] as num?) ?? 0) < 0 ? HsColors.red : HsColors.green),
+                        ),
+                    ]),
+                  ),
+                if (list.isNotEmpty && view == 'grid')
                   GridView.count(
                     crossAxisCount: 3,
                     shrinkWrap: true,
@@ -165,6 +216,23 @@ class _StudentsTab extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// مرتب‌سازی: نام / نام خانوادگی / ترتیب دلخواه (با کشیدن)
+  Future<void> _sort(BuildContext context, WidgetRef ref, String mode, List<Map> list) async {
+    var order = <int>[];
+    if (mode == 'custom') {
+      final res = await Navigator.of(context).push<List<int>>(MaterialPageRoute(builder: (_) => _ReorderScreen(students: list)));
+      if (res == null) return;
+      order = res;
+    }
+    try {
+      await ref.read(apiProvider).post<Object?>('/classes/$classId/students/order', data: {'mode': mode, 'order': order});
+      ref.invalidate(classStudentsProvider(classId));
+      ref.invalidate(classProvider(classId));
+    } on ApiException catch (e) {
+      if (context.mounted) showMessage(context, e.message, error: true);
+    }
   }
 
   Future<void> _addStudent(BuildContext context, WidgetRef ref) async {
@@ -661,5 +729,48 @@ Future<void> broadcastToParents(BuildContext context, WidgetRef ref, int classId
     if (context.mounted) showMessage(context, '${r['message'] ?? 'ارسال شد.'}');
   } on ApiException catch (e) {
     if (context.mounted) showMessage(context, e.message, error: true);
+  }
+}
+
+/// ترتیب دلخواه دانش‌آموزان با کشیدن
+class _ReorderScreen extends StatefulWidget {
+  const _ReorderScreen({required this.students});
+  final List<Map> students;
+  @override
+  State<_ReorderScreen> createState() => _ReorderScreenState();
+}
+
+class _ReorderScreenState extends State<_ReorderScreen> {
+  late final List<Map> _l = [...widget.students];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('ترتیب دلخواه')),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+          child: FilledButton(key: const Key('reorder_save'), onPressed: () => Navigator.pop(context, [for (final s in _l) (s['id'] as num).toInt()]), child: const Text('ذخیره‌ی ترتیب')),
+        ),
+      ),
+      body: Column(children: [
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text('هر ردیف را با نگه‌داشتن ⠿ بکشید و جابه‌جا کنید.', style: TextStyle(color: Colors.black54)),
+        ),
+        Expanded(
+          child: ReorderableListView.builder(
+            itemCount: _l.length,
+            onReorderItem: (a, b) => setState(() => _l.insert(b, _l.removeAt(a))),
+            itemBuilder: (_, i) => ListTile(
+              key: ValueKey(_l[i]['id']),
+              leading: HsAvatar(name: '${_l[i]['name']}', url: '${_l[i]['avatar'] ?? ''}', size: 36),
+              title: Text('${Fa.faDigits(i + 1)}. ${_l[i]['name']}'),
+              trailing: ReorderableDragStartListener(index: i, child: const Icon(Icons.drag_indicator_rounded)),
+            ),
+          ),
+        ),
+      ]),
+    );
   }
 }

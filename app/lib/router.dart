@@ -15,6 +15,7 @@ import 'features/notifications/notifications.dart';
 import 'features/portfolio/portfolio.dart';
 import 'features/school/school_screens.dart';
 import 'features/teach/teach_screens.dart';
+import 'features/timetable/timetable.dart';
 import 'features/parent/progress_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/magazine/magazine.dart';
@@ -106,6 +107,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/assessment/:id', builder: (_, s) => AssessmentScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0)),
       GoRoute(path: '/budget/:id', builder: (_, s) => BudgetScreen(classId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, title: '${s.extra ?? ''}')),
       GoRoute(path: '/calendar', builder: (_, s) => CalendarScreen(childId: int.tryParse(s.uri.queryParameters['child'] ?? ''))),
+      GoRoute(
+        path: '/timetable',
+        builder: (_, s) => TimetableScreen(
+          classId: int.tryParse(s.uri.queryParameters['class'] ?? ''),
+          childId: int.tryParse(s.uri.queryParameters['child'] ?? ''),
+          title: '${s.extra ?? ''}',
+        ),
+      ),
+      GoRoute(
+        path: '/bells',
+        builder: (_, s) {
+          final x = (s.extra is Map) ? s.extra as Map : const {};
+          return BellsScreen(classId: x['class_id'] as int?, school: s.uri.queryParameters['school'] == '1', title: '${x['title'] ?? ''}');
+        },
+      ),
+      GoRoute(path: '/school/subjects', builder: (_, _) => const SchoolSubjectsScreen()),
       GoRoute(path: '/worksheets', builder: (_, _) => const WorksheetsScreen()),
       GoRoute(path: '/progress/:id', builder: (_, s) => ChildProgressScreen(childId: int.tryParse(s.pathParameters['id'] ?? '') ?? 0, name: '${s.extra ?? ''}')),
     ],

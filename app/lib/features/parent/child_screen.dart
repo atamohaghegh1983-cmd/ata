@@ -86,6 +86,13 @@ class ChildScreen extends ConsumerWidget {
                   icon: const Icon(Icons.photo_album_rounded),
                   label: const Text('دیوار همشاگردی فرزندم'),
                 ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  key: const Key('child_timetable'),
+                  onPressed: () => context.push('/timetable?child=$id', extra: '${d['name'] ?? name}'),
+                  icon: const Icon(Icons.calendar_view_week_rounded),
+                  label: const Text('برنامه هفتگی کلاس'),
+                ),
                 const SizedBox(height: 14),
                 if (classes.isEmpty) const EmptyView(icon: Icons.class_rounded, title: 'هنوز در کلاسی ثبت نشده'),
                 for (final c in classes) ...[

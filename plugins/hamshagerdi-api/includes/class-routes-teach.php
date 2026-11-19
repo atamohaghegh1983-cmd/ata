@@ -182,7 +182,11 @@ class HS_API_Routes_Teach {
 		$cid = (int) $r['id'];
 		if ( ! class_exists( 'HS_Budget' ) ) { return self::err( 'بودجه‌بندی روی سایت فعال نیست.', 503, 'hs_unavailable' ); }
 		if ( ! self::can_see_staff( $cid ) ) { return self::forbid(); }
-		return array_merge( self::budget_data( $cid ), array( 'subjects' => HS_Budget::default_subjects(), 'can_edit' => self::can_write( $cid ) ) );
+		$sug = method_exists( 'HS_Budget', 'suggestions' ) ? HS_Budget::suggestions( $cid, get_current_user_id() ) : array( 'subjects' => array_map( function ( $n ) { return array( 'name' => $n, 'unit' => 'lesson', 'total' => 0 ); }, HS_Budget::default_subjects() ), 'mine' => array(), 'source' => 'default', 'grade' => '' );
+		return array_merge( self::budget_data( $cid ), array(
+			'subjects' => wp_list_pluck( $sug['subjects'], 'name' ), 'suggestions' => $sug['subjects'], 'mine' => $sug['mine'], 'suggest_source' => $sug['source'], 'grade' => $sug['grade'],
+			'units' => method_exists( 'HS_Budget', 'units' ) ? HS_Budget::units() : array( 'lesson' => 'درس' ), 'can_edit' => self::can_write( $cid ),
+		) );
 	}
 
 	public static function budget_save( WP_REST_Request $r ) {
@@ -194,7 +198,8 @@ class HS_API_Routes_Teach {
 			$sub = HS_API_Util::text( $x['subject'] ?? '', 60 );
 			if ( '' === $sub ) { continue; }
 			$pl     = max( 0, min( 999, (int) HS_API_Util::digits( (string) ( $x['planned'] ?? 0 ) ) ) );
-			$rows[] = array( 'subject' => $sub, 'planned' => $pl, 'done' => max( 0, min( $pl, (int) HS_API_Util::digits( (string) ( $x['done'] ?? 0 ) ) ) ) );
+			$unit   = sanitize_key( (string) ( $x['unit'] ?? 'lesson' ) );
+			$rows[] = array( 'subject' => $sub, 'planned' => $pl, 'done' => max( 0, min( $pl, (int) HS_API_Util::digits( (string) ( $x['done'] ?? 0 ) ) ) ), 'unit' => in_array( $unit, array( 'lesson', 'chapter', 'page', 'session' ), true ) ? $unit : 'lesson' );
 		}
 		update_post_meta( $cid, HS_Budget::META, $rows );
 		return self::budget_data( $cid );
@@ -295,7 +300,28 @@ class HS_API_Routes_Teach {
 		$ctx = self::context( $uid );
 		$cls = array();
 		foreach ( self::teacher_class_ids( $uid ) as $cid ) { $cls[] = array( 'id' => $cid, 'title' => get_the_title( $cid ) ); }
+		// برای تقویم ماهانه‌ی معلم: موعد تکالیف و ارزیابی‌های کلاس‌های خودش
+		$tasks = array();
+		if ( $r->get_param( 'tasks' ) ) {
+			foreach ( self::teacher_class_ids( $uid ) as $cid ) {
+				if ( class_exists( 'HS_Homework_DB' ) ) {
+					foreach ( (array) HS_Homework_DB::get_class_homework( $cid, 100 ) as $h ) {
+						if ( ! empty( $h['due_date'] ) && $h['due_date'] >= $from && $h['due_date'] <= $to ) {
+							$tasks[] = array( 'date' => $h['due_date'], 'kind' => 'hw', 'title' => $h['title'], 'class' => get_the_title( $cid ), 'class_id' => $cid, 'id' => (int) $h['id'] );
+						}
+					}
+				}
+				if ( class_exists( 'HS_Assessment_DB' ) ) {
+					foreach ( (array) HS_Assessment_DB::get_class_assessments( $cid, 100 ) as $x ) {
+						if ( ! empty( $x['assess_date'] ) && $x['assess_date'] >= $from && $x['assess_date'] <= $to ) {
+							$tasks[] = array( 'date' => $x['assess_date'], 'kind' => 'assess', 'title' => $x['title'], 'class' => get_the_title( $cid ), 'class_id' => $cid, 'id' => (int) $x['id'] );
+						}
+					}
+				}
+			}
+		}
 		return array(
+			'tasks' => $tasks,
 			'from' => $from, 'to' => $to, 'events' => self::events_for( $uid, $from, $to ),
 			'types' => HS_Calendar_DB::types(), 'levels' => self::levels(),
 			'can_add_school' => $ctx['manager'], 'can_add_class' => (bool) $cls, 'classes' => $cls,

@@ -114,13 +114,37 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                 ]),
                 const SizedBox(height: 16),
               ],
-              if (att.isNotEmpty)
+              // وقتی والد وصل است، «کد اتصال» و «حذف از کلاس» کوچک و داخل همین کادر
+              if (att.isNotEmpty || (widget.canWrite && parents.isNotEmpty))
                 SectionCard(
                   title: 'حضور این ماه',
                   icon: Icons.fact_check_rounded,
-                  child: Wrap(spacing: 8, runSpacing: 8, children: [
-                    for (final st in AttStatus.all)
-                      if ((att[st.key] ?? 0) != 0) Pill('${st.label}: ${Fa.faDigits(att[st.key])}', color: st.color, icon: st.icon),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      if (att.isEmpty) const Text('این ماه هنوز حضوری ثبت نشده.', style: TextStyle(color: Colors.black45, fontSize: 13)),
+                      for (final st in AttStatus.all)
+                        if ((att[st.key] ?? 0) != 0) Pill('${st.label}: ${Fa.faDigits(att[st.key])}', color: st.color, icon: st.icon),
+                    ]),
+                    if (widget.canWrite && parents.isNotEmpty) ...[
+                      const Divider(height: 18),
+                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                        if ('${s['parent_code'] ?? ''}'.isNotEmpty)
+                          TextButton.icon(
+                            key: const Key('parent_code_small'),
+                            style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 12)),
+                            onPressed: () => showParentCodeDialog(context, name: '${s['name']}', code: '${s['parent_code']}', share: _shareText(s)),
+                            icon: const Icon(Icons.key_rounded, size: 16),
+                            label: const Text('کد اتصال'),
+                          ),
+                        TextButton.icon(
+                          key: const Key('remove_student'),
+                          style: TextButton.styleFrom(foregroundColor: HsColors.red, visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 12)),
+                          onPressed: _busy ? null : () => _remove('${s['name']}'),
+                          icon: const Icon(Icons.person_remove_rounded, size: 16),
+                          label: const Text('حذف از کلاس'),
+                        ),
+                      ]),
+                    ],
                   ]),
                 ),
               const SizedBox(height: 10),
@@ -145,7 +169,7 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                             )
                           : null,
                     ),
-                  if (widget.canWrite && '${s['parent_code'] ?? ''}'.isNotEmpty) ...[
+                  if (widget.canWrite && parents.isEmpty && '${s['parent_code'] ?? ''}'.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     OutlinedButton.icon(
                       key: const Key('parent_code_btn'),
@@ -183,7 +207,7 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                 icon: const Icon(Icons.photo_album_rounded),
                 label: const Text('دیوار همشاگردی'),
               ),
-              if (widget.canWrite) ...[
+              if (widget.canWrite && parents.isEmpty) ...[
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   key: const Key('remove_student'),
