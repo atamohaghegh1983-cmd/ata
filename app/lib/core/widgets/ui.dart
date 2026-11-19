@@ -20,7 +20,7 @@ class SectionCard extends StatelessWidget {
           if (title != null) ...[
             Row(children: [
               if (icon != null) ...[Icon(icon, size: 20, color: HsColors.orange), const SizedBox(width: 8)],
-              Expanded(child: Text(title!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: HsColors.navy))),
+              Expanded(child: Text(title!, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: HsColors.navy))),
               ?trailing,
             ]),
             const SizedBox(height: 10),

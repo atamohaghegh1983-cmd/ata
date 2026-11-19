@@ -57,7 +57,7 @@ class _MonthCalendarCardState extends ConsumerState<MonthCalendarCard> {
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('${Fa.weekday(day)} ${Fa.date(Fa.ymd(day))}', style: Theme.of(c).textTheme.titleMedium),
             const SizedBox(height: 8),
-            if (list.isEmpty) const Text('برای این روز چیزی ثبت نشده است.', style: TextStyle(color: Colors.black45)),
+            if (list.isEmpty) Text('برای این روز چیزی ثبت نشده است.', style: TextStyle(color: HsColors.faint)),
             for (final it in list)
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -108,7 +108,7 @@ class _MonthCalendarCardState extends ConsumerState<MonthCalendarCard> {
       child: Column(children: [
         Row(children: [
           for (final (i, n) in const ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].indexed)
-            Expanded(child: Center(child: Text(n, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: i >= 5 ? HsColors.red : Colors.black54)))),
+            Expanded(child: Center(child: Text(n, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: i >= 5 ? HsColors.red : HsColors.muted)))),
         ]),
         const SizedBox(height: 4),
         GridView.count(
@@ -154,7 +154,7 @@ class _MonthCalendarCardState extends ConsumerState<MonthCalendarCard> {
             Row(mainAxisSize: MainAxisSize.min, children: [
               CircleAvatar(radius: 4, backgroundColor: kinds[k]!.$2),
               const SizedBox(width: 4),
-              Text(kinds[k]!.$1, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+              Text(kinds[k]!.$1, style: TextStyle(fontSize: 11, color: HsColors.muted)),
             ]),
         ]),
       ]),

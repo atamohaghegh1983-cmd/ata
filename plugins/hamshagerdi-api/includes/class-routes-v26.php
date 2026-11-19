@@ -34,6 +34,8 @@ class HS_API_Routes_V26 {
 		$r( '/messages/item/(?P<id>\d+)', 'POST', 'message_edit' );
 		// دیوار کلاس
 		$r( '/portfolio/(?P<id>\d+)/pin', 'POST', 'wall_pin' );
+		// باز/بسته کردن پذیرش عضو جدید با کد کلاس
+		$r( '/classes/(?P<id>\d+)/join', 'POST', 'join_toggle' );
 		// ترتیب دانش‌آموزان
 		$r( '/classes/(?P<id>\d+)/students/order', 'POST', 'students_order' );
 		// منابع درسی
@@ -59,7 +61,7 @@ class HS_API_Routes_V26 {
 	private static function cell_row( $c ) {
 		$t = get_userdata( (int) $c['teacher_id'] );
 		return array(
-			'day' => (int) $c['day'], 'period' => (int) $c['period'], 'subject' => (string) $c['subject'],
+			'day' => (int) $c['day'], 'period' => (int) $c['period'], 'span' => max( 1, (int) ( $c['span'] ?? 1 ) ), 'subject' => (string) $c['subject'],
 			'teacher_id' => (int) $c['teacher_id'], 'teacher' => $t ? $t->display_name : '',
 			'class_id' => (int) $c['class_id'], 'class' => get_the_title( (int) $c['class_id'] ),
 		);
@@ -224,6 +226,17 @@ class HS_API_Routes_V26 {
 		if ( $on && 'approved' !== $p['status'] ) { HS_Portfolio_DB::update_status( (int) $p['id'], 'approved' ); } // سنجاق یعنی روی دیوار هم باشد
 		HS_Portfolio_DB::set_pinned( (int) $p['id'], $on );
 		return array( 'ok' => true, 'pinned' => $on );
+	}
+
+	/* ------------------------------ بستن کلاس برای عضو جدید ------------------------------ */
+
+	public static function join_toggle( WP_REST_Request $r ) {
+		$cid = (int) $r['id'];
+		if ( HS_API_Access::WRITE !== HS_API_Access::class_level( $cid, get_current_user_id() ) ) { return self::forbid(); }
+		if ( ! method_exists( 'HS_Class_Students', 'set_join_closed' ) ) { return self::err( 'افزونه‌ی «مدیریت کلاس» ۱.۷.۷ یا بالاتر لازم است.', 503, 'hs_unavailable' ); }
+		$open = rest_sanitize_boolean( self::p( $r, 'open', true ) );
+		HS_Class_Students::set_join_closed( $cid, ! $open );
+		return array( 'ok' => true, 'join_open' => $open, 'message' => $open ? 'پذیرش والد جدید با کد کلاس باز شد.' : 'پذیرش والد جدید با کد کلاس بسته شد.' );
 	}
 
 	/* ------------------------------ ترتیب دانش‌آموزان ------------------------------ */

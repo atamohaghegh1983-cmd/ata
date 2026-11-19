@@ -159,7 +159,7 @@ class FakeApi extends ApiClient {
             {'type': 'break', 'start': '09:20', 'end': '09:40', 'period': 0},
             {'type': 'class', 'start': '09:40', 'end': '10:25', 'period': 3}, {'type': 'class', 'start': '10:30', 'end': '11:15', 'period': 4}]},
           'cells': [
-            {'day': 0, 'period': 1, 'subject': 'ریاضی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 0, 'period': 2, 'subject': 'فارسی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'},
+            {'day': 0, 'period': 1, 'subject': 'ریاضی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف', 'span': 2},
             {'day': 1, 'period': 1, 'subject': 'علوم تجربی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 2, 'period': 3, 'subject': 'زبان انگلیسی', 'teacher': 'آقای صادقی', 'class': 'سوم ب'},
             {'day': 3, 'period': 1, 'subject': 'هدیه‌های آسمان', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 4, 'period': 2, 'subject': 'هنر', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'},
             {'day': 3, 'period': 4, 'subject': 'تربیت‌بدنی', 'teacher': 'آقای کریمی', 'class': 'سوم الف'}],
@@ -197,7 +197,9 @@ Future<void> loadFonts() async {
 }
 
 void main() {
-  Future<void> shot(WidgetTester t, String name, Widget screen, {bool onboarding = false, bool teacher = false, int tab = -1, Key? tapKey}) async {
+  Future<void> shot(WidgetTester t, String name, Widget screen, {bool onboarding = false, bool teacher = false, int tab = -1, Key? tapKey, bool dark = false}) async {
+    HsColors.dark = dark;
+    addTearDown(() => HsColors.dark = false);
     t.view.physicalSize = const Size(1080, 2340);
     t.view.devicePixelRatio = 2.625;
     addTearDown(t.view.reset);
@@ -264,5 +266,8 @@ void main() {
   testWidgets('timetable-day', (t) => shot(t, '29-timetable-day', const TimetableScreen(), teacher: true), skip: !on);
   testWidgets('timetable-week', (t) => shot(t, '30-timetable-week', const TimetableScreen(classId: 9), teacher: true, tapKey: const Key('grid')), skip: !on);
   testWidgets('bells', (t) => shot(t, '31-bells', const BellsScreen(classId: 9, title: 'سوم الف'), teacher: true), skip: !on);
+  testWidgets('dark-dash', (t) => shot(t, '32-dark-dash', const HomeScreen(), teacher: true, dark: true), skip: !on);
+  testWidgets('dark-thread', (t) => shot(t, '33-dark-thread', const ThreadScreen(userId: 7), dark: true), skip: !on);
+  testWidgets('dark-week', (t) => shot(t, '34-dark-week', const TimetableScreen(classId: 9), teacher: true, tapKey: const Key('grid'), dark: true), skip: !on);
   testWidgets('magazine', (t) => shot(t, '10-magazine', const Scaffold(body: MagazineView(showMineFilter: true))), skip: !on);
 }

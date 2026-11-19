@@ -35,7 +35,7 @@ class NotificationBell extends ConsumerWidget {
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
-  static const _icons = {
+  static final _icons = {
     'attendance': (Icons.fact_check_rounded, HsColors.red),
     'homework': (Icons.menu_book_rounded, HsColors.orange),
     'announce': (Icons.campaign_rounded, HsColors.blue),
@@ -94,7 +94,7 @@ class NotificationsScreen extends ConsumerWidget {
                 final ic = _icons['${n['type']}'] ?? (Icons.notifications_rounded, HsColors.navy);
                 final unread = n['is_read'] != true;
                 return Card(
-                  color: unread ? const Color(0xFFFFF1E3) : Colors.white,
+                  color: unread ? const Color(0xFFFFF1E3) : HsColors.card,
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     onTap: () async {
@@ -107,7 +107,7 @@ class NotificationsScreen extends ConsumerWidget {
                     leading: CircleAvatar(backgroundColor: ic.$2.withValues(alpha: 0.12), child: Icon(ic.$1, color: ic.$2)),
                     title: Text('${n['title']}', style: TextStyle(fontWeight: unread ? FontWeight.w700 : FontWeight.w500)),
                     subtitle: Text('${n['body']}', style: const TextStyle(height: 1.6)),
-                    trailing: Text(Fa.date('${n['created_at'] ?? ''}', withYear: false), style: const TextStyle(fontSize: 11, color: Colors.black45)),
+                    trailing: Text(Fa.date('${n['created_at'] ?? ''}', withYear: false), style: TextStyle(fontSize: 11, color: HsColors.faint)),
                   ),
                 );
               },

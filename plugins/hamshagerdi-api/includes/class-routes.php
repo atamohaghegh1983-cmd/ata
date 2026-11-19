@@ -254,6 +254,7 @@ class HS_API_Routes {
 			$cls = $inv ? array( (int) $inv['class_id'] ) : array();
 		}
 		if ( ! $cls ) { return HS_API_Util::err( 'کد کلاس معتبر نیست.', 400, 'hs_onboarding' ); }
+		if ( HS_API_Routes_More::join_closed( (int) $cls[0] ) ) { return HS_API_Util::err( HS_Class_Students::join_closed_message(), 403, 'hs_join_closed' ); }
 		$u->set_role( 'student' );
 		wp_update_user( array( 'ID' => $uid, 'first_name' => $first, 'last_name' => $last, 'display_name' => $first . ' ' . $last ) );
 		if ( class_exists( 'HS_Student_Profile' ) ) { HS_Student_Profile::save( $uid, array( 'first_name' => $first, 'last_name' => $last ) ); }
@@ -682,7 +683,7 @@ class HS_API_Routes {
 	/* ---------- دعوت کلاس (QR) ---------- */
 
 	private static function invite_payload( $cid ) {
-		$out = array( 'class_id' => $cid, 'parent' => null, 'student_card' => null );
+		$out = array( 'class_id' => $cid, 'parent' => null, 'student_card' => null, 'join_open' => ! HS_API_Routes_More::join_closed( $cid ) );
 		if ( class_exists( 'HSUM_Invites' ) ) {
 			$inv = HSUM_Invites::class_invite( $cid, true );
 			if ( $inv ) {

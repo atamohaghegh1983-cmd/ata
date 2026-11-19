@@ -56,7 +56,7 @@ class InboxView extends ConsumerWidget {
                       style: TextStyle(color: ((m['unread_count'] as num?) ?? 0) > 1 ? HsColors.orangeDark : null, fontWeight: ((m['unread_count'] as num?) ?? 0) > 1 ? FontWeight.w700 : null),
                     ),
                     trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                      Text(Fa.date('${m['at'] ?? ''}', withYear: false), style: const TextStyle(fontSize: 11, color: Colors.black45)),
+                      Text(Fa.date('${m['at'] ?? ''}', withYear: false), style: TextStyle(fontSize: 11, color: HsColors.faint)),
                       const SizedBox(height: 4),
                       if (((m['unread_count'] as num?) ?? 0) > 0)
                         Badge(key: Key('unread_${m['user_id']}'), backgroundColor: HsColors.orange, label: Text(Fa.faDigits(m['unread_count']))),
@@ -154,7 +154,7 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
         contentPadding: EdgeInsets.zero,
         leading: icon,
         title: Text(label),
-        trailing: Text(at.length >= 16 && at != 'null' ? '${Fa.weekday(DateTime.parse(at.substring(0, 10)))} ${Fa.date(at, withYear: false)} — ${msgTime(at)}' : '—', style: const TextStyle(color: Colors.black54)),
+        trailing: Text(at.length >= 16 && at != 'null' ? '${Fa.weekday(DateTime.parse(at.substring(0, 10)))} ${Fa.date(at, withYear: false)} — ${msgTime(at)}' : '—', style: TextStyle(color: HsColors.muted)),
       );
 
   Future<void> _edit(Map m) async {
@@ -251,14 +251,14 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
                         margin: const EdgeInsets.symmetric(vertical: 3),
                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 5),
                         decoration: BoxDecoration(
-                          color: mine ? const Color(0xFFFFE3CC) : Colors.white,
+                          color: mine ? HsColors.bubbleMine : HsColors.card,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                          Text('${m['body']}', style: const TextStyle(color: HsColors.navy, height: 1.7)),
+                          Text('${m['body']}', style: TextStyle(color: HsColors.navy, height: 1.7)),
                           Row(mainAxisSize: MainAxisSize.min, children: [
-                            if (m['edited'] == true) const Text('ویرایش‌شده  ', style: TextStyle(fontSize: 10, color: Colors.black38)),
-                            Text(msgTime('${m['at'] ?? ''}'), style: const TextStyle(fontSize: 10.5, color: Colors.black45)),
+                            if (m['edited'] == true) Text('ویرایش‌شده  ', style: TextStyle(fontSize: 10, color: HsColors.faint2)),
+                            Text(msgTime('${m['at'] ?? ''}'), style: TextStyle(fontSize: 10.5, color: HsColors.faint)),
                             if (mine) ...[const SizedBox(width: 4), Ticks(receipt: '${m['receipt'] ?? 'sent'}')],
                           ]),
                         ]),
@@ -273,7 +273,7 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
         SafeArea(
           top: false,
           child: Container(
-            color: Colors.white,
+            color: HsColors.card,
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
             child: canReply
                 ? Row(children: [
@@ -294,9 +294,9 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
                       icon: const Icon(Icons.send_rounded, color: Colors.white),
                     ),
                   ])
-                : const Padding(
+                : Padding(
                     padding: EdgeInsets.all(10),
-                    child: Text('فرستادن پیام در این گفتگو بسته است.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
+                    child: Text('فرستادن پیام در این گفتگو بسته است.', textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted)),
                   ),
           ),
         ),
@@ -317,7 +317,7 @@ class Ticks extends StatelessWidget {
   Widget build(BuildContext context) {
     final read = receipt == 'read';
     final two = receipt != 'sent';
-    final color = read ? const Color(0xFF16A34A) : Colors.black38;
+    final color = read ? const Color(0xFF16A34A) : HsColors.faint2;
     return Icon(two ? Icons.done_all_rounded : Icons.done_rounded, size: 16, color: color, semanticLabel: read ? 'خوانده شد' : (two ? 'رسید' : 'ارسال شد'));
   }
 }
@@ -340,8 +340,8 @@ class _DateChip extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(color: const Color(0xFFE8EEF8), borderRadius: BorderRadius.circular(12)),
-        child: Text(t, style: const TextStyle(fontSize: 12, color: HsColors.navy)),
+        decoration: BoxDecoration(color: HsColors.dark ? HsColors.card : const Color(0xFFE8EEF8), borderRadius: BorderRadius.circular(12)),
+        child: Text(t, style: TextStyle(fontSize: 12, color: HsColors.navy)),
       ),
     );
   }

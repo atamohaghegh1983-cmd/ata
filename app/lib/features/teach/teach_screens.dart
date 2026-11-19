@@ -55,7 +55,7 @@ class ToolGrid extends StatelessWidget {
       children: [
         for (final it in items)
           Material(
-            color: Colors.white,
+            color: HsColors.card,
             borderRadius: BorderRadius.circular(16),
             child: InkWell(
               key: Key('tool_${it.$1}'),
@@ -90,6 +90,7 @@ class ClassTools extends ConsumerWidget {
 
     return ToolGrid(items: [
       ('افزودن دانش‌آموز', Icons.person_add_alt_1_rounded, const Color(0xFF0F9D8F), () => withClass((c) => '/class/${c['id']}')),
+      ('از اکسل', Icons.table_chart_rounded, const Color(0xFF2E7D32), () => withClass((c) => '/class/${c['id']}/import')),
       ('حضور و غیاب', Icons.fact_check_rounded, HsColors.green, () => withClass((c) => '/class/${c['id']}?tab=1')),
       ('تشویق و امتیاز', Icons.stars_rounded, HsColors.orange, () => withClass((c) => '/class/${c['id']}')),
       ('ارزیابی و نمرات', Icons.grading_rounded, const Color(0xFFD9468F), () => withClass((c) => '/assessments/${c['id']}')),
@@ -353,7 +354,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen> {
             if ('${d['subject'] ?? ''}'.isNotEmpty || '${d['date'] ?? ''}'.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
-                child: Text([if ('${d['subject']}'.isNotEmpty) '${d['subject']}', if ('${d['date']}'.length >= 10) Fa.date('${d['date']}')].join(' • '), style: const TextStyle(color: Colors.black54)),
+                child: Text([if ('${d['subject']}'.isNotEmpty) '${d['subject']}', if ('${d['date']}'.length >= 10) Fa.date('${d['date']}')].join(' • '), style: TextStyle(color: HsColors.muted)),
               ),
             for (final s in students)
               Builder(builder: (_) {
@@ -503,7 +504,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
               TextField(key: const Key('budget_subject'), controller: sub, decoration: const InputDecoration(labelText: 'درس یا منبع')),
               if (i == null) ...[
                 const SizedBox(height: 6),
-                Text(d['suggest_source'] == 'school' ? 'فهرست مدرسه و منابع شما:' : 'پیشنهاد برای پایه‌ی ${d['grade'] ?? ''} و منابع شما:', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                Text(d['suggest_source'] == 'school' ? 'فهرست مدرسه و منابع شما:' : 'پیشنهاد برای پایه‌ی ${d['grade'] ?? ''} و منابع شما:', style: TextStyle(fontSize: 12, color: HsColors.muted)),
                 Wrap(spacing: 6, runSpacing: 4, children: [
                   for (final x in sugg.where((x) => !used.contains('${x['name']}')))
                     ActionChip(
@@ -654,7 +655,7 @@ class BudgetRow extends StatelessWidget {
               ),
             ]),
             const SizedBox(height: 4),
-            Text('${Fa.faDigits(done)} از ${Fa.faDigits(planned)} ${_BudgetScreenState.units[row['unit']] ?? 'درس'} (${Fa.faDigits(pct)}٪)', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            Text('${Fa.faDigits(done)} از ${Fa.faDigits(planned)} ${_BudgetScreenState.units[row['unit']] ?? 'درس'} (${Fa.faDigits(pct)}٪)', style: TextStyle(fontSize: 12, color: HsColors.muted)),
           ]),
         ),
       ),
@@ -671,7 +672,7 @@ class CalendarScreen extends ConsumerWidget {
 
   String get _path => childId == null ? '/calendar' : '/children/$childId/calendar';
 
-  static const _typeIcons = {
+  static final _typeIcons = {
     'academic': ('🎓', HsColors.blue),
     'cultural': ('🌸', Color(0xFFD9468F)),
     'holiday': ('🔴', HsColors.red),
@@ -1037,7 +1038,7 @@ class _WorksheetsScreenState extends ConsumerState<WorksheetsScreen> {
                           if ('${w['subject']}'.isNotEmpty) Pill('${w['subject']}', color: HsColors.orangeDark),
                           if ('${w['difficulty']}'.isNotEmpty) Pill('${w['difficulty']}', color: HsColors.green),
                         ]),
-                        if ('${w['topic']}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('${w['topic']}', style: const TextStyle(color: Colors.black54))),
+                        if ('${w['topic']}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('${w['topic']}', style: TextStyle(color: HsColors.muted))),
                         const SizedBox(height: 6),
                         Row(children: [
                           TextButton.icon(
@@ -1123,7 +1124,7 @@ class _SchoolSubjectsScreenState extends ConsumerState<SchoolSubjectsScreen> {
       floatingActionButton: FloatingActionButton(backgroundColor: HsColors.orange, foregroundColor: Colors.white, onPressed: _add, child: const Icon(Icons.add_rounded)),
       bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 10), child: FilledButton(onPressed: _busy ? null : _save, child: busyLabel(_busy, 'ذخیره برای پایه‌ی ${grades[_grade]}')))),
       body: ListView(padding: const EdgeInsets.fromLTRB(14, 8, 14, 96), children: [
-        const Text('معلم‌های این مدرسه در بودجه‌بندی همین فهرست را برای هر پایه آماده می‌بینند و منابع خودشان را هم می‌توانند اضافه کنند.', style: TextStyle(color: Colors.black54, height: 1.7)),
+        Text('معلم‌های این مدرسه در بودجه‌بندی همین فهرست را برای هر پایه آماده می‌بینند و منابع خودشان را هم می‌توانند اضافه کنند.', style: TextStyle(color: HsColors.muted, height: 1.7)),
         const SizedBox(height: 10),
         DropdownButtonFormField<int>(
           initialValue: _grade,

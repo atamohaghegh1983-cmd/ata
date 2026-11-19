@@ -246,7 +246,7 @@ Future<void> linkTeacherToSchool(BuildContext context, WidgetRef ref) async {
         const SizedBox(height: 10),
         TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'کد مدرسه')),
         const SizedBox(height: 8),
-        const Text('یا', style: TextStyle(color: Colors.black45)),
+        Text('یا', style: TextStyle(color: HsColors.faint)),
         const SizedBox(height: 8),
         TextField(controller: mm, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'موبایل مدیر مدرسه')),
       ]),
@@ -341,7 +341,7 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${q['parent']}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(Fa.faDigits('${q['parent_mobile']}'), style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                Text(Fa.faDigits('${q['parent_mobile']}'), style: TextStyle(color: HsColors.muted, fontSize: 12)),
               ]),
             ),
           ]),

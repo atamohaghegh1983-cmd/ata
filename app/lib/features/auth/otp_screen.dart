@@ -101,7 +101,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           children: [
             Text('کد تأیید', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
-            Text('کد ۵ رقمی پیامک‌شده به ${Fa.faDigits(widget.mobile)} را وارد کنید.', textAlign: TextAlign.center, style: const TextStyle(height: 1.7, color: Colors.black54)),
+            Text('کد ۵ رقمی پیامک‌شده به ${Fa.faDigits(widget.mobile)} را وارد کنید.', textAlign: TextAlign.center, style: TextStyle(height: 1.7, color: HsColors.muted)),
             TextButton(onPressed: () => context.pop(), child: const Text('ویرایش شماره')),
             const SizedBox(height: 16),
             // خانه‌ی معمولی و قابل‌دیدن: با هر لمس صفحه‌کلید باز می‌شود و «چسباندن» هم کار می‌کند
@@ -123,7 +123,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 decoration: InputDecoration(
                   counterText: '',
                   hintText: '-----',
-                  hintStyle: const TextStyle(fontSize: 32, letterSpacing: 18, color: Colors.black26),
+                  hintStyle: TextStyle(fontSize: 32, letterSpacing: 18, color: HsColors.line),
                   errorText: _error,
                   errorMaxLines: 3,
                   contentPadding: const EdgeInsets.symmetric(vertical: 18),
@@ -147,7 +147,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             if (!_busy)
               Center(
                 child: _left > 0
-                    ? Text('ارسال دوباره تا ${Fa.faDigits('$mm:$ss')}', style: const TextStyle(color: Colors.black54))
+                    ? Text('ارسال دوباره تا ${Fa.faDigits('$mm:$ss')}', style: TextStyle(color: HsColors.muted))
                     : TextButton.icon(onPressed: _resend, icon: const Icon(Icons.refresh_rounded), label: const Text('ارسال دوباره‌ی کد')),
               ),
           ],

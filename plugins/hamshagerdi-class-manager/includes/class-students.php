@@ -27,6 +27,23 @@ class HS_Class_Students {
 		return self::sort( $class_id, $users );
 	}
 
+	/** آیا معلم پذیرش عضو جدید با کد یا QR کلاس را بسته است؟ */
+	public static function join_closed( $class_id ) {
+		return (bool) get_post_meta( (int) $class_id, '_hs_join_closed', true );
+	}
+
+	public static function set_join_closed( $class_id, $closed ) {
+		if ( $closed ) {
+			update_post_meta( (int) $class_id, '_hs_join_closed', 1 );
+		} else {
+			delete_post_meta( (int) $class_id, '_hs_join_closed' );
+		}
+	}
+
+	public static function join_closed_message() {
+		return 'این کلاس فعلاً عضو جدید نمی‌پذیرد. اگر فرزندتان در این کلاس است، با معلم تماس بگیرید.';
+	}
+
 	/** ترتیب نمایش هر کلاس: first (نام) | last (نام خانوادگی) | custom (دلخواه معلم) | added (ترتیب افزودن) */
 	public static function sort_mode( $class_id ) {
 		$m = (string) get_post_meta( $class_id, '_hs_sort', true );

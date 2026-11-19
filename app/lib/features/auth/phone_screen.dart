@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/theme.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/utils/fa.dart';
@@ -63,7 +64,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
             const SizedBox(height: 20),
             Text('ورود یا ثبت‌نام', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
-            const Text('شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.', textAlign: TextAlign.center, style: TextStyle(height: 1.7, color: Colors.black54)),
+            Text('شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.', textAlign: TextAlign.center, style: TextStyle(height: 1.7, color: HsColors.muted)),
             const SizedBox(height: 28),
             Directionality(
               textDirection: TextDirection.ltr,
@@ -94,7 +95,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
             const SizedBox(height: 28),
             TextButton(
               key: const Key('kid_login'),
-              style: TextButton.styleFrom(foregroundColor: Colors.black38),
+              style: TextButton.styleFrom(foregroundColor: HsColors.faint2),
               onPressed: () => context.push('/kid'),
               child: const Text('ورود دانش‌آموز با کارت کلاس', style: TextStyle(fontSize: 12)),
             ),

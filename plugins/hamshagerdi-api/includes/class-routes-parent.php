@@ -289,11 +289,13 @@ class HS_API_Routes_Parent {
 			}
 			return HS_API_Util::err( 'این کد کلاس است؛ نام و نام خانوادگی فرزند را هم بنویسید.', 400, 'hs_need_name' );
 		}
-		if ( ! HSUM_Invites::by_code( $code ) ) {
+		$jinv = HSUM_Invites::by_code( $code );
+		if ( ! $jinv ) {
 			HS_API_Util::hit( $k_u, 15 * MINUTE_IN_SECONDS );
 			HS_API_Util::hit( $k_i, 15 * MINUTE_IN_SECONDS );
 			return HS_API_Util::err( 'کد دعوت معتبر نیست یا منقضی شده است.', 404, 'hs_bad_code' );
 		}
+		if ( HS_API_Routes_More::join_closed( (int) $jinv['class_id'] ) ) { return HS_API_Util::err( HS_Class_Students::join_closed_message(), 403, 'hs_join_closed' ); }
 		$res = HSUM_Invites::parent_join( $code, $uid, $name );
 		if ( is_wp_error( $res ) ) {
 			return HS_API_Util::err( $res->get_error_message(), 400, 'hs_join_' . $res->get_error_code() );

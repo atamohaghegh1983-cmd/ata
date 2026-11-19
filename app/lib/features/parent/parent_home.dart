@@ -103,7 +103,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           Expanded(
             child: Text(
               '${p['teacher'] != '' ? '${p['teacher']}' : 'معلم'}، شماره‌ی شما را به‌عنوان والد «${p['student']}»${p['class'] != '' ? ' در ${p['class']}' : ''} ثبت کرده است.',
-              style: const TextStyle(height: 1.7, color: HsColors.navy),
+              style: TextStyle(height: 1.7, color: HsColors.navy),
             ),
           ),
         ]),
@@ -130,7 +130,7 @@ class _ChildCard extends ConsumerWidget {
     final classes = ((t['classes'] as List?) ?? (k['classes'] as List?) ?? const []).cast<Map>();
     final first = classes.isEmpty ? null : classes.first;
     return Material(
-      color: Colors.white,
+      color: HsColors.card,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
@@ -143,12 +143,12 @@ class _ChildCard extends ConsumerWidget {
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${k['name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: HsColors.navy)),
-                  if (first != null) Text('${first['title']}  •  ${first['teacher']}', style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                  if (first == null) const Text('هنوز در کلاسی ثبت نشده', style: TextStyle(color: Colors.black54, fontSize: 13)),
+                  Text('${k['name']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: HsColors.navy)),
+                  if (first != null) Text('${first['title']}  •  ${first['teacher']}', style: TextStyle(color: HsColors.muted, fontSize: 13)),
+                  if (first == null) Text('هنوز در کلاسی ثبت نشده', style: TextStyle(color: HsColors.muted, fontSize: 13)),
                 ]),
               ),
-              const Icon(Icons.chevron_left_rounded, color: Colors.black26),
+              Icon(Icons.chevron_left_rounded, color: HsColors.line),
             ]),
             if (first != null) ...[
               const SizedBox(height: 14),
@@ -182,7 +182,7 @@ class _TodayRow extends StatelessWidget {
               Icon(icon, color: color, size: 22),
               const SizedBox(height: 4),
               Text(value, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
-              Text(title, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+              Text(title, style: TextStyle(fontSize: 11, color: HsColors.muted)),
             ]),
           ),
         );

@@ -105,14 +105,14 @@ class _ImportStudentsScreenState extends ConsumerState<ImportStudentsScreen> {
           title: 'راهنما',
           icon: Icons.info_outline_rounded,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('ستون‌ها: نام، نام خانوادگی، موبایل والد (اختیاری: نام والد، شماره دانش‌آموز). ردیف اول عنوان ستون‌ها باشد. حداکثر ۱۵۰ نفر در هر بار.', style: TextStyle(height: 1.8, color: Colors.black87)),
+            Text('ستون‌ها: نام، نام خانوادگی، موبایل والد (اختیاری: نام والد، شماره دانش‌آموز). ردیف اول عنوان ستون‌ها باشد. حداکثر ۱۵۰ نفر در هر بار.', style: TextStyle(height: 1.8, color: HsColors.text87)),
             const SizedBox(height: 10),
             OutlinedButton.icon(onPressed: _template, icon: const Icon(Icons.download_rounded), label: const Text('دریافت فایل نمونه')),
           ]),
         ),
         const SizedBox(height: 12),
         FilledButton.tonalIcon(key: const Key('import_pick'), onPressed: _busy ? null : _pick, icon: const Icon(Icons.upload_file_rounded), label: Text(_file.isEmpty ? 'انتخاب فایل اکسل' : 'فایل دیگر')),
-        if (_file.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_file, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black45, fontSize: 12))),
+        if (_file.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_file, textAlign: TextAlign.center, style: TextStyle(color: HsColors.faint, fontSize: 12))),
         const SizedBox(height: 12),
         if (_rows.isEmpty && _file.isNotEmpty) const EmptyView(icon: Icons.table_chart_rounded, title: 'ردیفی پیدا نشد'),
         if (bad > 0) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${Fa.faDigits(bad)} شماره موبایل درست نیست (قرمز)؛ آن دانش‌آموزان بدون اتصال خودکار ثبت می‌شوند.', style: const TextStyle(color: HsColors.red, fontSize: 13, height: 1.7))),
@@ -124,8 +124,8 @@ class _ImportStudentsScreenState extends ConsumerState<ImportStudentsScreen> {
               leading: CircleAvatar(radius: 14, backgroundColor: const Color(0xFFFFE3CC), child: Text(Fa.faDigits(i + 1), style: const TextStyle(fontSize: 12, color: HsColors.orangeDark))),
               title: Text('${r['first_name']} ${r['last_name']}', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: r['parent_phone']!.isEmpty
-                  ? const Text('بدون موبایل والد', style: TextStyle(color: Colors.black38))
-                  : Text(Fa.faDigits(r['parent_phone']!), style: TextStyle(color: Fa.mobile(r['parent_phone']!) == null ? HsColors.red : Colors.black54)),
+                  ? Text('بدون موبایل والد', style: TextStyle(color: HsColors.faint2))
+                  : Text(Fa.faDigits(r['parent_phone']!), style: TextStyle(color: Fa.mobile(r['parent_phone']!) == null ? HsColors.red : HsColors.muted)),
               trailing: IconButton(icon: const Icon(Icons.close_rounded, size: 18), onPressed: () => setState(() => _rows = [..._rows]..removeAt(i))),
             ),
           ),

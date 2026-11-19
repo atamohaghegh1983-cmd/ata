@@ -76,7 +76,7 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
             height: MediaQuery.of(c).size.height * 0.75,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
               Text('${cls['title'] ?? 'کلاس'}', textAlign: TextAlign.center, style: Theme.of(c).textTheme.titleLarge),
-              if ('${cls['teacher'] ?? ''}'.isNotEmpty) Text('معلم: ${cls['teacher']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
+              if ('${cls['teacher'] ?? ''}'.isNotEmpty) Text('معلم: ${cls['teacher']}', textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted)),
               const SizedBox(height: 8),
               const Text('فرزندتان کدام است؟', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
@@ -158,7 +158,7 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
             title: 'کد کلاس یا کد اتصال',
             icon: Icons.key_rounded,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text('کد کلاس (مثل K-AB12CD) یا کد اتصالی را که معلم فرستاده وارد کنید. اگر معلم شماره‌ی شما را ثبت کرده باشد، فوراً وصل می‌شوید.', style: TextStyle(color: Colors.black54, height: 1.7)),
+              Text('کد کلاس (مثل K-AB12CD) یا کد اتصالی را که معلم فرستاده وارد کنید. اگر معلم شماره‌ی شما را ثبت کرده باشد، فوراً وصل می‌شوید.', style: TextStyle(color: HsColors.muted, height: 1.7)),
               const SizedBox(height: 10),
               Directionality(
                 textDirection: TextDirection.ltr,

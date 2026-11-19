@@ -49,7 +49,7 @@ class _MagazineViewState extends ConsumerState<MagazineView> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Material(
-                    color: Colors.white,
+                    color: HsColors.card,
                     borderRadius: BorderRadius.circular(20),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
@@ -61,16 +61,16 @@ class _MagazineViewState extends ConsumerState<MagazineView> {
                           padding: const EdgeInsets.all(14),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Row(children: [
-                              Expanded(child: Text('${a['title']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: HsColors.navy, height: 1.6))),
-                              if (a['locked'] == true) const Icon(Icons.lock_rounded, color: Colors.black38, size: 20),
+                              Expanded(child: Text('${a['title']}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: HsColors.navy, height: 1.6))),
+                              if (a['locked'] == true) Icon(Icons.lock_rounded, color: HsColors.faint2, size: 20),
                             ]),
                             const SizedBox(height: 4),
-                            Text('${a['excerpt'] ?? ''}', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black54, height: 1.7)),
+                            Text('${a['excerpt'] ?? ''}', maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: HsColors.muted, height: 1.7)),
                             const SizedBox(height: 8),
                             Wrap(spacing: 6, runSpacing: 6, children: [
                               for (final g in ((a['grades'] as List?) ?? const [])) Pill('پایه‌ی $g', color: HsColors.blue),
                               for (final au in ((a['audiences'] as List?) ?? const []).cast<Map>()) Pill('${au['title']}', color: HsColors.orangeDark),
-                              Text(Fa.date('${a['date'] ?? ''}'), style: const TextStyle(color: Colors.black38, fontSize: 12)),
+                              Text(Fa.date('${a['date'] ?? ''}'), style: TextStyle(color: HsColors.faint2, fontSize: 12)),
                             ]),
                           ]),
                         ),
@@ -108,7 +108,7 @@ class ArticleScreen extends ConsumerWidget {
                 ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.network('${a['image']}', fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox())),
               const SizedBox(height: 12),
               Text('${a['title'] ?? ''}', style: Theme.of(context).textTheme.headlineSmall),
-              Text(Fa.date('${a['date'] ?? ''}'), style: const TextStyle(color: Colors.black45)),
+              Text(Fa.date('${a['date'] ?? ''}'), style: TextStyle(color: HsColors.faint)),
               const SizedBox(height: 12),
               if (!locked)
                 HtmlWidget('${a['content'] ?? ''}', textStyle: const TextStyle(fontSize: 16, height: 1.9, fontFamily: 'Vazirmatn')),

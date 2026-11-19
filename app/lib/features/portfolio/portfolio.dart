@@ -100,7 +100,7 @@ class PortfolioView extends ConsumerWidget {
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('${st['name'] ?? ''}', style: Theme.of(context).textTheme.titleLarge),
-                        Text('${st['about'] ?? ''}'.isEmpty ? (canPost ? 'درباره‌ی خودت بنویس…' : '') : '${st['about']}', style: const TextStyle(color: Colors.black54, height: 1.6)),
+                        Text('${st['about'] ?? ''}'.isEmpty ? (canPost ? 'درباره‌ی خودت بنویس…' : '') : '${st['about']}', style: TextStyle(color: HsColors.muted, height: 1.6)),
                       ]),
                     ),
                     if (canPost)
@@ -191,7 +191,7 @@ class PostCard extends ConsumerWidget {
           if (showStatus || teacher)
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 12),
-              child: Text(p['on_wall'] == true ? '🌍 روی دیوار کلاس' : '🔒 فقط معلم و خانواده', style: const TextStyle(fontSize: 12, color: Colors.black45)),
+              child: Text(p['on_wall'] == true ? '🌍 روی دیوار کلاس' : '🔒 فقط معلم و خانواده', style: TextStyle(fontSize: 12, color: HsColors.faint)),
             ),
         ]),
       ]),
@@ -262,7 +262,7 @@ class _NewPostSheetState extends ConsumerState<_NewPostSheet> {
         const SizedBox(height: 10),
         TextField(controller: _t, maxLength: 120, decoration: const InputDecoration(labelText: 'عنوان', hintText: 'مثلاً نقاشی باغ')),
         TextField(controller: _x, maxLines: 3, maxLength: 1000, decoration: const InputDecoration(labelText: 'توضیح')),
-        const Text('پست تو اول فقط برای معلم و خانواده است؛ معلم اگر بخواهد روی دیوار کلاس می‌گذارد.', style: TextStyle(fontSize: 12, color: Colors.black45, height: 1.7)),
+        Text('پست تو اول فقط برای معلم و خانواده است؛ معلم اگر بخواهد روی دیوار کلاس می‌گذارد.', style: TextStyle(fontSize: 12, color: HsColors.faint, height: 1.7)),
         const SizedBox(height: 10),
         FilledButton(onPressed: _busy ? null : _save, child: _busy ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Text('ثبت پست')),
       ]),
@@ -289,9 +289,9 @@ class WallView extends ConsumerWidget {
           final posts = ((r.data as List?) ?? const []).cast<Map>();
           return ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 32), children: [
             if (teacher)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 10),
-                child: Text('پست‌های بچه‌ها اول فقط برای شما و خانواده‌شان است. از منوی ⋮ هر پست را روی دیوار کلاس بگذارید تا همه‌ی کلاس ببینند.', style: TextStyle(color: Colors.black54, height: 1.7, fontSize: 13)),
+                child: Text('پست‌های بچه‌ها اول فقط برای شما و خانواده‌شان است. از منوی ⋮ هر پست را روی دیوار کلاس بگذارید تا همه‌ی کلاس ببینند.', style: TextStyle(color: HsColors.muted, height: 1.7, fontSize: 13)),
               ),
             if (posts.isEmpty) const EmptyView(icon: Icons.photo_album_rounded, title: 'هنوز پستی نیست'),
             for (final p in posts) Padding(padding: const EdgeInsets.only(bottom: 12), child: PostCard(p: p, path: path, teacher: teacher)),

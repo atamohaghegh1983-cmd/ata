@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -45,6 +46,7 @@ class _Tab {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _i = 0;
+  DateTime? _lastBack;
 
   @override
   void initState() {
@@ -97,41 +99,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (lock.kidMode) return const KidModeScreen();
     final me = auth.me;
     if (me == null) {
-      return Scaffold(body: ErrorView(error: ApiException(ApiException.offlineMessage, offline: true), onRetry: () => ref.read(authProvider.notifier).restore()));
+      return Scaffold(
+        body: ErrorView(error: ApiException(ApiException.offlineMessage, offline: true), onRetry: () => ref.read(authProvider.notifier).restore()),
+      );
     }
     final tabs = _tabs(me);
     if (_i >= tabs.length) _i = 0;
     final t = tabs[_i];
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.title),
-        leading: Padding(padding: const EdgeInsetsDirectional.only(start: 12), child: Center(child: HsAvatar(name: me.name, url: me.avatar, size: 36))),
-        actions: [const NotificationBell(), _Menu(me: me)],
-      ),
-      floatingActionButton: me.homeKind == 'teacher' && _i == 1
-          ? FloatingActionButton.extended(
-              key: const Key('new_class'),
-              backgroundColor: HsColors.orange,
-              foregroundColor: Colors.white,
-              onPressed: () => context.push('/class/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('کلاس جدید'),
-            )
-          : null,
-      bottomNavigationBar: tabs.length < 2
-          ? null
-          : NavigationBar(
-              selectedIndex: _i,
-              backgroundColor: Colors.white,
-              indicatorColor: const Color(0xFFFFE3CC),
-              onDestinationSelected: (v) => setState(() => _i = v),
-              destinations: [for (final x in tabs) NavigationDestination(icon: Icon(x.icon), label: x.label)],
+    // دکمه‌ی برگشت گوشی: از زبانه‌های دیگر به داشبورد؛ در داشبورد دو بار برای خروج
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_i != 0) {
+          setState(() => _i = 0);
+          return;
+        }
+        final now = DateTime.now();
+        if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 2)) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBack = now;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('برای خروج دوباره «برگشت» را بزنید.'), duration: Duration(seconds: 2)));
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(t.title),
+          leading: Padding(
+            padding: const EdgeInsetsDirectional.only(start: 12),
+            child: Center(
+              child: HsAvatar(name: me.name, url: me.avatar, size: 36),
             ),
-      body: Column(children: [
-        if (auth.offline) const OfflineBanner(),
-        if (_i == 0) _Hello(me: me),
-        Expanded(child: IndexedStack(index: _i, children: [for (final x in tabs) x.body])),
-      ]),
+          ),
+          actions: [
+            const NotificationBell(),
+            _Menu(me: me),
+          ],
+        ),
+        floatingActionButton: me.homeKind == 'teacher' && _i == 1
+            ? FloatingActionButton.extended(
+                key: const Key('new_class'),
+                backgroundColor: HsColors.orange,
+                foregroundColor: Colors.white,
+                onPressed: () => context.push('/class/new'),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('کلاس جدید'),
+              )
+            : null,
+        bottomNavigationBar: tabs.length < 2
+            ? null
+            : NavigationBar(
+                selectedIndex: _i,
+                backgroundColor: HsColors.card,
+                indicatorColor: HsColors.dark ? HsColors.orange.withValues(alpha: 0.35) : const Color(0xFFFFE3CC),
+                onDestinationSelected: (v) => setState(() => _i = v),
+                destinations: [for (final x in tabs) NavigationDestination(icon: Icon(x.icon), label: x.label)],
+              ),
+        body: Column(
+          children: [
+            if (auth.offline) const OfflineBanner(),
+            if (_i == 0) _Hello(me: me),
+            Expanded(
+              child: IndexedStack(index: _i, children: [for (final x in tabs) x.body]),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -144,10 +178,17 @@ class _Hello extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-      child: Row(children: [
-        Expanded(child: Text('سلام ${me.name.split(' ').first} 👋', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: HsColors.navy))),
-        Text('${Fa.weekday(DateTime.now())}، ${Fa.date(Fa.ymd(DateTime.now()))}', style: const TextStyle(color: Colors.black54, fontSize: 13)),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'سلام ${me.name.split(' ').first} 👋',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: HsColors.navy),
+            ),
+          ),
+          Text('${Fa.weekday(DateTime.now())}، ${Fa.date(Fa.ymd(DateTime.now()))}', style: TextStyle(color: HsColors.muted, fontSize: 13)),
+        ],
+      ),
     );
   }
 }
@@ -227,6 +268,32 @@ class _Menu extends ConsumerWidget {
             await startKidMode(context, ref);
           case 'pin':
             await parentPinSettings(context, ref);
+          case 'theme':
+            final cur = ref.read(themeModeProvider);
+            final v = await showModalBottomSheet<String>(
+              context: context,
+              showDragHandle: true,
+              builder: (c) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final e in const {
+                      'system': ('هماهنگ با گوشی', Icons.brightness_auto_rounded),
+                      'light': ('روشن', Icons.light_mode_rounded),
+                      'dark': ('تاریک', Icons.dark_mode_rounded),
+                    }.entries)
+                      ListTile(
+                        key: Key('theme_${e.key}'),
+                        leading: Icon(e.value.$2),
+                        title: Text(e.value.$1),
+                        trailing: cur == e.key ? const Icon(Icons.check_rounded, color: HsColors.orange) : null,
+                        onTap: () => Navigator.pop(c, e.key),
+                      ),
+                  ],
+                ),
+              ),
+            );
+            if (v != null) await ref.read(themeModeProvider.notifier).set(v);
           case 'privacy':
             await showDialog<void>(
               context: context,
@@ -246,26 +313,27 @@ class _Menu extends ConsumerWidget {
         }
       },
       itemBuilder: (_) => [
-        PopupMenuItem(enabled: false, child: Text('${me.name}\n${Fa.faDigits(me.mobile)}', style: const TextStyle(color: Colors.black54, height: 1.6))),
+        PopupMenuItem(
+          enabled: false,
+          child: Text('${me.name}\n${Fa.faDigits(me.mobile)}', style: TextStyle(color: HsColors.muted, height: 1.6)),
+        ),
         const PopupMenuDivider(),
-        if (kind == 'teacher') ...[
-          const PopupMenuItem(value: 'requests', child: Text('درخواست‌های اتصال والدین')),
-          const PopupMenuItem(value: 'link_school', child: Text('اتصال به مدرسه')),
-        ],
+        if (kind == 'teacher') ...[const PopupMenuItem(value: 'requests', child: Text('درخواست‌های اتصال والدین')), const PopupMenuItem(value: 'link_school', child: Text('اتصال به مدرسه'))],
         if (kind == 'manager' || me.roles.contains('school_admin')) ...[
           const PopupMenuItem(value: 'school', child: Text('اطلاعات مدرسه')),
           if (kind == 'manager') const PopupMenuItem(value: 'staff', child: Text('افزودن معلم یا معاون')),
         ],
-        if (kind == 'parent') ...[
-          const PopupMenuItem(value: 'kid', child: Text('حالت کودک (سپردن گوشی به فرزند)')),
-          const PopupMenuItem(value: 'pin', child: Text('رمز والدین')),
-        ],
+        if (kind == 'parent') ...[const PopupMenuItem(value: 'kid', child: Text('حالت کودک (سپردن گوشی به فرزند)')), const PopupMenuItem(value: 'pin', child: Text('رمز والدین'))],
         const PopupMenuItem(value: 'role', child: Text('انتخاب یا تغییر نقش')),
+        const PopupMenuItem(value: 'theme', child: Text('ظاهر (روشن / تاریک)')),
         const PopupMenuItem(value: 'privacy', child: Text('حریم خصوصی')),
         const PopupMenuDivider(),
         const PopupMenuItem(value: 'logout', child: Text('خروج')),
         const PopupMenuItem(value: 'logout_all', child: Text('خروج از همه‌ی دستگاه‌ها')),
-        const PopupMenuItem(value: 'delete', child: Text('حذف حساب کاربری', style: TextStyle(color: HsColors.red))),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Text('حذف حساب کاربری', style: TextStyle(color: HsColors.red)),
+        ),
       ],
     );
   }
@@ -285,7 +353,12 @@ class _ClassList extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(myClassesProvider),
       child: res.when(
         loading: () => const LoadingView(),
-        error: (e, _) => ListView(children: [const SizedBox(height: 80), ErrorView(error: e, onRetry: () => ref.invalidate(myClassesProvider))]),
+        error: (e, _) => ListView(
+          children: [
+            const SizedBox(height: 80),
+            ErrorView(error: e, onRetry: () => ref.invalidate(myClassesProvider)),
+          ],
+        ),
         data: (r) {
           final items = ((r.data as List?) ?? const []).cast<Map>();
           return ListView(
@@ -304,7 +377,11 @@ class _ClassList extends ConsumerWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () => student
-                        ? Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _StudentClassScreen(id: (it['id'] as num).toInt(), title: '${it['title']}')))
+                        ? Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => _StudentClassScreen(id: (it['id'] as num).toInt(), title: '${it['title']}'),
+                            ),
+                          )
                         : context.push('/class/${it['id']}'),
                     child: _HsCard(
                       leading: Container(
@@ -314,10 +391,7 @@ class _ClassList extends ConsumerWidget {
                         child: const Icon(Icons.class_rounded, color: HsColors.orange, size: 30),
                       ),
                       title: '${it['title']}',
-                      lines: [
-                        if ('${it['grade'] ?? ''}'.isNotEmpty) 'پایه‌ی ${it['grade']}',
-                        if (student) 'معلم: ${it['teacher']}' else '${Fa.faDigits(it['students'] ?? 0)} دانش‌آموز',
-                      ],
+                      lines: [if ('${it['grade'] ?? ''}'.isNotEmpty) 'پایه‌ی ${it['grade']}', if (student) 'معلم: ${it['teacher']}' else '${Fa.faDigits(it['students'] ?? 0)} دانش‌آموز'],
                     ),
                   ),
                 ),
@@ -341,9 +415,21 @@ class _StudentClassScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text(title),
-          bottom: const TabBar(labelColor: HsColors.orangeDark, indicatorColor: HsColors.orange, tabs: [Tab(text: 'تکالیف'), Tab(text: 'اطلاعیه‌ها')]),
+          bottom: const TabBar(
+            labelColor: HsColors.orangeDark,
+            indicatorColor: HsColors.orange,
+            tabs: [
+              Tab(text: 'تکالیف'),
+              Tab(text: 'اطلاعیه‌ها'),
+            ],
+          ),
         ),
-        body: TabBarView(children: [HomeworkTab(classId: id, canWrite: false), AnnouncementsTab(classId: id, canWrite: false)]),
+        body: TabBarView(
+          children: [
+            HomeworkTab(classId: id, canWrite: false),
+            AnnouncementsTab(classId: id, canWrite: false),
+          ],
+        ),
       ),
     );
   }
@@ -360,17 +446,25 @@ class _HsCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(children: [
-          leading,
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: HsColors.navy)),
-              for (final l in lines) Text(l, style: const TextStyle(color: Colors.black54, height: 1.7)),
-            ]),
-          ),
-          const Icon(Icons.chevron_left_rounded, color: Colors.black26),
-        ]),
+        child: Row(
+          children: [
+            leading,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: HsColors.navy),
+                  ),
+                  for (final l in lines) Text(l, style: TextStyle(color: HsColors.muted, height: 1.7)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_left_rounded, color: HsColors.line),
+          ],
+        ),
       ),
     );
   }
@@ -391,15 +485,18 @@ class _StatusBody extends ConsumerWidget {
     final manager = me.roles.contains('school_admin');
     return RefreshIndicator(
       onRefresh: () => ref.read(authProvider.notifier).reloadMe(),
-      child: ListView(padding: const EdgeInsets.symmetric(horizontal: 24), children: [
-        const SizedBox(height: 40),
-        EmptyView(icon: icon, title: title, text: manager ? 'اطلاعات مدرسه را کامل کنید تا بعد از تأیید، مدیریت مدرسه از همین اپ فعال شود.' : text),
-        const SizedBox(height: 12),
-        if (manager)
-          FilledButton.icon(key: const Key('school_form_btn'), onPressed: () => context.push('/school/form'), icon: const Icon(Icons.account_balance_rounded), label: const Text('ثبت اطلاعات مدرسه'))
-        else if (me.status != 'pending')
-          FilledButton.icon(onPressed: () => context.push('/role'), icon: const Icon(Icons.how_to_reg_rounded), label: const Text('انتخاب نقش')),
-      ]),
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        children: [
+          const SizedBox(height: 40),
+          EmptyView(icon: icon, title: title, text: manager ? 'اطلاعات مدرسه را کامل کنید تا بعد از تأیید، مدیریت مدرسه از همین اپ فعال شود.' : text),
+          const SizedBox(height: 12),
+          if (manager)
+            FilledButton.icon(key: const Key('school_form_btn'), onPressed: () => context.push('/school/form'), icon: const Icon(Icons.account_balance_rounded), label: const Text('ثبت اطلاعات مدرسه'))
+          else if (me.status != 'pending')
+            FilledButton.icon(onPressed: () => context.push('/role'), icon: const Icon(Icons.how_to_reg_rounded), label: const Text('انتخاب نقش')),
+        ],
+      ),
     );
   }
 }

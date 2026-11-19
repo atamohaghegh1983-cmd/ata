@@ -75,7 +75,7 @@ class ChildScreen extends ConsumerWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${d['name'] ?? name}', style: Theme.of(context).textTheme.titleLarge),
-                      Text('${Fa.weekday(DateTime.now())} ${Fa.date(Fa.ymd(DateTime.now()))}', style: const TextStyle(color: Colors.black54)),
+                      Text('${Fa.weekday(DateTime.now())} ${Fa.date(Fa.ymd(DateTime.now()))}', style: TextStyle(color: HsColors.muted)),
                     ]),
                   ),
                 ]),
@@ -154,7 +154,7 @@ class _ClassBlock extends ConsumerWidget {
           ),
       ]),
       Row(children: [
-        Expanded(child: Text('معلم: ${c['teacher']}', style: const TextStyle(color: Colors.black54))),
+        Expanded(child: Text('معلم: ${c['teacher']}', style: TextStyle(color: HsColors.muted))),
         TextButton.icon(onPressed: () => context.push('/wall/$cid', extra: '${c['title']}'), icon: const Icon(Icons.photo_album_rounded, size: 18), label: Text(wallTitle('${c['title']}'))),
       ]),
       const SizedBox(height: 6),
@@ -166,7 +166,7 @@ class _ClassBlock extends ConsumerWidget {
             Row(children: [
               const Text('حضور: '),
               Pill(att?.label ?? 'هنوز ثبت نشده', color: att?.color ?? Colors.grey, icon: att?.icon),
-              if ('${(c['attendance'] as Map?)?['note'] ?? ''}'.isNotEmpty) ...[const SizedBox(width: 6), Expanded(child: Text('${(c['attendance'] as Map)['note']}', style: const TextStyle(color: Colors.black54)))],
+              if ('${(c['attendance'] as Map?)?['note'] ?? ''}'.isNotEmpty) ...[const SizedBox(width: 6), Expanded(child: Text('${(c['attendance'] as Map)['note']}', style: TextStyle(color: HsColors.muted)))],
             ]),
           if (!locked.contains('points')) ...[
             const SizedBox(height: 10),
@@ -174,7 +174,7 @@ class _ClassBlock extends ConsumerWidget {
               const Text('امتیاز امروز: '),
               Text('${((c['points_today'] ?? 0) as num) > 0 ? '+' : ''}${Fa.faDigits(c['points_today'] ?? 0)}', style: TextStyle(fontWeight: FontWeight.w700, color: ((c['points_today'] ?? 0) as num) < 0 ? HsColors.red : HsColors.green)),
               const Spacer(),
-              Text('کل: ${Fa.faDigits(c['points_total'] ?? 0)}', style: const TextStyle(color: Colors.black54)),
+              Text('کل: ${Fa.faDigits(c['points_total'] ?? 0)}', style: TextStyle(color: HsColors.muted)),
             ]),
             for (final p in items)
               Padding(
@@ -199,7 +199,7 @@ class _ClassBlock extends ConsumerWidget {
                 child: Column(children: [
                   Builder(builder: (_) {
                     final day = DateTime.parse('${dd['date']}');
-                    return Text(Week.shortName(day), style: TextStyle(fontSize: 12, fontWeight: Week.isHoliday(day) ? FontWeight.w700 : FontWeight.w400, color: Week.isHoliday(day) ? HsColors.red : Colors.black54));
+                    return Text(Week.shortName(day), style: TextStyle(fontSize: 12, fontWeight: Week.isHoliday(day) ? FontWeight.w700 : FontWeight.w400, color: Week.isHoliday(day) ? HsColors.red : HsColors.muted));
                   }),
                   const SizedBox(height: 4),
                   if (dd.containsKey('attendance'))
@@ -226,7 +226,7 @@ class _ClassBlock extends ConsumerWidget {
       if (!locked.contains('homework')) ...[
         const SizedBox(height: 10),
         if (hw.isEmpty)
-          const SectionCard(title: 'تکالیف', icon: Icons.menu_book_rounded, child: Text('تکلیف باز ندارد 🎉', style: TextStyle(color: Colors.black54)))
+          SectionCard(title: 'تکالیف', icon: Icons.menu_book_rounded, child: Text('تکلیف باز ندارد 🎉', style: TextStyle(color: HsColors.muted)))
         else
           for (final h in hw) Padding(padding: const EdgeInsets.only(bottom: 8), child: HomeworkCard(h: h, myStatus: '${h['status'] ?? 'pending'}')),
       ],
@@ -247,7 +247,7 @@ class _AnnouncementsList extends ConsumerWidget {
     final res = ref.watch(getProvider('/classes/$classId/announcements'));
     final list = ((res.valueOrNull?.data as List?) ?? const []).cast<Map>();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Padding(padding: EdgeInsets.only(bottom: 6), child: Text('اطلاعیه‌های کلاس', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy))),
+      Padding(padding: EdgeInsets.only(bottom: 6), child: Text('اطلاعیه‌های کلاس', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy))),
       for (final a in list.take(5)) Padding(padding: const EdgeInsets.only(bottom: 8), child: AnnouncementCard(a: a)),
     ]);
   }
@@ -323,7 +323,7 @@ class _PinCardState extends ConsumerState<_PinCard> {
       icon: Icons.lock_person_rounded,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(on ? 'فعال است: فرزندتان با کارت کلاس و رمز ۴ رقمی وارد می‌شود.' : 'با گذاشتن رمز ۴ رقمی، فرزندتان می‌تواند با کارت کلاس وارد شود و تکالیف و امتیازهایش را ببیند.',
-            style: const TextStyle(height: 1.7, color: Colors.black87)),
+            style: TextStyle(height: 1.7, color: HsColors.text87)),
         const SizedBox(height: 10),
         Row(children: [
           Expanded(child: FilledButton(onPressed: _busy || res.isLoading ? null : _set, child: Text(on ? 'تغییر رمز' : 'گذاشتن رمز'))),

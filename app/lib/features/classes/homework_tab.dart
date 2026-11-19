@@ -96,7 +96,7 @@ class HomeworkCard extends StatelessWidget {
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final s in HwStatus.all)
               if ((sum[s.key] ?? 0) != 0) Pill('${s.label} ${Fa.faDigits(sum[s.key])}', color: s.color),
-            const Text('برای علامت‌زدن بزنید', style: TextStyle(color: Colors.black38, fontSize: 12)),
+            Text('برای علامت‌زدن بزنید', style: TextStyle(color: HsColors.faint2, fontSize: 12)),
           ]),
         ],
         if (myStatus != null) ...[const SizedBox(height: 8), Pill(HwStatus.of(myStatus).label, color: HwStatus.of(myStatus).color)],
@@ -256,9 +256,9 @@ class _HomeworkStatusScreenState extends ConsumerState<HomeworkStatusScreen> {
             _loaded = true;
           }
           return Column(children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
-              child: Text('روی وضعیت هر دانش‌آموز بزنید تا عوض شود.', style: TextStyle(color: Colors.black54)),
+              child: Text('روی وضعیت هر دانش‌آموز بزنید تا عوض شود.', style: TextStyle(color: HsColors.muted)),
             ),
             Expanded(
               child: ListView(padding: const EdgeInsets.fromLTRB(10, 4, 10, 20), children: [

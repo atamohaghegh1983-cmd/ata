@@ -253,7 +253,9 @@ class HSUM_Front {
 		if ( $join ) {
 			$inv = HSUM_Invites::by_code( $join );
 			$h  .= '<section class="hsum-card hsum-hi"><h2>🔗 پیوستن به کلاس</h2>';
-			if ( $inv ) {
+			if ( $inv && class_exists( 'HS_Class_Students' ) && method_exists( 'HS_Class_Students', 'join_closed' ) && HS_Class_Students::join_closed( (int) $inv['class_id'] ) ) {
+				$h .= '<p class="hsum-err">' . esc_html( HS_Class_Students::join_closed_message() ) . '</p>';
+			} elseif ( $inv ) {
 				$h .= '<p>دعوت به کلاس <b>' . esc_html( get_the_title( $inv['class_id'] ) ) . '</b>. نام و نام خانوادگی فرزندتان را بنویسید:</p>'
 					. self::form( 'join', array( 'code' => $join, '<input name="child" required placeholder="مثلاً علی رضایی">' ), 'اتصال' );
 			} else {

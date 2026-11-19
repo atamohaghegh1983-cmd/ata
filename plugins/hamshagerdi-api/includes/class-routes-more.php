@@ -137,6 +137,11 @@ class HS_API_Routes_More {
 
 	/* ------------------------------ کد کلاس ← انتخاب فرزند ------------------------------ */
 
+	/** معلم پذیرش عضو جدید با کد کلاس را بسته؟ (مدیریت کلاس ۱.۷.۷+) */
+	public static function join_closed( $cid ) {
+		return class_exists( 'HS_Class_Students' ) && method_exists( 'HS_Class_Students', 'join_closed' ) && HS_Class_Students::join_closed( (int) $cid );
+	}
+
 	private static function invite_class( $raw ) {
 		if ( ! class_exists( 'HSUM_Invites' ) ) { return 0; }
 		$inv = HSUM_Invites::by_code( HS_API_Util::extract_code( (string) $raw ) );
@@ -157,6 +162,7 @@ class HS_API_Routes_More {
 		$lim = HS_API_Util::limited( $k, 10, 'تلاش زیاد بود. ۱۵ دقیقه بعد امتحان کنید.' );
 		if ( $lim ) { return $lim; }
 		$cid = self::invite_class( self::p( $r, 'code' ) );
+		if ( $cid && self::join_closed( $cid ) ) { return self::err( HS_Class_Students::join_closed_message(), 403, 'hs_join_closed' ); }
 		if ( ! $cid ) {
 			HS_API_Util::hit( $k, 15 * MINUTE_IN_SECONDS );
 			return self::err( 'کد کلاس معتبر نیست. دوباره از معلم بگیرید.', 404, 'hs_bad_code' );
@@ -188,6 +194,7 @@ class HS_API_Routes_More {
 	public static function join_class( WP_REST_Request $r ) {
 		$uid = get_current_user_id();
 		$cid = self::invite_class( self::p( $r, 'code' ) );
+		if ( $cid && self::join_closed( $cid ) ) { return self::err( HS_Class_Students::join_closed_message(), 403, 'hs_join_closed' ); }
 		$sid = (int) self::p( $r, 'student_id' );
 		if ( ! $cid || ! in_array( $sid, HS_API_Access::class_members( $cid ), true ) ) {
 			return self::err( 'کد کلاس یا دانش‌آموز معتبر نیست.', 404, 'hs_bad_code' );

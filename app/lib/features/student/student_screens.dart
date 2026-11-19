@@ -64,7 +64,7 @@ class StudentHome extends ConsumerWidget {
                   title: 'تکالیف من',
                   icon: Icons.menu_book_rounded,
                   child: Column(children: [
-                    if (((c['homework'] as List?) ?? const []).isEmpty) const Text('تکلیفی نداری 🎉', style: TextStyle(color: Colors.black54)),
+                    if (((c['homework'] as List?) ?? const []).isEmpty) Text('تکلیفی نداری 🎉', style: TextStyle(color: HsColors.muted)),
                     for (final h in ((c['homework'] as List?) ?? const []).cast<Map>())
                       ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -87,7 +87,7 @@ class StudentHome extends ConsumerWidget {
                   title: 'امتیازهای اخیر',
                   icon: Icons.stars_rounded,
                   child: Column(children: [
-                    if (((c['points_recent'] as List?) ?? const []).isEmpty) const Text('هنوز امتیازی نگرفته‌ای.', style: TextStyle(color: Colors.black54)),
+                    if (((c['points_recent'] as List?) ?? const []).isEmpty) Text('هنوز امتیازی نگرفته‌ای.', style: TextStyle(color: HsColors.muted)),
                     for (final p in ((c['points_recent'] as List?) ?? const []).cast<Map>())
                       ListTile(
                         dense: true,
@@ -218,7 +218,7 @@ class _KidLoginScreenState extends ConsumerState<KidLoginScreen> {
       const SizedBox(height: 10),
       OutlinedButton.icon(onPressed: _busy ? null : _gallery, icon: const Icon(Icons.photo_library_rounded), label: const Text('انتخاب عکس QR')),
       const SizedBox(height: 24),
-      const Text('یا کد ۶ حرفی کارت را بزن:', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
+      Text('یا کد ۶ حرفی کارت را بزن:', textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted)),
       const SizedBox(height: 8),
       Directionality(
         textDirection: TextDirection.ltr,
@@ -252,7 +252,7 @@ class _KidLoginScreenState extends ConsumerState<KidLoginScreen> {
           children: [
             for (final s in _students)
               Material(
-                color: Colors.white,
+                color: HsColors.card,
                 borderRadius: BorderRadius.circular(18),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(18),
@@ -277,7 +277,7 @@ class _KidLoginScreenState extends ConsumerState<KidLoginScreen> {
       Center(child: HsAvatar(name: '${_me!['name']}', url: '${_me!['avatar'] ?? ''}', size: 84)),
       const SizedBox(height: 10),
       Text('سلام ${_me!['name']}!', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
-      const Text('رمز ۴ رقمی‌ات را بزن', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
+      Text('رمز ۴ رقمی‌ات را بزن', textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted)),
       const SizedBox(height: 18),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         for (var i = 0; i < 4; i++)
@@ -303,7 +303,7 @@ class _KidLoginScreenState extends ConsumerState<KidLoginScreen> {
               k.isEmpty
                   ? const SizedBox()
                   : Material(
-                      color: Colors.white,
+                      color: HsColors.card,
                       borderRadius: BorderRadius.circular(18),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(18),

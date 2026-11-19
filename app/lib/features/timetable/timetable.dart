@@ -18,8 +18,8 @@ class SubjectStyle {
   static const _fg = [Color(0xFF2C5DA8), Color(0xFF1E8E5A), Color(0xFFB7791F), Color(0xFFC2185B), Color(0xFF5B3CC4), Color(0xFF00838F), Color(0xFFC24E00)];
 
   static int _h(String s) => s.runes.fold(7, (a, b) => (a * 31 + b) & 0x7fffffff);
-  static Color bg(String s) => _cols[_h(s) % _cols.length];
-  static Color fg(String s) => _fg[_h(s) % _fg.length];
+  static Color bg(String s) => HsColors.dark ? _fg[_h(s) % _fg.length].withValues(alpha: 0.28) : _cols[_h(s) % _cols.length];
+  static Color fg(String s) => HsColors.dark ? Color.lerp(_fg[_h(s) % _fg.length], Colors.white, 0.55)! : _fg[_h(s) % _fg.length];
 
   static IconData icon(String s) {
     bool has(List<String> k) => k.any(s.contains);
@@ -62,7 +62,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
   void _startEdit(Map d) {
     _draft = {
       for (final c in ((d['cells'] as List?) ?? const []).cast<Map>())
-        _k((c['day'] as num).toInt(), (c['period'] as num).toInt()): {'subject': '${c['subject']}', 'teacher_id': c['teacher_id'], 'teacher': '${c['teacher']}'},
+        _k((c['day'] as num).toInt(), (c['period'] as num).toInt()): {'subject': '${c['subject']}', 'teacher_id': c['teacher_id'], 'teacher': '${c['teacher']}', 'span': ((c['span'] as num?) ?? 1).toInt()},
     };
     _bad = {};
     setState(() {
@@ -77,7 +77,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
       await ref.read(apiProvider).post<Object?>(_path, data: {
         'cells': [
           for (final e in _draft.entries)
-            {'day': int.parse(e.key.split('_')[0]), 'period': int.parse(e.key.split('_')[1]), 'subject': e.value['subject'], 'teacher_id': e.value['teacher_id']},
+            {'day': int.parse(e.key.split('_')[0]), 'period': int.parse(e.key.split('_')[1]), 'subject': e.value['subject'], 'teacher_id': e.value['teacher_id'], 'span': e.value['span'] ?? 1},
         ],
       });
       ref.invalidate(getProvider(_path));
@@ -99,7 +99,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
             if (conf.isEmpty) Text(e.message, style: const TextStyle(height: 1.8)),
             for (final x in conf) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• ${x['message']}', style: const TextStyle(height: 1.8))),
             const SizedBox(height: 4),
-            const Text('خانه‌های قرمز را عوض کنید (معلم دیگر یا زنگ دیگر) و دوباره ذخیره کنید.', style: TextStyle(color: Colors.black54, fontSize: 13)),
+            Text('خانه‌های قرمز را عوض کنید (معلم دیگر یا زنگ دیگر) و دوباره ذخیره کنید.', style: TextStyle(color: HsColors.muted, fontSize: 13)),
           ]),
           actions: [FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(c), child: const Text('باشه'))],
         ),
@@ -114,6 +114,18 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
     final cur = _draft[_k(day, period)];
     final sub = TextEditingController(text: '${cur?['subject'] ?? ''}');
     int? tid = (cur?['teacher_id'] as num?)?.toInt() ?? (teachers.isNotEmpty ? (teachers.first['id'] as num).toInt() : null);
+    var span = ((cur?['span'] as num?) ?? 1).toInt();
+    // حداکثر زنگ پشت سر هم بدون تفریح از این زنگ
+    final slots = (((d['bells'] as Map)['slots'] as List?) ?? const []).cast<Map>();
+    var maxSpan = 0;
+    var started = false;
+    for (final sl in slots) {
+      if (!started && sl['type'] == 'class' && (sl['period'] as num).toInt() == period) started = true;
+      if (!started) continue;
+      if (sl['type'] != 'class') break;
+      maxSpan++;
+    }
+    maxSpan = maxSpan.clamp(1, 3);
     final used = {for (final v in _draft.values) '${v['subject']}'}..removeWhere((x) => x.isEmpty);
     final days = ((d['bells'] as Map)['day_names'] as List).cast<String>();
     final res = await showModalBottomSheet<String>(
@@ -130,6 +142,15 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
             if (used.isNotEmpty) ...[
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 4, children: [for (final u in used) ActionChip(label: Text(u), onPressed: () => sub.text = u)]),
+            ],
+            if (maxSpan > 1) ...[
+              const SizedBox(height: 10),
+              const Text('مدت درس', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Wrap(spacing: 6, children: [
+                for (var k = 1; k <= maxSpan; k++)
+                  ChoiceChip(key: Key('span_$k'), label: Text(k == 1 ? 'یک زنگ' : (k == 2 ? 'دو زنگ (دوزنگه)' : 'سه زنگ')), selected: span == k, onSelected: (_) => set(() => span = k)),
+              ]),
             ],
             if (teachers.length > 1) ...[
               const SizedBox(height: 10),
@@ -158,7 +179,11 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
         _draft.remove(_k(day, period));
       } else {
         final t = teachers.where((x) => x['id'] == tid).firstOrNull;
-        _draft[_k(day, period)] = {'subject': sub.text.trim(), 'teacher_id': tid, 'teacher': '${t?['name'] ?? ''}'};
+        _draft[_k(day, period)] = {'subject': sub.text.trim(), 'teacher_id': tid, 'teacher': '${t?['name'] ?? ''}', 'span': span};
+        // خانه‌هایی که زیر این درس چندزنگه رفته‌اند پاک می‌شوند
+        for (var k = 1; k < span; k++) {
+          _draft.remove(_k(day, period + k));
+        }
       }
     });
   }
@@ -221,9 +246,9 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
             onRefresh: () async => ref.invalidate(getProvider(_path)),
             child: ListView(padding: const EdgeInsets.fromLTRB(10, 8, 10, 24), children: [
               if (_edit)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(bottom: 8),
-                  child: Text('روی هر خانه بزنید تا درس و معلم آن زنگ را تعیین کنید. هر معلم در هر زنگ فقط می‌تواند در یک کلاس باشد.', style: TextStyle(color: Colors.black54, height: 1.7, fontSize: 13)),
+                  child: Text('روی هر خانه بزنید تا درس و معلم آن زنگ را تعیین کنید. هر معلم در هر زنگ فقط می‌تواند در یک کلاس باشد.', style: TextStyle(color: HsColors.muted, height: 1.7, fontSize: 13)),
                 ),
               if (cells.isEmpty && !_edit)
                 EmptyView(icon: Icons.calendar_view_week_rounded, title: 'برنامه‌ی هفتگی هنوز وارد نشده', text: canEdit ? 'با دکمه‌ی «چیدن برنامه» درس هر زنگ را وارد کنید.' : (teacherMode ? 'برنامه‌ی کلاس‌هایتان را از صفحه‌ی هر کلاس وارد کنید.' : 'وقتی معلم یا مدیر برنامه را وارد کند، اینجا نمایش داده می‌شود.')),
@@ -240,7 +265,19 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
   }
 }
 
-/// جدول هفته (افقی قابل پیمایش روی گوشی)
+/// خانه‌هایی که زیر درس چندزنگه افتاده‌اند: {"day_period"}
+Set<String> coveredCells(Map<String, Map> cells) {
+  final out = <String>{};
+  for (final c in cells.values) {
+    final span = ((c['span'] as num?) ?? 1).toInt();
+    for (var k = 1; k < span; k++) {
+      out.add('${c['day']}_${((c['period'] as num).toInt()) + k}');
+    }
+  }
+  return out;
+}
+
+/// جدول هفته (افقی قابل پیمایش روی گوشی)؛ هر روز یک ستون، درس چندزنگه یک خانه‌ی بلند
 class WeekGrid extends StatelessWidget {
   const WeekGrid({super.key, required this.bells, required this.cells, this.showClass = false, this.editing = false, this.bad = const {}, this.onTap});
   final Map bells;
@@ -249,64 +286,78 @@ class WeekGrid extends StatelessWidget {
   final Set<String> bad;
   final void Function(int day, int period)? onTap;
 
+  static const rowH = 64.0, gap = 6.0, breakH = 34.0;
+
   @override
   Widget build(BuildContext context) {
     final days = ((bells['day_names'] as List?) ?? const []).cast<String>();
     final slots = ((bells['slots'] as List?) ?? const []).cast<Map>();
     final today = todayIndex();
+    final covered = coveredCells(cells);
     const w = 92.0;
+    Widget timeCol() => SizedBox(
+          width: 62,
+          child: Column(children: [
+            const SizedBox(height: 38),
+            for (final s in slots)
+              s['type'] == 'break'
+                  ? const SizedBox(height: breakH + gap, child: Center(child: Text('☕')))
+                  : SizedBox(
+                      height: rowH + gap,
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Text(Fa.faDigits(s['period']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text('${Fa.faDigits(s['start'])}\n${Fa.faDigits(s['end'])}', textAlign: TextAlign.center, style: TextStyle(fontSize: 10.5, color: HsColors.faint, height: 1.3)),
+                      ]),
+                    ),
+          ]),
+        );
+    Widget dayCol(int d) {
+      final children = <Widget>[
+        SizedBox(height: 38, child: Center(child: Text(days[d], style: TextStyle(fontWeight: FontWeight.w700, color: d == today ? HsColors.orangeDark : HsColors.navy)))),
+      ];
+      for (var i = 0; i < slots.length; i++) {
+        final s = slots[i];
+        if (s['type'] == 'break') {
+          children.add(Container(
+            height: breakH,
+            margin: const EdgeInsets.only(bottom: gap),
+            decoration: BoxDecoration(color: HsColors.blue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            alignment: Alignment.center,
+            child: Text('تفریح', style: TextStyle(fontSize: 11, color: HsColors.blue)),
+          ));
+          continue;
+        }
+        final key = '${d}_${s['period']}';
+        if (covered.contains(key)) continue;
+        final c = cells[key];
+        final span = ((c?['span'] as num?) ?? 1).toInt();
+        children.add(Padding(
+          padding: const EdgeInsets.only(bottom: gap),
+          child: _Cell(
+            width: w - 6,
+            height: rowH * span + gap * (span - 1),
+            c: c,
+            today: d == today,
+            showClass: showClass,
+            editing: editing,
+            bad: bad.contains(key),
+            onTap: onTap == null ? null : () => onTap!(d, (s['period'] as num).toInt()),
+          ),
+        ));
+      }
+      return SizedBox(width: w, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: Column(children: children)));
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const SizedBox(width: 62),
-          for (final (i, n) in days.indexed)
-            Container(
-              width: w,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              alignment: Alignment.center,
-              child: Text(n, style: TextStyle(fontWeight: FontWeight.w700, color: i == today ? HsColors.orangeDark : HsColors.navy)),
-            ),
-        ]),
-        for (final s in slots)
-          s['type'] == 'break'
-              ? Container(
-                  width: 62 + w * days.length,
-                  margin: const EdgeInsets.symmetric(vertical: 3),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(color: const Color(0xFFE8F0FB), borderRadius: BorderRadius.circular(12)),
-                  child: Text('☕ زنگ تفریح  ${Fa.faDigits(s['start'])} تا ${Fa.faDigits(s['end'])}', textAlign: TextAlign.center, style: const TextStyle(color: HsColors.blue, fontWeight: FontWeight.w500)),
-                )
-              : Row(children: [
-                  SizedBox(
-                    width: 62,
-                    child: Column(children: [
-                      Text(Fa.faDigits(s['period']), style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('${Fa.faDigits(s['start'])}\n${Fa.faDigits(s['end'])}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, color: Colors.black45, height: 1.3)),
-                    ]),
-                  ),
-                  for (var d = 0; d < days.length; d++)
-                    Padding(
-                      padding: const EdgeInsets.all(3),
-                      child: _Cell(
-                        width: w - 6,
-                        c: cells['${d}_${s['period']}'],
-                        today: d == today,
-                        showClass: showClass,
-                        editing: editing,
-                        bad: bad.contains('${d}_${s['period']}'),
-                        onTap: onTap == null ? null : () => onTap!(d, (s['period'] as num).toInt()),
-                      ),
-                    ),
-                ]),
-      ]),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [timeCol(), for (var d = 0; d < days.length; d++) dayCol(d)]),
     );
   }
 }
 
 class _Cell extends StatelessWidget {
-  const _Cell({required this.width, required this.c, required this.today, required this.showClass, required this.editing, required this.bad, this.onTap});
-  final double width;
+  const _Cell({required this.width, this.height = 64, required this.c, required this.today, required this.showClass, required this.editing, required this.bad, this.onTap});
+  final double width, height;
   final Map? c;
   final bool today, showClass, editing, bad;
   final VoidCallback? onTap;
@@ -316,28 +367,29 @@ class _Cell extends StatelessWidget {
     final sub = '${c?['subject'] ?? ''}';
     final empty = sub.isEmpty;
     return Material(
-      color: empty ? (editing ? Colors.white : const Color(0x08000000)) : SubjectStyle.bg(sub),
+      color: empty ? (editing ? HsColors.card : const Color(0x08000000)) : SubjectStyle.bg(sub),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
           width: width,
-          height: 64,
+          height: height,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: bad ? Border.all(color: HsColors.red, width: 2) : (today && !empty ? Border.all(color: HsColors.orange, width: 2) : (editing && empty ? Border.all(color: const Color(0x22000000)) : null)),
           ),
           child: empty
-              ? (editing ? const Icon(Icons.add_rounded, color: Colors.black26) : null)
+              ? (editing ? Icon(Icons.add_rounded, color: HsColors.line) : null)
               : Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Icon(SubjectStyle.icon(sub), size: 14, color: SubjectStyle.fg(sub)),
                     const SizedBox(width: 3),
                     Expanded(child: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: SubjectStyle.fg(sub)))),
                   ]),
-                  Text(showClass ? '${c?['class'] ?? ''}' : '${c?['teacher'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: Colors.black54)),
+                  Text(showClass ? '${c?['class'] ?? ''}' : '${c?['teacher'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: HsColors.muted)),
+                  if (((c?['span'] as num?) ?? 1) > 1) Text('${Fa.faDigits(c?['span'])} زنگ', style: TextStyle(fontSize: 10, color: SubjectStyle.fg(sub))),
                 ]),
         ),
       ),
@@ -397,6 +449,12 @@ class DaySlots extends StatelessWidget {
   Widget build(BuildContext context) {
     final slots = ((bells['slots'] as List?) ?? const []).cast<Map>();
     final isToday = day == todayIndex();
+    final covered = coveredCells(cells);
+    String endOf(int period, int span) {
+      final last = slots.where((x) => x['type'] == 'class' && (x['period'] as num).toInt() == period + span - 1).firstOrNull;
+      return '${last?['end'] ?? ''}';
+    }
+
     return Column(children: [
       for (final s in slots)
         if (s['type'] == 'break')
@@ -408,8 +466,10 @@ class DaySlots extends StatelessWidget {
                 )
         else
           Builder(builder: (_) {
+            if (covered.contains('${day}_${s['period']}')) return const SizedBox.shrink();
             final c = cells['${day}_${s['period']}'];
             final sub = '${c?['subject'] ?? ''}';
+            final span = ((c?['span'] as num?) ?? 1).toInt();
             if (compact && sub.isEmpty) return const SizedBox.shrink();
             final now = isToday && _now(s);
             return Container(
@@ -424,18 +484,18 @@ class DaySlots extends StatelessWidget {
                 SizedBox(
                   width: 56,
                   child: Column(children: [
-                    Text('زنگ ${Fa.faDigits(s['period'])}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    Text(Fa.faDigits(s['start']), style: const TextStyle(fontSize: 11, color: Colors.black45)),
+                    Text(span > 1 ? 'زنگ ${Fa.faDigits(s['period'])}-${Fa.faDigits((s['period'] as num) + span - 1)}' : 'زنگ ${Fa.faDigits(s['period'])}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                    Text(span > 1 ? '${Fa.faDigits(s['start'])}\n${Fa.faDigits(endOf((s['period'] as num).toInt(), span))}' : Fa.faDigits(s['start']), textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: HsColors.faint)),
                   ]),
                 ),
                 if (sub.isNotEmpty) Icon(SubjectStyle.icon(sub), color: SubjectStyle.fg(sub)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: sub.isEmpty
-                      ? const Text('—', style: TextStyle(color: Colors.black38))
+                      ? Text('—', style: TextStyle(color: HsColors.faint2))
                       : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(sub, style: TextStyle(fontWeight: FontWeight.w700, color: SubjectStyle.fg(sub))),
-                          Text(showClass ? '${c?['class'] ?? ''}' : '${c?['teacher'] ?? ''}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                          Text(showClass ? '${c?['class'] ?? ''}' : '${c?['teacher'] ?? ''}', style: TextStyle(fontSize: 12, color: HsColors.muted)),
                         ]),
                 ),
                 if (now) const Pill('الان', color: HsColors.orange),
@@ -480,7 +540,7 @@ class ScoreCard extends StatelessWidget {
                   Expanded(
                     child: Text.rich(TextSpan(children: [
                       TextSpan(text: '${c['label']}', style: const TextStyle(fontSize: 13)),
-                      if ('${c['detail'] ?? ''}'.isNotEmpty) TextSpan(text: '\n${c['detail']}', style: const TextStyle(fontSize: 11.5, color: Colors.black54)),
+                      if ('${c['detail'] ?? ''}'.isNotEmpty) TextSpan(text: '\n${c['detail']}', style: TextStyle(fontSize: 11.5, color: HsColors.muted)),
                     ])),
                   ),
                 ]),
@@ -516,11 +576,11 @@ class TodayTimetableCard extends ConsumerWidget {
         child: const Text('برنامه هفتگی ←'),
       ),
       child: d.isEmpty
-          ? const Text('…', style: TextStyle(color: Colors.black38))
+          ? Text('…', style: TextStyle(color: HsColors.faint2))
           : cells.isEmpty
-              ? const Text('برنامه‌ی هفتگی هنوز وارد نشده است. از «برنامه هفتگی» هر کلاس آن را بچینید.', style: TextStyle(color: Colors.black45, height: 1.7))
+              ? Text('برنامه‌ی هفتگی هنوز وارد نشده است. از «برنامه هفتگی» هر کلاس آن را بچینید.', style: TextStyle(color: HsColors.faint, height: 1.7))
               : holiday || !hasToday
-                  ? Text(holiday ? 'امروز تعطیل است 🌤️' : 'امروز زنگ درسی ندارید.', style: const TextStyle(color: Colors.black54))
+                  ? Text(holiday ? 'امروز تعطیل است 🌤️' : 'امروز زنگ درسی ندارید.', style: TextStyle(color: HsColors.muted))
                   : DaySlots(bells: bells, cells: cells, day: t, showClass: d['mode'] == 'teacher', compact: true),
     );
   }
@@ -609,7 +669,7 @@ class _BellsScreenState extends ConsumerState<BellsScreen> {
               'school' => 'زنگ‌بندی مدرسه استفاده می‌شود؛ تغییر اینجا فقط برای همین کلاس است.',
               _ => 'زنگ‌بندی پیش‌فرض همشاگردی؛ هر طور می‌خواهید تغییر دهید.',
             },
-            style: const TextStyle(color: Colors.black54, height: 1.7),
+            style: TextStyle(color: HsColors.muted, height: 1.7),
           ),
           if (_source == 'class' && !widget.school) TextButton(onPressed: _busy ? null : () => _save(reset: true), child: const Text('برگشت به زنگ‌بندی مدرسه/پیش‌فرض')),
           const SizedBox(height: 8),
@@ -624,7 +684,7 @@ class _BellsScreenState extends ConsumerState<BellsScreen> {
           for (final (i, s) in _slots.indexed)
             Card(
               margin: const EdgeInsets.only(bottom: 6),
-              color: s['type'] == 'break' ? const Color(0xFFE8F0FB) : Colors.white,
+              color: s['type'] == 'break' ? const Color(0xFFE8F0FB) : HsColors.card,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
                 child: Row(children: [

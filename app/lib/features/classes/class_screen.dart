@@ -114,7 +114,25 @@ class _StudentsTab extends ConsumerWidget {
               heroTag: 'add_student',
               backgroundColor: HsColors.orange,
               foregroundColor: Colors.white,
-              onPressed: () => _addStudent(context, ref),
+              onPressed: () async {
+                final how = await showModalBottomSheet<String>(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (c) => SafeArea(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      ListTile(key: const Key('add_one'), leading: const Icon(Icons.person_add_alt_1_rounded, color: HsColors.orange), title: const Text('یک دانش‌آموز'), subtitle: const Text('نام و موبایل والد'), onTap: () => Navigator.pop(c, 'one')),
+                      ListTile(key: const Key('add_excel'), leading: const Icon(Icons.table_chart_rounded, color: HsColors.green), title: const Text('چند دانش‌آموز از فایل اکسل'), subtitle: const Text('فهرست کلاس را یک‌جا وارد کنید'), onTap: () => Navigator.pop(c, 'excel')),
+                    ]),
+                  ),
+                );
+                if (!context.mounted || how == null) return;
+                if (how == 'one') {
+                  await _addStudent(context, ref);
+                } else {
+                  await context.push('/class/$classId/import');
+                  ref.invalidate(classStudentsProvider(classId));
+                }
+              },
               icon: const Icon(Icons.person_add_alt_1_rounded),
               label: const Text('دانش‌آموز'),
             )
@@ -138,12 +156,22 @@ class _StudentsTab extends ConsumerWidget {
               children: [
                 if (r.fromCache) ...[OfflineBanner(savedAt: r.savedAt), const SizedBox(height: 8)],
                 if (list.isEmpty)
-                  EmptyView(icon: Icons.groups_rounded, title: 'هنوز دانش‌آموزی ندارید', text: canWrite ? 'با دکمه‌ی «دانش‌آموز»، نام دانش‌آموز و موبایل والدش را وارد کنید.' : ''),
+                  EmptyView(icon: Icons.groups_rounded, title: 'هنوز دانش‌آموزی ندارید', text: canWrite ? 'با دکمه‌ی «دانش‌آموز»، نام دانش‌آموز و موبایل والدش را وارد کنید، یا فهرست کلاس را از اکسل بیاورید.' : ''),
+                if (list.isEmpty && canWrite)
+                  OutlinedButton.icon(
+                    key: const Key('empty_excel'),
+                    onPressed: () async {
+                      await context.push('/class/$classId/import');
+                      ref.invalidate(classStudentsProvider(classId));
+                    },
+                    icon: const Icon(Icons.table_chart_rounded),
+                    label: const Text('افزودن از فایل اکسل'),
+                  ),
                 if (list.isNotEmpty && canWrite && unlinked > 0)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text('${Fa.faDigits(unlinked)} دانش‌آموز هنوز والد متصل ندارد؛ روی هر کدام بزنید و کد اتصال را برای والدش بفرستید.',
-                        style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.7)),
+                        style: TextStyle(color: HsColors.muted, fontSize: 13, height: 1.7)),
                   ),
                 if (list.isNotEmpty)
                   Padding(
@@ -185,7 +213,7 @@ class _StudentsTab extends ConsumerWidget {
                           key: Key('st_row_${s['id']}'),
                           onTap: () => showStudentSheet(context, classId: classId, studentId: (s['id'] as num).toInt(), canWrite: canWrite),
                           leading: Row(mainAxisSize: MainAxisSize.min, children: [
-                            SizedBox(width: 24, child: Text(Fa.faDigits(i + 1), style: const TextStyle(color: Colors.black38, fontSize: 12))),
+                            SizedBox(width: 24, child: Text(Fa.faDigits(i + 1), style: TextStyle(color: HsColors.faint2, fontSize: 12))),
                             HsAvatar(name: '${s['name']}', url: '${s['avatar'] ?? ''}', size: 38),
                           ]),
                           title: Text('${s['name']}', style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -260,7 +288,7 @@ class _StudentTile extends StatelessWidget {
     final pts = (s['points'] as num?)?.toInt() ?? 0;
     final linked = (s['parents'] ?? 0) > 0;
     return Material(
-      color: Colors.white,
+      color: HsColors.card,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -301,7 +329,7 @@ Future<void> showParentCodeDialog(BuildContext context, {required String name, r
         const SizedBox(height: 14),
         SelectableText(code, textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: 4, color: HsColors.orangeDark)),
         const SizedBox(height: 6),
-        const Text('اگر موبایل والد را وارد کرده باشید، بعد از ورود فقط یک «تأیید» لازم است.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54, fontSize: 12, height: 1.7)),
+        Text('اگر موبایل والد را وارد کرده باشید، بعد از ورود فقط یک «تأیید» لازم است.', textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted, fontSize: 12, height: 1.7)),
       ]),
       actions: [
         TextButton.icon(
@@ -437,8 +465,8 @@ class AnnouncementsTab extends ConsumerWidget {
                   ExpansionTile(
                     key: const Key('ann_archive'),
                     tilePadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.inventory_2_rounded, color: Colors.black45),
-                    title: Text('بایگانی (${Fa.faDigits(archived.length)})', style: const TextStyle(color: Colors.black54)),
+                    leading: Icon(Icons.inventory_2_rounded, color: HsColors.faint),
+                    title: Text('بایگانی (${Fa.faDigits(archived.length)})', style: TextStyle(color: HsColors.muted)),
                     subtitle: const Text('مهلت نمایش این‌ها تمام شده و والدین دیگر نمی‌بینند.', style: TextStyle(fontSize: 12)),
                     children: [
                       for (final a in archived) Padding(padding: const EdgeInsets.only(bottom: 10), child: Opacity(opacity: 0.7, child: AnnouncementCard(a: a, onChanged: () => ref.invalidate(getProvider(path))))),
@@ -460,7 +488,7 @@ class AnnouncementCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final date = Text(Fa.date('${a['created_at'] ?? ''}', withYear: false), style: const TextStyle(color: Colors.black45, fontSize: 12));
+    final date = Text(Fa.date('${a['created_at'] ?? ''}', withYear: false), style: TextStyle(color: HsColors.faint, fontSize: 12));
     return SectionCard(
       title: '${a['title']}',
       icon: a['pinned'] == true ? Icons.push_pin_rounded : Icons.campaign_rounded,
@@ -496,7 +524,7 @@ class AnnouncementCard extends ConsumerWidget {
         if (a['state'] == 'scheduled')
           Padding(padding: const EdgeInsets.only(top: 6), child: Pill('⏳ نمایش از ${Fa.date('${a['show_from']}', withYear: false)}', color: HsColors.blue)),
         if (a['state'] == 'archived')
-          const Padding(padding: EdgeInsets.only(top: 6), child: Pill('🗄️ بایگانی شده', color: Colors.black45)),
+          Padding(padding: EdgeInsets.only(top: 6), child: Pill('🗄️ بایگانی شده', color: HsColors.faint)),
         if (a['state'] == 'active' && '${a['show_until'] ?? ''}'.length >= 10 && '${a['show_until']}' != 'null')
           Padding(padding: const EdgeInsets.only(top: 6), child: Pill('⏱️ تا ${Fa.weekday(DateTime.parse('${a['show_until']}'.substring(0, 10)))} ${Fa.date('${a['show_until']}', withYear: false)}', color: HsColors.orangeDark)),
       ]),
@@ -596,7 +624,7 @@ class _NewAnnouncementSheetState extends ConsumerState<_NewAnnouncementSheet> {
             },
           ),
         ]),
-        const Text('بعد از پایان مدت، اطلاعیه برای والدین پنهان و برای شما «بایگانی» می‌شود.', style: TextStyle(fontSize: 12, color: Colors.black45, height: 1.7)),
+        Text('بعد از پایان مدت، اطلاعیه برای والدین پنهان و برای شما «بایگانی» می‌شود.', style: TextStyle(fontSize: 12, color: HsColors.faint, height: 1.7)),
         const SizedBox(height: 10),
         FilledButton(onPressed: _busy ? null : _save, child: busyLabel(_busy, widget.edit != null ? 'ذخیره' : 'انتشار')),
       ]),
@@ -627,8 +655,8 @@ class InviteSheet extends ConsumerWidget {
             children: [
               Text('QR دعوت کلاس', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 6),
-              const Text('برای جلسه‌ی اولیا یا تابلوی کلاس: والدین با اپ همشاگردی این QR را اسکن کنند و نام فرزندشان را بنویسند. اگر شماره‌شان در پرونده‌ی دانش‌آموز باشد فوراً وصل می‌شوند؛ وگرنه درخواست برای شما می‌آید.',
-                  textAlign: TextAlign.center, style: TextStyle(color: Colors.black54, height: 1.8, fontSize: 13)),
+              Text('برای جلسه‌ی اولیا یا تابلوی کلاس: والدین با اپ همشاگردی این QR را اسکن کنند و نام فرزندشان را بنویسند. اگر شماره‌شان در پرونده‌ی دانش‌آموز باشد فوراً وصل می‌شوند؛ وگرنه درخواست برای شما می‌آید.',
+                  textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted, height: 1.8, fontSize: 13)),
               const SizedBox(height: 16),
               if (qr.isNotEmpty)
                 Center(
@@ -638,15 +666,51 @@ class InviteSheet extends ConsumerWidget {
                     child: QrImageView(
                       data: qr,
                       size: 220,
-                      eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: HsColors.navy),
-                      dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: HsColors.navy),
+                      eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: HsColors.ink),
+                      dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: HsColors.ink),
                     ),
                   ),
                 ),
               const SizedBox(height: 14),
               if (code.isNotEmpty) Center(child: SelectableText(code, textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: 3, color: HsColors.orangeDark))),
               const SizedBox(height: 12),
-              const Text('این کد برای همه‌ی والدین کلاس یکی است.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54, fontSize: 12)),
+              Text('این کد برای همه‌ی والدین کلاس یکی است.', textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted, fontSize: 12)),
+              const SizedBox(height: 8),
+              Card(
+                child: Column(children: [
+                  SwitchListTile(
+                    key: const Key('join_open'),
+                    value: d['join_open'] != false,
+                    title: const Text('پذیرش والد جدید با کد کلاس'),
+                    subtitle: Text(d['join_open'] != false ? 'هر کس کد یا QR را داشته باشد می‌تواند درخواست بدهد.' : 'بسته است؛ فقط والدینی که شماره‌شان را ثبت کرده‌اید وصل می‌شوند.', style: const TextStyle(fontSize: 12)),
+                    onChanged: (v) async {
+                      try {
+                        final r = await ref.read(apiProvider).post<Map<String, dynamic>>('/classes/$classId/join', data: {'open': v});
+                        ref.invalidate(classInviteProvider(classId));
+                        if (context.mounted) showMessage(context, '${r['message']}');
+                      } on ApiException catch (e) {
+                        if (context.mounted) showMessage(context, e.message, error: true);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    key: const Key('new_code'),
+                    leading: const Icon(Icons.refresh_rounded, color: HsColors.red),
+                    title: const Text('ساخت کد تازه'),
+                    subtitle: const Text('کد و QR قبلی باطل می‌شوند (اگر کد به بیرون از کلاس رسیده).', style: TextStyle(fontSize: 12)),
+                    onTap: () async {
+                      if (!await confirmDanger(context, title: 'ساخت کد تازه', text: 'کد و QR فعلی دیگر کار نمی‌کنند و باید کد تازه را برای والدین بفرستید.', ok: 'ساخت کد تازه')) return;
+                      try {
+                        await ref.read(apiProvider).post<Object?>('/classes/$classId/invite', data: {'which': 'parent'});
+                        ref.invalidate(classInviteProvider(classId));
+                        if (context.mounted) showMessage(context, 'کد تازه ساخته شد ✅');
+                      } on ApiException catch (e) {
+                        if (context.mounted) showMessage(context, e.message, error: true);
+                      }
+                    },
+                  ),
+                ]),
+              ),
               const SizedBox(height: 12),
               FilledButton.icon(
                 key: const Key('share_qr_image'),
@@ -678,8 +742,8 @@ Future<void> _shareQrImage(BuildContext context, String data, String code) async
     final painter = QrPainter(
       data: data,
       version: QrVersions.auto,
-      eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: HsColors.navy),
-      dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: HsColors.navy),
+      eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: HsColors.ink),
+      dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: HsColors.ink),
     );
     canvas.save();
     canvas.translate(60, 40);
@@ -715,7 +779,7 @@ Future<void> broadcastToParents(BuildContext context, WidgetRef ref, int classId
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('پیام به همه‌ی والدین', style: Theme.of(s).textTheme.titleLarge),
         const SizedBox(height: 6),
-        const Text('برای هر والد به‌صورت پیام خصوصی فرستاده می‌شود و جواب‌ها فقط برای شما می‌آید.', style: TextStyle(color: Colors.black54, fontSize: 13, height: 1.7)),
+        Text('برای هر والد به‌صورت پیام خصوصی فرستاده می‌شود و جواب‌ها فقط برای شما می‌آید.', style: TextStyle(color: HsColors.muted, fontSize: 13, height: 1.7)),
         const SizedBox(height: 10),
         TextField(key: const Key('broadcast_body'), controller: c, autofocus: true, minLines: 3, maxLines: 6, decoration: const InputDecoration(labelText: 'متن پیام')),
         const SizedBox(height: 14),
@@ -754,9 +818,9 @@ class _ReorderScreenState extends State<_ReorderScreen> {
         ),
       ),
       body: Column(children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.all(12),
-          child: Text('هر ردیف را با نگه‌داشتن ⠿ بکشید و جابه‌جا کنید.', style: TextStyle(color: Colors.black54)),
+          child: Text('هر ردیف را با نگه‌داشتن ⠿ بکشید و جابه‌جا کنید.', style: TextStyle(color: HsColors.muted)),
         ),
         Expanded(
           child: ReorderableListView.builder(

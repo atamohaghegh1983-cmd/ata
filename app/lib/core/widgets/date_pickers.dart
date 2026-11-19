@@ -24,7 +24,7 @@ class WeekDayPicker extends StatelessWidget {
       Row(children: [
         const SizedBox(width: 64),
         for (final n in Week.shortNames)
-          Expanded(child: Center(child: Text(n, style: TextStyle(fontSize: 12, color: n == 'پ' || n == 'ج' ? HsColors.red : Colors.black54, fontWeight: FontWeight.w700)))),
+          Expanded(child: Center(child: Text(n, style: TextStyle(fontSize: 12, color: n == 'پ' || n == 'ج' ? HsColors.red : HsColors.muted, fontWeight: FontWeight.w700)))),
       ]),
       const SizedBox(height: 4),
       for (var w = 0; w < weeks; w++)
@@ -34,7 +34,7 @@ class WeekDayPicker extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Row(children: [
-              SizedBox(width: 64, child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black45))),
+              SizedBox(width: 64, child: Text(label, style: TextStyle(fontSize: 11, color: HsColors.faint))),
               for (final d in Week.allDays(sat))
                 Expanded(
                   child: Padding(
@@ -65,9 +65,9 @@ class _Day extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final j = Jalali.fromDateTime(d);
-    final fg = selected ? Colors.white : (holiday ? HsColors.red : (past ? Colors.black26 : HsColors.navy));
+    final fg = selected ? Colors.white : (holiday ? HsColors.red : (past ? HsColors.line : HsColors.navy));
     return Material(
-      color: selected ? HsColors.orange : (holiday ? const Color(0x14E53935) : Colors.white),
+      color: selected ? HsColors.orange : (holiday ? const Color(0x14E53935) : HsColors.card),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         key: Key('day_${Fa.ymd(d)}'),

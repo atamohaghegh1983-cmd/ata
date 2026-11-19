@@ -185,7 +185,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _field('child_last', 'نام خانوادگی فرزند'),
           _field('city', 'شهر', required: false),
           _field('code', 'کد کلاس (اگر معلم داده)', required: false, hint: 'مثلاً K-AB12CD'),
-          const Text('بدون کد هم می‌توانید ادامه دهید و بعداً فرزند را با اسکن QR کلاس اضافه کنید.', style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.6)),
+          Text('بدون کد هم می‌توانید ادامه دهید و بعداً فرزند را با اسکن QR کلاس اضافه کنید.', style: TextStyle(fontSize: 13, color: HsColors.muted, height: 1.6)),
           const SizedBox(height: 12),
         ];
       case 'teacher':
@@ -255,7 +255,7 @@ class _RoleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xFFFFEAD6) : Colors.white,
+      color: selected ? const Color(0xFFFFEAD6) : HsColors.card,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         key: Key('role_$id'),
@@ -273,7 +273,7 @@ class _RoleCard extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                Text(hint, style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                Text(hint, style: TextStyle(color: HsColors.muted, fontSize: 13)),
               ]),
             ),
             if (selected) const Icon(Icons.check_circle_rounded, color: HsColors.orange),

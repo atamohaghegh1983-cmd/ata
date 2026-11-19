@@ -94,12 +94,12 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                 Expanded(child: Text('${s['name']}', style: Theme.of(context).textTheme.titleLarge)),
                 Column(children: [
                   Text(Fa.faDigits(total), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: total < 0 ? HsColors.red : HsColors.green)),
-                  const Text('امتیاز', style: TextStyle(color: Colors.black45, fontSize: 12)),
+                  Text('امتیاز', style: TextStyle(color: HsColors.faint, fontSize: 12)),
                 ]),
               ]),
               const SizedBox(height: 16),
               if (widget.canWrite && behaviors.isNotEmpty) ...[
-                const Text('امتیاز با یک لمس', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
+                Text('امتیاز با یک لمس', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   for (final b in behaviors)
@@ -121,7 +121,7 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                   icon: Icons.fact_check_rounded,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     Wrap(spacing: 8, runSpacing: 8, children: [
-                      if (att.isEmpty) const Text('این ماه هنوز حضوری ثبت نشده.', style: TextStyle(color: Colors.black45, fontSize: 13)),
+                      if (att.isEmpty) Text('این ماه هنوز حضوری ثبت نشده.', style: TextStyle(color: HsColors.faint, fontSize: 13)),
                       for (final st in AttStatus.all)
                         if ((att[st.key] ?? 0) != 0) Pill('${st.label}: ${Fa.faDigits(att[st.key])}', color: st.color, icon: st.icon),
                     ]),
@@ -152,7 +152,7 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                 title: 'والدین',
                 icon: Icons.family_restroom_rounded,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  if (parents.isEmpty) const Text('هنوز والدی وصل نشده است.', style: TextStyle(color: Colors.black54)),
+                  if (parents.isEmpty) Text('هنوز والدی وصل نشده است.', style: TextStyle(color: HsColors.muted)),
                   for (final p in parents)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -185,7 +185,7 @@ class _StudentSheetState extends ConsumerState<_StudentSheet> {
                 title: 'آخرین امتیازها',
                 icon: Icons.stars_rounded,
                 child: Column(children: [
-                  if (((s['points_recent'] as List?) ?? const []).isEmpty) const Text('هنوز امتیازی ثبت نشده.', style: TextStyle(color: Colors.black54)),
+                  if (((s['points_recent'] as List?) ?? const []).isEmpty) Text('هنوز امتیازی ثبت نشده.', style: TextStyle(color: HsColors.muted)),
                   for (final p in ((s['points_recent'] as List?) ?? const []).cast<Map>().take(10))
                     ListTile(
                       dense: true,

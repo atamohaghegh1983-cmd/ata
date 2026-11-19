@@ -209,6 +209,9 @@ class HSUM_Invites {
 		if ( ! $inv ) {
 			return new WP_Error( 'code', 'کد دعوت معتبر نیست یا منقضی شده است.' );
 		}
+		if ( class_exists( 'HS_Class_Students' ) && method_exists( 'HS_Class_Students', 'join_closed' ) && HS_Class_Students::join_closed( (int) $inv['class_id'] ) ) {
+			return new WP_Error( 'closed', HS_Class_Students::join_closed_message() );
+		}
 		$child_name = trim( sanitize_text_field( $child_name ) );
 		if ( mb_strlen( $child_name ) < 3 ) {
 			return new WP_Error( 'name', 'نام و نام خانوادگی فرزند را کامل بنویسید.' );

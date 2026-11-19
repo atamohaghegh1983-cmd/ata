@@ -48,3 +48,24 @@ class StudentsView extends FamilyNotifier<String, int> {
     } catch (_) {}
   }
 }
+
+/// ظاهر اپ: system | light | dark (روی همین گوشی)
+final themeModeProvider = NotifierProvider<ThemeModeCtl, String>(ThemeModeCtl.new);
+
+class ThemeModeCtl extends Notifier<String> {
+  @override
+  String build() {
+    SharedPreferences.getInstance().then((p) {
+      final v = p.getString('hs_theme');
+      if (v != null && v != state) state = v;
+    }).catchError((_) {});
+    return 'system';
+  }
+
+  Future<void> set(String v) async {
+    state = v;
+    try {
+      (await SharedPreferences.getInstance()).setString('hs_theme', v);
+    } catch (_) {}
+  }
+}

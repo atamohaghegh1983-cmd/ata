@@ -101,7 +101,7 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with AutomaticKee
     return Column(children: [
       // نوار روزهای هفته
       Container(
-        color: Colors.white,
+        color: HsColors.card,
         padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
         child: Row(children: [
           IconButton(onPressed: () => _moveWeek(-1), icon: const Icon(Icons.chevron_right_rounded), tooltip: 'هفته‌ی قبل'),
@@ -122,7 +122,7 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with AutomaticKee
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(children: [
-                      Text(Week.shortName(d), style: TextStyle(fontSize: 12, color: sel ? Colors.white : (off ? HsColors.red : Colors.black54))),
+                      Text(Week.shortName(d), style: TextStyle(fontSize: 12, color: sel ? Colors.white : (off ? HsColors.red : HsColors.muted))),
                       Text(Fa.date(ymd, withYear: false).split(' ').first, style: TextStyle(fontWeight: FontWeight.w700, color: fg)),
                       Icon(Icons.circle, size: 6, color: recordedDays.contains(ymd) ? (sel ? Colors.white : HsColors.green) : Colors.transparent),
                     ]),

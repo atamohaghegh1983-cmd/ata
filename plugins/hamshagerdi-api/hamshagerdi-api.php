@@ -2,13 +2,13 @@
 /**
  * Plugin Name: API موبایل (JWT)
  * Description: REST API امن با توکن (JWT + Refresh Token) برای اپ موبایل؛ ورود با پیامک، تکمیل ثبت‌نام، کلاس‌ها، حضور و غیاب، امتیاز، تکالیف، اطلاعیه‌ها، پیام‌ها، والدین، مجله و مدرسه.
- * Version:     2.6.0
+ * Version:     2.7.0
  * Requires at least: 5.9
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'HS_API_VERSION', '2.6.0' );
+define( 'HS_API_VERSION', '2.7.0' );
 define( 'HS_API_NS', 'hamshagerdi/v1' );
 define( 'HS_API_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -40,7 +40,7 @@ add_action( 'plugins_loaded', function () {
 add_action( 'admin_notices', function () {
 	if ( ! current_user_can( 'activate_plugins' ) ) { return; }
 	$need = array();
-	if ( ! class_exists( 'HS_Roles' ) ) { $need[] = 'مدیریت کلاس (۱.۷.۵ یا بالاتر)'; }
+	if ( ! class_exists( 'HS_Roles' ) ) { $need[] = 'مدیریت کلاس (۱.۷.۷ یا بالاتر)'; }
 	if ( ! class_exists( 'HSMA_OTP' ) ) { $need[] = 'کاربران و عضویت (۲.۶.۳ یا بالاتر)'; }
 	if ( $need ) {
 		echo '<div class="notice notice-warning"><p>API موبایل: این افزونه‌ها باید فعال باشند: ' . esc_html( implode( '، ', $need ) ) . '</p></div>';

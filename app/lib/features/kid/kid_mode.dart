@@ -20,7 +20,7 @@ Future<String?> askPin(BuildContext context, {required String title, String hint
     builder: (d) => AlertDialog(
       title: Text(title),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (hint.isNotEmpty) Text(hint, style: const TextStyle(height: 1.7, color: Colors.black54)),
+        if (hint.isNotEmpty) Text(hint, style: TextStyle(height: 1.7, color: HsColors.muted)),
         const SizedBox(height: 10),
         Directionality(
           textDirection: TextDirection.ltr,
@@ -214,7 +214,7 @@ class KidModeScreen extends ConsumerWidget {
                     title: 'تکالیف',
                     icon: Icons.menu_book_rounded,
                     child: Column(children: [
-                      if (((c['homework_open'] as List?) ?? const []).isEmpty) const Text('تکلیفی نداری 🎉', style: TextStyle(color: Colors.black54)),
+                      if (((c['homework_open'] as List?) ?? const []).isEmpty) Text('تکلیفی نداری 🎉', style: TextStyle(color: HsColors.muted)),
                       for (final h in ((c['homework_open'] as List?) ?? const []).cast<Map>())
                         ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.radio_button_unchecked_rounded, color: HsColors.orange), title: Text('${h['title']}'), subtitle: Text('${h['subject'] ?? ''}')),
                     ]),

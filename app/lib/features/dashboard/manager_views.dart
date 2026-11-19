@@ -88,7 +88,7 @@ class StaffView extends ConsumerWidget {
                 title: 'کادر (${Fa.faDigits(staff.length)})',
                 icon: Icons.badge_rounded,
                 child: Column(children: [
-                  if (staff.isEmpty) const Text('هنوز کسی در کادر نیست.', style: TextStyle(color: Colors.black54)),
+                  if (staff.isEmpty) Text('هنوز کسی در کادر نیست.', style: TextStyle(color: HsColors.muted)),
                   for (final m in staff)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -111,7 +111,7 @@ class StaffView extends ConsumerWidget {
                 title: 'دعوت‌ها',
                 icon: Icons.mail_outline_rounded,
                 child: Column(children: [
-                  if (invites.isEmpty) const Text('دعوتی ثبت نشده.', style: TextStyle(color: Colors.black54)),
+                  if (invites.isEmpty) Text('دعوتی ثبت نشده.', style: TextStyle(color: HsColors.muted)),
                   for (final i in invites)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -123,7 +123,7 @@ class StaffView extends ConsumerWidget {
                 ]),
               ),
               const SizedBox(height: 10),
-              const Text('افزودن کادر و دعوت تازه فعلاً از پنل سایت انجام می‌شود.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black45, fontSize: 12)),
+              Text('افزودن کادر و دعوت تازه فعلاً از پنل سایت انجام می‌شود.', textAlign: TextAlign.center, style: TextStyle(color: HsColors.faint, fontSize: 12)),
             ],
           ]);
         },

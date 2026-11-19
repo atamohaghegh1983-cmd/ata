@@ -33,6 +33,7 @@ class HS_Timetable {
 			period tinyint(3) unsigned NOT NULL,
 			subject varchar(120) NOT NULL DEFAULT '',
 			teacher_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			span tinyint(3) unsigned NOT NULL DEFAULT 1,
 			updated_by bigint(20) unsigned DEFAULT NULL,
 			updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
@@ -203,23 +204,73 @@ class HS_Timetable {
 		return (array) $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE teacher_id = %d ORDER BY day, period', (int) $teacher_id ), ARRAY_A ); // phpcs:ignore
 	}
 
-	/** آیا معلم در همین روز و زنگ در کلاس دیگری است؟ ردیف آن کلاس یا null */
-	public static function conflict( $teacher_id, $day, $period, $class_id ) {
+	/** دقیقه از نیمه‌شب برای «HH:MM» */
+	private static function mins( $hm ) {
+		$p = explode( ':', (string) $hm );
+		return (int) $p[0] * 60 + (int) ( $p[1] ?? 0 );
+	}
+
+	/**
+	 * بازه‌ی زمانی واقعی یک خانه‌ی برنامه (با زنگ‌بندی همان کلاس): [شروع، پایان] به دقیقه یا null
+	 * درس چندزنگه از شروع زنگ اول تا پایان زنگ آخر است.
+	 */
+	public static function time_range( $class_id, $period, $span = 1, $bells = null ) {
+		$bells = $bells ? $bells : self::bells( $class_id );
+		$from  = null;
+		$to    = null;
+		foreach ( $bells['slots'] as $s ) {
+			if ( 'class' !== $s['type'] ) {
+				continue;
+			}
+			if ( (int) $s['period'] === (int) $period ) {
+				$from = self::mins( $s['start'] );
+			}
+			if ( (int) $s['period'] === (int) $period + max( 1, (int) $span ) - 1 ) {
+				$to = self::mins( $s['end'] );
+			}
+		}
+		return null === $from || null === $to ? null : array( $from, $to );
+	}
+
+	/**
+	 * تداخل معلم با ساعت واقعی: آیا همین معلم در همین روز در کلاس دیگری کلاسی دارد که با این بازه هم‌پوشانی دارد؟
+	 * (زنگ‌بندی کلاس‌ها ممکن است فرق کند)
+	 */
+	public static function conflict( $teacher_id, $day, $period, $class_id, $span = 1, $bells = null ) {
 		global $wpdb;
 		if ( ! $teacher_id ) {
 			return null;
 		}
-		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE teacher_id = %d AND day = %d AND period = %d AND class_id <> %d LIMIT 1', (int) $teacher_id, (int) $day, (int) $period, (int) $class_id ), ARRAY_A ); // phpcs:ignore
+		$me = self::time_range( $class_id, $period, $span, $bells );
+		if ( ! $me ) {
+			return null;
+		}
+		$rows  = (array) $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE teacher_id = %d AND day = %d AND class_id <> %d', (int) $teacher_id, (int) $day, (int) $class_id ), ARRAY_A ); // phpcs:ignore
+		$cache = array();
+		foreach ( $rows as $r ) {
+			$cid = (int) $r['class_id'];
+			if ( ! isset( $cache[ $cid ] ) ) {
+				$cache[ $cid ] = self::bells( $cid );
+			}
+			$o = self::time_range( $cid, (int) $r['period'], (int) ( $r['span'] ?? 1 ), $cache[ $cid ] );
+			if ( $o && $o[0] < $me[1] && $me[0] < $o[1] ) {
+				$r['from'] = sprintf( '%02d:%02d', intdiv( $o[0], 60 ), $o[0] % 60 );
+				$r['to']   = sprintf( '%02d:%02d', intdiv( $o[1], 60 ), $o[1] % 60 );
+				return $r;
+			}
+		}
+		return null;
 	}
 
 	public static function conflict_message( $c, $teacher_id ) {
 		$u    = get_userdata( (int) $teacher_id );
 		$days = self::day_names();
 		return sprintf(
-			'«%s» در زنگ %s روز %s در کلاس «%s» است؛ هر معلم در هر زنگ فقط یک کلاس دارد. یکی را انتخاب کنید.',
+			'«%s» روز %s ساعت %s تا %s در کلاس «%s» است؛ هر معلم در یک زمان فقط یک کلاس دارد. یکی را انتخاب کنید.',
 			$u ? $u->display_name : 'این معلم',
-			self::fa( (int) $c['period'] ),
 			$days[ (int) $c['day'] ] ?? '',
+			self::fa( $c['from'] ?? '' ),
+			self::fa( $c['to'] ?? '' ),
 			get_the_title( (int) $c['class_id'] )
 		);
 	}
@@ -238,39 +289,60 @@ class HS_Timetable {
 		$bells    = self::bells( $class_id );
 		$allowed  = self::teacher_options( $class_id );
 		$default  = (int) get_post_meta( $class_id, '_hs_teacher_id', true );
-		$clean    = array();
-		$errors   = array();
-		$seen     = array();
-		foreach ( (array) $rows as $r ) {
+		// زنگ‌های درسی پشت سر هم (بدون تفریح بین‌شان) برای درس چندزنگه
+		$next_ok = array();
+		$prev    = null;
+		foreach ( $bells['slots'] as $sl ) {
+			if ( 'class' === $sl['type'] ) {
+				if ( null !== $prev ) {
+					$next_ok[ $prev ] = true;
+				}
+				$prev = (int) $sl['period'];
+			} else {
+				$prev = null;
+			}
+		}
+		$clean  = array();
+		$errors = array();
+		$taken  = array(); // day_period => true
+		$list   = array_values( (array) $rows );
+		usort( $list, function ( $a, $b ) {
+			return ( (int) ( $a['day'] ?? 0 ) <=> (int) ( $b['day'] ?? 0 ) ) ?: ( (int) ( $a['period'] ?? 0 ) <=> (int) ( $b['period'] ?? 0 ) );
+		} );
+		$days = self::day_names();
+		foreach ( $list as $r ) {
 			$day    = (int) ( $r['day'] ?? -1 );
 			$period = (int) ( $r['period'] ?? 0 );
-			$sub    = sanitize_text_field( (string) ( $r['subject'] ?? '' ) );
-			$sub    = mb_substr( trim( $sub ), 0, 120 );
-			if ( $day < 0 || $day >= $bells['days'] || $period < 1 || $period > $bells['periods'] ) {
+			$sub    = mb_substr( trim( sanitize_text_field( (string) ( $r['subject'] ?? '' ) ) ), 0, 120 );
+			if ( $day < 0 || $day >= $bells['days'] || $period < 1 || $period > $bells['periods'] || '' === $sub ) {
 				continue;
 			}
-			if ( '' === $sub ) {
-				continue;
+			if ( isset( $taken[ $day . '_' . $period ] ) ) {
+				continue; // زیر درس چندزنگه‌ی قبلی افتاده
+			}
+			$span = max( 1, min( 4, (int) ( $r['span'] ?? 1 ) ) );
+			for ( $k = 0; $k < $span - 1; $k++ ) {
+				if ( empty( $next_ok[ $period + $k ] ) ) {
+					return new WP_Error( 'hs_timetable_span', sprintf( 'درس «%s» روز %s نمی‌تواند از زنگ تفریح یا آخر روز رد شود؛ تعداد زنگ‌هایش را کمتر کنید.', $sub, $days[ $day ] ?? '' ), array( 'conflicts' => array( array( 'day' => $day, 'period' => $period, 'message' => 'درس چندزنگه نمی‌تواند از زنگ تفریح رد شود.' ) ) ) );
+				}
+			}
+			for ( $k = 0; $k < $span; $k++ ) {
+				$taken[ $day . '_' . ( $period + $k ) ] = true;
 			}
 			$tid = (int) ( $r['teacher_id'] ?? 0 );
 			$tid = $tid && isset( $allowed[ $tid ] ) ? $tid : $default;
-			$key = $tid . '_' . $day . '_' . $period;
-			if ( isset( $seen[ $key ] ) ) {
-				continue;
-			}
-			$seen[ $key ] = 1;
-			$c            = self::conflict( $tid, $day, $period, $class_id );
+			$c   = self::conflict( $tid, $day, $period, $class_id, $span, $bells );
 			if ( $c ) {
 				$errors[] = array( 'day' => $day, 'period' => $period, 'message' => self::conflict_message( $c, $tid ) );
 			}
-			$clean[] = array( 'day' => $day, 'period' => $period, 'subject' => $sub, 'teacher_id' => $tid );
+			$clean[] = array( 'day' => $day, 'period' => $period, 'subject' => $sub, 'teacher_id' => $tid, 'span' => $span );
 		}
 		if ( $errors ) {
 			return new WP_Error( 'hs_timetable_conflict', $errors[0]['message'], array( 'conflicts' => $errors ) );
 		}
 		$wpdb->delete( self::table(), array( 'class_id' => $class_id ), array( '%d' ) );
 		foreach ( $clean as $c ) {
-			$wpdb->insert( self::table(), array_merge( $c, array( 'class_id' => $class_id, 'updated_by' => (int) $uid ) ), array( '%d', '%d', '%s', '%d', '%d', '%d' ) );
+			$wpdb->insert( self::table(), array_merge( $c, array( 'class_id' => $class_id, 'updated_by' => (int) $uid ) ), array( '%d', '%d', '%s', '%d', '%d', '%d', '%d' ) );
 		}
 		do_action( 'hs_timetable_saved', $class_id, (int) $uid );
 		return count( $clean );
@@ -285,13 +357,13 @@ class HS_Timetable {
 		$bells  = self::bells( $class_id );
 		$cells  = self::cells( $class_id );
 		$total  = max( 1, $bells['days'] * $bells['periods'] );
-		$filled = count( $cells );
+		$filled = array_sum( array_map( function ( $c ) { return max( 1, (int) ( $c['span'] ?? 1 ) ); }, $cells ) );
 		$checks = array();
 
 		// ۱. تداخل (اگر از بیرون، مثلاً ویرایش هم‌زمان، پیش آمده باشد)
 		$conf = 0;
 		foreach ( $cells as $c ) {
-			if ( self::conflict( (int) $c['teacher_id'], (int) $c['day'], (int) $c['period'], $class_id ) ) {
+			if ( self::conflict( (int) $c['teacher_id'], (int) $c['day'], (int) $c['period'], $class_id, (int) ( $c['span'] ?? 1 ), $bells ) ) {
 				$conf++;
 			}
 		}
@@ -303,7 +375,7 @@ class HS_Timetable {
 		// ۳. تعادل: یک درس بیش از ۲ زنگ در یک روز
 		$per_day = array();
 		foreach ( $cells as $c ) {
-			$per_day[ $c['day'] ][ $c['subject'] ] = ( $per_day[ $c['day'] ][ $c['subject'] ] ?? 0 ) + 1;
+			$per_day[ $c['day'] ][ $c['subject'] ] = ( $per_day[ $c['day'] ][ $c['subject'] ] ?? 0 ) + max( 1, (int) ( $c['span'] ?? 1 ) );
 		}
 		$heavy = array();
 		foreach ( $per_day as $d => $subs ) {
@@ -320,7 +392,7 @@ class HS_Timetable {
 		$count   = array();
 		foreach ( $cells as $c ) {
 			$days_of[ $c['subject'] ][ $c['day'] ] = 1;
-			$count[ $c['subject'] ]               = ( $count[ $c['subject'] ] ?? 0 ) + 1;
+			$count[ $c['subject'] ]               = ( $count[ $c['subject'] ] ?? 0 ) + max( 1, (int) ( $c['span'] ?? 1 ) );
 		}
 		$bunched = array();
 		foreach ( $count as $s => $n ) {
@@ -330,19 +402,33 @@ class HS_Timetable {
 		}
 		$checks[] = array( 'key' => 'spread', 'label' => 'پراکندگی مناسب در هفته', 'ok' => ! $bunched, 'detail' => $bunched ? 'فقط در یکی دو روز: ' . implode( '، ', $bunched ) : '' );
 
-		// ۵. استراحت کافی: معلمی که در یک روز بیش از ۴ زنگ پشت سر هم دارد (در همه‌ی کلاس‌هایش)
+		// ۵. استراحت کافی: معلمی که در یک روز بیش از ۴ ساعت پشت سر هم (فاصله‌ی کمتر از ۱۰ دقیقه) درس دارد، در همه‌ی کلاس‌هایش
 		$tired = array();
+		$bc    = array();
 		foreach ( array_unique( array_map( 'intval', wp_list_pluck( $cells, 'teacher_id' ) ) ) as $tid ) {
-			$slots = array();
+			$iv = array();
 			foreach ( self::teacher_cells( $tid ) as $c ) {
-				$slots[ $c['day'] ][] = (int) $c['period'];
+				$cid = (int) $c['class_id'];
+				if ( ! isset( $bc[ $cid ] ) ) {
+					$bc[ $cid ] = self::bells( $cid );
+				}
+				$r = self::time_range( $cid, (int) $c['period'], (int) ( $c['span'] ?? 1 ), $bc[ $cid ] );
+				if ( $r ) {
+					$iv[ $c['day'] ][] = $r;
+				}
 			}
-			foreach ( $slots as $d => $ps ) {
-				sort( $ps );
-				$run = 1;
-				for ( $i = 1; $i < count( $ps ); $i++ ) {
-					$run = $ps[ $i ] === $ps[ $i - 1 ] + 1 ? $run + 1 : 1;
-					if ( $run > 4 ) {
+			foreach ( $iv as $d => $list ) {
+				usort( $list, function ( $a, $b ) { return $a[0] <=> $b[0]; } );
+				$start = $list[0][0];
+				$end   = $list[0][1];
+				foreach ( array_slice( $list, 1 ) as $x ) {
+					if ( $x[0] - $end < 10 ) {
+						$end = max( $end, $x[1] );
+					} else {
+						$start = $x[0];
+						$end   = $x[1];
+					}
+					if ( $end - $start > 240 ) {
 						$u       = get_userdata( $tid );
 						$tired[] = ( $u ? $u->display_name : '' ) . ' (' . ( self::day_names()[ $d ] ?? '' ) . ')';
 						break;
@@ -350,7 +436,7 @@ class HS_Timetable {
 				}
 			}
 		}
-		$checks[] = array( 'key' => 'rest', 'label' => 'استراحت کافی معلم‌ها', 'ok' => ! $tired, 'detail' => $tired ? 'بیش از ۴ زنگ پشت سر هم: ' . implode( '، ', array_slice( array_unique( $tired ), 0, 3 ) ) : '' );
+		$checks[] = array( 'key' => 'rest', 'label' => 'استراحت کافی معلم‌ها', 'ok' => ! $tired, 'detail' => $tired ? 'بیش از ۴ ساعت پشت سر هم بدون استراحت: ' . implode( '، ', array_slice( array_unique( $tired ), 0, 3 ) ) : '' );
 
 		$score = (int) round( 100 * min( 1, $filled / $total ) ) - 25 * $conf - 5 * count( $heavy ) - 5 * count( $bunched ) - 5 * count( $tired );
 		return array( 'score' => max( 0, min( 100, $score ) ), 'checks' => $checks, 'filled' => $filled, 'total' => $total );
@@ -405,8 +491,12 @@ class HS_Timetable {
 		$edit   = isset( $_GET['edit'] ) && self::can_edit( $cid, $uid ); // phpcs:ignore WordPress.Security.NonceVerification
 		$bells  = self::bells( $cid );
 		$cells  = array();
+		$cover  = array(); // خانه‌هایی که زیر درس چندزنگه افتاده‌اند
 		foreach ( self::cells( $cid ) as $c ) {
 			$cells[ $c['day'] . '_' . $c['period'] ] = $c;
+			for ( $k = 1; $k < (int) ( $c['span'] ?? 1 ); $k++ ) {
+				$cover[ $c['day'] . '_' . ( (int) $c['period'] + $k ) ] = true;
+			}
 		}
 		$days   = array_slice( self::day_names(), 0, $bells['days'] );
 		$today  = ( (int) current_time( 'w' ) + 1 ) % 7; // شنبه = ۰
@@ -450,8 +540,16 @@ class HS_Timetable {
 			echo '<tr><td class="bell"><b>' . esc_html( self::fa( $p ) ) . '</b><br>' . esc_html( self::fa( $s['start'] . ' - ' . $s['end'] ) ) . '</td>';
 			foreach ( $days as $d => $name ) {
 				$c = $cells[ $d . '_' . $p ] ?? null;
+				if ( ! $edit && isset( $cover[ $d . '_' . $p ] ) ) {
+					continue; // جزو درس چندزنگه‌ی بالاتر (rowspan)
+				}
 				if ( $edit ) {
-					echo '<td><input name="tt[' . (int) $d . '][' . $p . '][subject]" value="' . esc_attr( $c['subject'] ?? '' ) . '" placeholder="درس">';
+					echo '<td><input name="tt[' . (int) $d . '][' . $p . '][subject]" value="' . esc_attr( $c['subject'] ?? '' ) . '" placeholder="' . ( isset( $cover[ $d . '_' . $p ] ) ? '↑ ادامه‌ی زنگ قبل' : 'درس' ) . '">';
+					echo '<select name="tt[' . (int) $d . '][' . $p . '][span]" title="چند زنگ پشت سر هم">';
+					for ( $k = 1; $k <= 3; $k++ ) {
+						echo '<option value="' . $k . '"' . selected( $k, (int) ( $c['span'] ?? 1 ), false ) . '>' . ( 1 === $k ? 'یک زنگ' : self::fa( $k ) . ' زنگ' ) . '</option>';
+					}
+					echo '</select>';
 					if ( count( $opts ) > 1 ) {
 						echo '<select name="tt[' . (int) $d . '][' . $p . '][teacher_id]">';
 						foreach ( $opts as $tid => $tn ) {
@@ -462,7 +560,8 @@ class HS_Timetable {
 					echo '</td>';
 				} elseif ( $c ) {
 					$t = get_userdata( (int) $c['teacher_id'] );
-					echo '<td><div class="c' . ( $d === $today ? ' today' : '' ) . '" style="background:' . esc_attr( self::color( $c['subject'] ) ) . '"><b>' . esc_html( $c['subject'] ) . '</b><small>' . esc_html( $t ? $t->display_name : '' ) . '</small></div></td>';
+					$sp = max( 1, (int) ( $c['span'] ?? 1 ) );
+					echo '<td' . ( $sp > 1 ? ' rowspan="' . $sp . '"' : '' ) . '><div class="c' . ( $d === $today ? ' today' : '' ) . '" style="background:' . esc_attr( self::color( $c['subject'] ) ) . ( $sp > 1 ? ';height:100%' : '' ) . '"><b>' . esc_html( $c['subject'] ) . '</b><small>' . esc_html( $t ? $t->display_name : '' ) . ( $sp > 1 ? ' · ' . self::fa( $sp ) . ' زنگ' : '' ) . '</small></div></td>';
 				} else {
 					echo '<td></td>';
 				}
@@ -529,7 +628,7 @@ class HS_Timetable {
 		$rows = array();
 		foreach ( (array) ( $_POST['tt'] ?? array() ) as $d => $ps ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 			foreach ( (array) $ps as $p => $c ) {
-				$rows[] = array( 'day' => (int) $d, 'period' => (int) $p, 'subject' => sanitize_text_field( wp_unslash( $c['subject'] ?? '' ) ), 'teacher_id' => (int) ( $c['teacher_id'] ?? 0 ) );
+				$rows[] = array( 'day' => (int) $d, 'period' => (int) $p, 'subject' => sanitize_text_field( wp_unslash( $c['subject'] ?? '' ) ), 'teacher_id' => (int) ( $c['teacher_id'] ?? 0 ), 'span' => (int) ( $c['span'] ?? 1 ) );
 			}
 		}
 		$res  = self::save( $cid, $rows, $uid );

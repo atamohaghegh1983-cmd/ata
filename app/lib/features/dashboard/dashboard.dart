@@ -83,7 +83,7 @@ class DashboardView extends ConsumerWidget {
         const SizedBox(height: 12),
       ],
       if (anns.isNotEmpty) ...[
-        const Text('آخرین اطلاعیه‌ها', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
+        Text('آخرین اطلاعیه‌ها', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
         const SizedBox(height: 8),
         for (final a in anns)
           Padding(
@@ -91,7 +91,7 @@ class DashboardView extends ConsumerWidget {
             child: SectionCard(
               title: '${a['title']}',
               icon: Icons.campaign_rounded,
-              trailing: Text(Fa.date('${a['created_at'] ?? ''}', withYear: false), style: const TextStyle(fontSize: 12, color: Colors.black45)),
+              trailing: Text(Fa.date('${a['created_at'] ?? ''}', withYear: false), style: TextStyle(fontSize: 12, color: HsColors.faint)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${a['class']}', style: const TextStyle(color: HsColors.orangeDark, fontSize: 12, fontWeight: FontWeight.w700)),
                 Text('${a['body']}', style: const TextStyle(height: 1.7)),
@@ -190,11 +190,11 @@ class DashboardView extends ConsumerWidget {
         icon: Icons.calendar_month_rounded,
         trailing: TextButton(onPressed: () => context.push('/calendar'), child: const Text('مدیریت ←')),
         child: (((m['events'] as List?) ?? const []).isEmpty)
-            ? const Text('رویدادی ثبت نشده است. تقویم آموزشی هر مقطع و مناسبت‌های پرورشی را از «مدیریت» اضافه کنید.', style: TextStyle(color: Colors.black45, height: 1.7))
+            ? Text('رویدادی ثبت نشده است. تقویم آموزشی هر مقطع و مناسبت‌های پرورشی را از «مدیریت» اضافه کنید.', style: TextStyle(color: HsColors.faint, height: 1.7))
             : Column(children: [for (final e in ((m['events'] as List?) ?? const []).cast<Map>()) EventTile(e: e)]),
       ),
       const SizedBox(height: 14),
-      const Text('کلاس‌های مدرسه (۳۰ روز اخیر)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
+      Text('کلاس‌های مدرسه (۳۰ روز اخیر)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
       const SizedBox(height: 4),
       for (final g in _byGrade(classes).entries) ...[
         Padding(
@@ -203,14 +203,14 @@ class DashboardView extends ConsumerWidget {
             const Icon(Icons.subdirectory_arrow_left_rounded, size: 18, color: HsColors.blue),
             const SizedBox(width: 4),
             Text(g.key, style: const TextStyle(fontWeight: FontWeight.w700, color: HsColors.blue)),
-            Text('  (${Fa.faDigits(g.value.length)} کلاس)', style: const TextStyle(color: Colors.black45, fontSize: 12)),
+            Text('  (${Fa.faDigits(g.value.length)} کلاس)', style: TextStyle(color: HsColors.faint, fontSize: 12)),
           ]),
         ),
         for (final c in g.value)
           Padding(
             padding: const EdgeInsetsDirectional.only(bottom: 8, start: 14),
             child: Material(
-              color: Colors.white,
+              color: HsColors.card,
               borderRadius: BorderRadius.circular(16),
               child: InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -220,13 +220,13 @@ class DashboardView extends ConsumerWidget {
                   child: Row(children: [
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${c['title']}', style: const TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
-                        Text('${c['teacher']}  •  ${Fa.faDigits(c['students'] ?? 0)} دانش‌آموز  •  ${Fa.faDigits(c['homework'] ?? 0)} تکلیف', style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                        Text('${c['title']}', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
+                        Text('${c['teacher']}  •  ${Fa.faDigits(c['students'] ?? 0)} دانش‌آموز  •  ${Fa.faDigits(c['homework'] ?? 0)} تکلیف', style: TextStyle(color: HsColors.muted, fontSize: 12)),
                       ]),
                     ),
                     Column(children: [
                       Text(pct(c['att_rate']), style: TextStyle(fontWeight: FontWeight.w700, color: (c['att_rate'] ?? 100) < 85 ? HsColors.red : HsColors.green)),
-                      Icon(c['recorded_today'] == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 18, color: c['recorded_today'] == true ? HsColors.green : Colors.black26),
+                      Icon(c['recorded_today'] == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 18, color: c['recorded_today'] == true ? HsColors.green : HsColors.line),
                     ]),
                   ]),
                 ),
@@ -236,7 +236,7 @@ class DashboardView extends ConsumerWidget {
       ],
       if (teachers.isNotEmpty) ...[
         const SizedBox(height: 8),
-        const Text('آموزگاران', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
+        Text('آموزگاران', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: HsColors.navy)),
         const SizedBox(height: 8),
         Card(
           child: Column(children: [
@@ -306,7 +306,7 @@ class _Grid extends StatelessWidget {
       children: [
         for (final t in tiles)
           Material(
-            color: compact ? t.color.withValues(alpha: 0.08) : Colors.white,
+            color: compact ? t.color.withValues(alpha: 0.08) : HsColors.card,
             borderRadius: BorderRadius.circular(16),
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
@@ -317,7 +317,7 @@ class _Grid extends StatelessWidget {
                   Icon(t.icon, color: t.color, size: compact ? 20 : 26),
                   const SizedBox(height: 4),
                   Text(t.raw ? t.value : Fa.faDigits(t.value), style: TextStyle(fontSize: compact ? 18 : 24, fontWeight: FontWeight.w700, color: t.color)),
-                  Text(t.label, textAlign: TextAlign.center, maxLines: 2, style: TextStyle(fontSize: compact ? 11 : 12, color: Colors.black54, height: 1.3)),
+                  Text(t.label, textAlign: TextAlign.center, maxLines: 2, style: TextStyle(fontSize: compact ? 11 : 12, color: HsColors.muted, height: 1.3)),
                 ]),
               ),
             ),
