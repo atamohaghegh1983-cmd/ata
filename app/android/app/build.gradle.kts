@@ -48,12 +48,10 @@ android {
         create("family") {
             dimension = "app"
             applicationId = "ir.hamshagerdionline.app"
-            resValue("string", "app_name", "همشاگردی")
         }
         create("teacher") {
             dimension = "app"
             applicationId = "ir.hamshagerdionline.teacher"
-            resValue("string", "app_name", "همشاگردی معلم")
         }
     }
 
