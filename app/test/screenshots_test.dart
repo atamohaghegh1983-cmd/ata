@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hamshagerdi/core/api/api_client.dart';
+import 'package:hamshagerdi/core/config.dart';
 import 'package:hamshagerdi/core/providers.dart';
 import 'package:hamshagerdi/core/storage/cache_store.dart';
 import 'package:hamshagerdi/core/storage/token_store.dart';
@@ -197,8 +198,10 @@ Future<void> loadFonts() async {
 }
 
 void main() {
-  Future<void> shot(WidgetTester t, String name, Widget screen, {bool onboarding = false, bool teacher = false, int tab = -1, Key? tapKey, bool dark = false}) async {
+  Future<void> shot(WidgetTester t, String name, Widget screen, {bool onboarding = false, bool teacher = false, int tab = -1, Key? tapKey, bool dark = false, String? app}) async {
     HsColors.dark = dark;
+    AppConfig.app = app ?? (teacher ? 'teacher' : 'family');
+    addTearDown(() => AppConfig.app = 'family');
     addTearDown(() => HsColors.dark = false);
     t.view.physicalSize = const Size(1080, 2340);
     t.view.devicePixelRatio = 2.625;
@@ -229,7 +232,7 @@ void main() {
       await t.tap(find.byTooltip('جدول هفته'));
       await t.pump(const Duration(milliseconds: 300));
     }
-    if (onboarding) {
+    if (onboarding && AppConfig.app == 'family') {
       await t.tap(find.byKey(const Key('role_parent')));
       await t.pump();
     }
@@ -269,5 +272,8 @@ void main() {
   testWidgets('dark-dash', (t) => shot(t, '32-dark-dash', const HomeScreen(), teacher: true, dark: true), skip: !on);
   testWidgets('dark-thread', (t) => shot(t, '33-dark-thread', const ThreadScreen(userId: 7), dark: true), skip: !on);
   testWidgets('dark-week', (t) => shot(t, '34-dark-week', const TimetableScreen(classId: 9), teacher: true, tapKey: const Key('grid'), dark: true), skip: !on);
+  testWidgets('wrong-app', (t) => shot(t, '35-wrong-app', const HomeScreen(), teacher: true, app: 'family'), skip: !on);
+  testWidgets('teacher-onboarding', (t) => shot(t, '36-teacher-onboarding', const OnboardingScreen(), onboarding: true, app: 'teacher'), skip: !on);
+  testWidgets('teacher-phone', (t) => shot(t, '37-teacher-phone', const PhoneScreen(), app: 'teacher'), skip: !on);
   testWidgets('magazine', (t) => shot(t, '10-magazine', const Scaffold(body: MagazineView(showMineFilter: true))), skip: !on);
 }

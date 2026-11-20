@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_exception.dart';
+import '../../core/config.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/states.dart';
 import '../auth/auth_controller.dart';
+import '../parent/add_child_screen.dart' show scanQrCode, classCodeFrom;
 
 final onboardingInfoProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final r = await ref.read(apiProvider).get<Map<String, dynamic>>('/onboarding', useCache: false);
@@ -97,14 +99,29 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   String? _req(String? s) => (s == null || s.trim().isEmpty) ? 'این مورد لازم است' : null;
 
-  Widget _field(String k, String label, {bool required = true, TextInputType? type, String? Function(String?)? validator, String? hint}) {
+  Widget _field(String k, String label, {bool required = true, TextInputType? type, String? Function(String?)? validator, String? hint, bool qr = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         key: Key('onb_$k'),
         controller: c(k),
         keyboardType: type,
-        decoration: InputDecoration(labelText: required ? '$label *' : label, hintText: hint),
+        decoration: InputDecoration(
+          labelText: required ? '$label *' : label,
+          hintText: hint,
+          // اسکن QR کلاس (دوربین یا عکس)
+          suffixIcon: qr
+              ? IconButton(
+                  key: Key('onb_scan_$k'),
+                  tooltip: 'اسکن QR کلاس',
+                  icon: const Icon(Icons.qr_code_scanner_rounded, color: HsColors.orange),
+                  onPressed: () async {
+                    final raw = await scanQrCode(context);
+                    if (raw != null && raw.isNotEmpty) setState(() => c(k).text = classCodeFrom(raw));
+                  },
+                )
+              : null,
+        ),
         validator: validator ?? (required ? _req : null),
       ),
     );
@@ -130,7 +147,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Widget _body(Map<String, dynamic> d) {
-    final roles = ((d['roles'] as List?) ?? const []).cast<Map>();
+    // هر اپ فقط نقش‌های خودش: همشاگردی ← والد و دانش‌آموز؛ همشاگردی معلم ← معلم و مدیر مدرسه
+    final mine = AppConfig.isTeacherApp ? const ['teacher', 'school_admin'] : const ['parent', 'student'];
+    final roles = ((d['roles'] as List?) ?? const []).cast<Map>().where((r) => mine.contains('${r['id']}')).toList();
     final provinces = ((d['provinces'] as List?) ?? const []).map((e) => '$e').toList();
     return Form(
       key: _form,
@@ -184,7 +203,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _field('child_first', 'نام فرزند'),
           _field('child_last', 'نام خانوادگی فرزند'),
           _field('city', 'شهر', required: false),
-          _field('code', 'کد کلاس (اگر معلم داده)', required: false, hint: 'مثلاً K-AB12CD'),
+          _field('code', 'کد کلاس (اگر معلم داده)', required: false, hint: 'مثلاً K-AB12CD', qr: true),
           Text('بدون کد هم می‌توانید ادامه دهید و بعداً فرزند را با اسکن QR کلاس اضافه کنید.', style: TextStyle(fontSize: 13, color: HsColors.muted, height: 1.6)),
           const SizedBox(height: 12),
         ];
@@ -230,7 +249,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         return [
           _field('first', 'نام'),
           _field('last', 'نام خانوادگی'),
-          _field('code', 'کد کلاس', hint: 'از معلمت بگیر'),
+          _field('code', 'کد کلاس', hint: 'از معلمت بگیر', qr: true),
         ];
     }
     return const [];

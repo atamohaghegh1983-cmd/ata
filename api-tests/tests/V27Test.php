@@ -72,4 +72,30 @@ class V27Test extends HS_Test_Case {
 		$this->call( 'POST', '/classes/' . $c . '/join', array( 'open' => true ), $t );
 		$this->assertStatus( 200, $this->call( 'POST', '/join/students', array( 'code' => $inv['code'] ), $p ) );
 	}
+
+	public function test_onboarding_cannot_change_role_or_name_of_existing_account() {
+		$t = $this->teacher();
+		$before = get_userdata( $t )->display_name;
+		$res = $this->call( 'POST', '/onboarding', array( 'role' => 'parent', 'father_first' => 'نام', 'father_last' => 'دیگر', 'child_first' => 'الف', 'child_last' => 'ب' ), $t );
+		$this->assertStatus( 409, $res );
+		$this->assertSame( $before, get_userdata( $t )->display_name );
+		$this->assertSame( 'teacher', HS_API_Access::view( $t ) );
+	}
+
+	public function test_me_name_edit() {
+		$p = $this->user( 'parent', 'قدیمی' );
+		$this->assertStatus( 400, $this->call( 'POST', '/me/name', array( 'first_name' => 'a', 'last_name' => '' ), $p ) );
+		$this->assertStatus( 200, $this->call( 'POST', '/me/name', array( 'first_name' => 'مریم', 'last_name' => 'رضایی' ), $p ) );
+		$this->assertSame( 'مریم رضایی', get_userdata( $p )->display_name );
+	}
+
+	public function test_release_per_app() {
+		update_option( HS_API_Routes_V26::APP_OPT . '_teacher', array( 'url' => 'https://example.com/t.apk', 'version' => '0.8.0', 'build' => 20 ) );
+		$t = $this->call( 'GET', '/app/latest', array( 'app' => 'teacher' ) )->get_data();
+		$this->assertTrue( $t['available'] );
+		$this->assertSame( 'teacher', $t['app'] );
+		$f = $this->call( 'GET', '/app/latest', array( 'app' => 'family' ) )->get_data();
+		$this->assertSame( 'https://example.com/t.apk', $f['other_url'] );
+		$this->assertStringContainsString( 'همشاگردی معلم', do_shortcode( '[hamshagerdi_app_download app="teacher"]' ) );
+	}
 }

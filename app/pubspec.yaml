@@ -3,7 +3,7 @@ description: "اپ موبایل همشاگردی — مدرسه و کلاس بر
 publish_to: 'none'
 
 # versionName+versionCode — versionCode در GitHub Actions با شماره‌ی اجرا جایگزین می‌شود
-version: 0.7.0+1
+version: 0.8.0+1
 
 environment:
   sdk: ^3.10.0

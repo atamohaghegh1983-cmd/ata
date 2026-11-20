@@ -173,7 +173,9 @@
 `GET /calendar?tasks=1` برای معلم موعد تکالیف و ارزیابی‌ها را هم در `tasks` می‌دهد.
 
 ### نسخه‌ی اپ
-`GET /app/latest` (بدون ورود) ← `{available, version, build, url, size, notes, min_build}`. بارگذاری فایل در پیشخوان: تنظیمات ← «اپ موبایل»؛ دکمه‌ی دانلود: `[hamshagerdi_app_download]`.
+`GET /app/latest?app=family|teacher` (بدون ورود) ← `{available, version, build, url, size, notes, min_build, other_url}`. دو اپ: family = «همشاگردی» (والد/دانش‌آموز)، teacher = «همشاگردی معلم». بارگذاری فایل هر اپ جدا در پیشخوان: تنظیمات ← «اپ موبایل»؛ دکمه‌ی دانلود: `[hamshagerdi_app_download]` (هر دو) یا `[hamshagerdi_app_download app="teacher"]`.
+
+`POST /me/name {first_name, last_name}` ← ویرایش نام کاربر. `POST /onboarding` برای حسابی که نقش دارد با نقش دیگر ← 409 `hs_already_onboarded`.
 
 ## تازه‌های ۲.۵.۰ (نیاز به «مدیریت کلاس» ۱.۷.۴)
 

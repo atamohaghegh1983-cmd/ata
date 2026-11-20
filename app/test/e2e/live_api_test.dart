@@ -102,7 +102,17 @@ void main() {
     final api = box.read(apiProvider);
     await api.post<Map<String, dynamic>>('/onboarding', data: {'role': 'teacher', 'first_name': 'زهرا', 'last_name': 'معلمی', 'city': 'تهران', 'school_name_t': 'دبستان امید'});
     final me = await auth.reloadMe();
+    AppConfig.app = 'family';
+    expect(me.homeKind, 'wrong_app', reason: 'معلم در اپ والدین ← پیام «اپ معلم را نصب کنید»');
+    AppConfig.app = 'teacher';
+    addTearDown(() => AppConfig.app = 'family');
     expect(me.homeKind, 'teacher');
+    // تغییر نقش با فرم ثبت‌نام ممنوع است و نام عوض نمی‌شود
+    await expectLater(
+      api.post<Map<String, dynamic>>('/onboarding', data: {'role': 'parent', 'first_name': 'علی', 'last_name': 'والد', 'child_first_name': 'سارا', 'child_last_name': 'والد'}),
+      throwsA(isA<ApiException>()),
+    );
+    expect((await auth.reloadMe()).name, contains('زهرا'));
     final opt = (await api.get<Map<String, dynamic>>('/classes/options', useCache: false)).data;
     expect(opt['can_create'], isTrue);
     expect((opt['defaults'] as Map)['school'], 'دبستان امید');
@@ -116,6 +126,11 @@ void main() {
     expect(list.length, 1);
     final inv = (await api.get<Map<String, dynamic>>('/classes/$id/invite', useCache: false)).data;
     expect((inv['parent'] as Map)['code'], isNotEmpty);
+    // «تکمیل کلاس» و باز کردن دوباره
+    await api.post<Object?>('/classes/$id/join', data: {'open': false});
+    expect((await api.get<Map<String, dynamic>>('/classes/$id/invite', useCache: false)).data['join_open'], isFalse);
+    await api.post<Object?>('/classes/$id/join', data: {'open': true});
+    expect((await api.get<Map<String, dynamic>>('/classes/$id/invite', useCache: false)).data['join_open'], isTrue);
     final classes = (await api.get<List<dynamic>>('/classes')).data;
     expect(classes.single['students'], 1);
     final code = '${st['parent_code']}';

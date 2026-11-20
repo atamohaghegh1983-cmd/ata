@@ -1,3 +1,5 @@
+import '../../core/config.dart';
+
 /// کاربر وارد شده (پاسخ /me)
 class Me {
   Me(this.raw);
@@ -20,12 +22,18 @@ class Me {
   List<String> get roles => ((raw['roles'] as List?) ?? const []).map((e) => '$e').toList();
   String? get schoolName => (raw['school'] is Map) ? (raw['school']['name'] as String?) : null;
 
-  /// خانه‌ی کدام نقش نشان داده شود
+  /// خانه‌ی کدام نقش نشان داده شود. هر اپ فقط نقش‌های خودش را دارد:
+  /// همشاگردی ← والد و دانش‌آموز؛ همشاگردی معلم ← معلم و مدیر. نقش دیگر ← wrong_app
   String get homeKind {
-    if (view == 'teacher') return 'teacher';
-    if (view == 'manager') return 'manager';
+    if (AppConfig.isTeacherApp) {
+      if (view == 'teacher') return 'teacher';
+      if (view == 'manager') return 'manager';
+      if (view == 'parent' || view == 'student' || hasChildren) return 'wrong_app';
+      return 'other';
+    }
     if (view == 'parent' || hasChildren) return 'parent';
     if (view == 'student') return 'student';
+    if (view == 'teacher' || view == 'manager') return 'wrong_app';
     return 'other';
   }
 }

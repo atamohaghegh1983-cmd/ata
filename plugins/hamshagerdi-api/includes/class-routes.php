@@ -221,6 +221,14 @@ class HS_API_Routes {
 		if ( ! empty( $in['code'] ) ) {
 			$in['code'] = HS_API_Util::extract_code( $in['code'] );
 		}
+		// ثبت‌نام فقط یک بار: حسابی که نقش دارد با این فرم نقش یا نامش عوض نمی‌شود
+		// (والدِ معلم فرزندش را از «افزودن فرزند» وصل می‌کند؛ نام از «ویرایش نام من»)
+		$view = HS_API_Access::view( $uid );
+		$have = array( 'teacher' => 'teacher', 'manager' => 'school_admin', 'parent' => 'parent', 'student' => 'student' )[ $view ] ?? '';
+		// حساب نقش‌دار: فقط تکمیل همان نقش (اگر فرمش ناقص مانده)، نه نقش دیگر
+		if ( $have && ( ! HS_API_Access::needs_onboarding( $uid ) || ( $in['role'] ?? '' ) !== $have ) ) {
+			return HS_API_Util::err( 'نقش این حساب قبلاً ثبت شده است. برای وصل کردن فرزند از «افزودن فرزند» و برای تغییر نام از «ویرایش نام من» استفاده کنید.', 409, 'hs_already_onboarded' );
+		}
 		if ( 'student' === ( $in['role'] ?? '' ) ) {
 			return self::onboard_student( $uid, $in );
 		}

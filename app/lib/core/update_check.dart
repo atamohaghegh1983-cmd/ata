@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'api/api_client.dart';
+import 'config.dart';
 import 'utils/fa.dart';
 import 'widgets/attachments.dart';
 
@@ -16,7 +17,7 @@ class UpdateCheck {
     try {
       final info = await PackageInfo.fromPlatform();
       final build = int.tryParse(info.buildNumber) ?? 0;
-      final r = await api.get<Map<String, dynamic>>('/app/latest', useCache: false);
+      final r = await api.get<Map<String, dynamic>>('/app/latest?app=${AppConfig.app}', useCache: false);
       final d = r.data;
       if (d['available'] != true || build == 0) return;
       final latest = (d['build'] as num?)?.toInt() ?? 0;
@@ -30,7 +31,7 @@ class UpdateCheck {
           canPop: !force,
           child: AlertDialog(
             icon: const Icon(Icons.system_update_rounded, size: 40),
-            title: Text('نسخه‌ی تازه‌ی همشاگردی (${Fa.faDigits(d['version'] ?? '')})'),
+            title: Text('نسخه‌ی تازه‌ی ${AppConfig.appName} (${Fa.faDigits(d['version'] ?? '')})'),
             content: Text(
               [if ('${d['notes'] ?? ''}'.isNotEmpty) '${d['notes']}', if (force) 'برای ادامه، نسخه‌ی تازه را نصب کنید.'].join('\n\n'),
               style: const TextStyle(height: 1.8),

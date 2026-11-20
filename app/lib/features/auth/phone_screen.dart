@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/config.dart';
 import '../../core/theme.dart';
 
 import '../../core/api/api_exception.dart';
@@ -64,7 +66,11 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
             const SizedBox(height: 20),
             Text('ورود یا ثبت‌نام', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
-            Text('شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.', textAlign: TextAlign.center, style: TextStyle(height: 1.7, color: HsColors.muted)),
+            Text(
+              'شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.',
+              textAlign: TextAlign.center,
+              style: TextStyle(height: 1.7, color: HsColors.muted),
+            ),
             const SizedBox(height: 28),
             Directionality(
               textDirection: TextDirection.ltr,
@@ -77,12 +83,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                 maxLength: 14,
                 style: const TextStyle(fontSize: 22, letterSpacing: 2, fontWeight: FontWeight.w700),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9۰-۹٠-٩+ ]'))],
-                decoration: InputDecoration(
-                  hintText: '۰۹۱۲ ۱۲۳ ۴۵۶۷',
-                  counterText: '',
-                  errorText: _error,
-                  prefixIcon: const Icon(Icons.phone_iphone_rounded),
-                ),
+                decoration: InputDecoration(hintText: '۰۹۱۲ ۱۲۳ ۴۵۶۷', counterText: '', errorText: _error, prefixIcon: const Icon(Icons.phone_iphone_rounded)),
                 onSubmitted: (_) => _submit(),
               ),
             ),
@@ -92,13 +93,14 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
               onPressed: _busy ? null : _submit,
               child: _busy ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Text('دریافت کد'),
             ),
-            const SizedBox(height: 28),
-            TextButton(
-              key: const Key('kid_login'),
-              style: TextButton.styleFrom(foregroundColor: HsColors.faint2),
-              onPressed: () => context.push('/kid'),
-              child: const Text('ورود دانش‌آموز با کارت کلاس', style: TextStyle(fontSize: 12)),
-            ),
+            if (!AppConfig.isTeacherApp) const SizedBox(height: 28),
+            if (!AppConfig.isTeacherApp)
+              TextButton(
+                key: const Key('kid_login'),
+                style: TextButton.styleFrom(foregroundColor: HsColors.faint2),
+                onPressed: () => context.push('/kid'),
+                child: const Text('ورود دانش‌آموز با کارت کلاس', style: TextStyle(fontSize: 12)),
+              ),
           ],
         ),
       ),

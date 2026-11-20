@@ -42,6 +42,21 @@ android {
         versionName = flutter.versionName
     }
 
+    // دو اپ از یک کد: «همشاگردی» (والدین و دانش‌آموزان) و «همشاگردی معلم» (کادر مدرسه)
+    flavorDimensions += "app"
+    productFlavors {
+        create("family") {
+            dimension = "app"
+            applicationId = "ir.hamshagerdionline.app"
+            resValue("string", "app_name", "همشاگردی")
+        }
+        create("teacher") {
+            dimension = "app"
+            applicationId = "ir.hamshagerdionline.teacher"
+            resValue("string", "app_name", "همشاگردی معلم")
+        }
+    }
+
     signingConfigs {
         create("release") {
             if (keyProps.getProperty("storeFile") != null) {

@@ -124,7 +124,7 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
   }
 
   Future<void> _scan() async {
-    final raw = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const _ScannerPage()));
+    final raw = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const ScannerPage()));
     if (raw != null && raw.isNotEmpty) _gotCode(raw);
   }
 
@@ -195,13 +195,13 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen> {
   }
 }
 
-class _ScannerPage extends StatefulWidget {
-  const _ScannerPage();
+class ScannerPage extends StatefulWidget {
+  const ScannerPage({super.key});
   @override
-  State<_ScannerPage> createState() => _ScannerPageState();
+  State<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerPageState extends State<_ScannerPage> {
+class _ScannerPageState extends State<ScannerPage> {
   final _ctrl = MobileScannerController(formats: const [BarcodeFormat.qrCode]);
   bool _done = false;
 
@@ -242,4 +242,44 @@ class _ScannerPageState extends State<_ScannerPage> {
       ]),
     );
   }
+}
+
+/// اسکن QR کلاس با دوربین یا از عکس گالری؛ متن QR یا null
+Future<String?> scanQrCode(BuildContext context) async {
+  final src = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (c) => SafeArea(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        ListTile(key: const Key('scan_camera'), leading: const Icon(Icons.qr_code_scanner_rounded), title: const Text('اسکن با دوربین'), onTap: () => Navigator.pop(c, 'camera')),
+        ListTile(leading: const Icon(Icons.photo_library_rounded), title: const Text('انتخاب عکس QR از گالری'), onTap: () => Navigator.pop(c, 'gallery')),
+      ]),
+    ),
+  );
+  if (src == null || !context.mounted) return null;
+  if (src == 'camera') {
+    return Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const ScannerPage()));
+  }
+  final img = await ImagePicker().pickImage(source: ImageSource.gallery);
+  if (img == null) return null;
+  final ctrl = MobileScannerController();
+  try {
+    final cap = await ctrl.analyzeImage(img.path);
+    final raw = cap?.barcodes.firstOrNull?.rawValue;
+    if ((raw == null || raw.isEmpty) && context.mounted) showMessage(context, 'در این عکس QR پیدا نشد. عکس واضح‌تری انتخاب کنید.', error: true);
+    return raw;
+  } catch (_) {
+    if (context.mounted) showMessage(context, 'خواندن عکس ممکن نشد.', error: true);
+    return null;
+  } finally {
+    await ctrl.dispose();
+  }
+}
+
+/// «K-AB12CD» از متن QR (لینک /join/K-AB12CD/ یا خود کد)
+String classCodeFrom(String raw) {
+  final m = RegExp(r'K-?[A-Za-z0-9]{6}', caseSensitive: false).firstMatch(raw);
+  if (m == null) return raw.trim();
+  final c = m[0]!.toUpperCase().replaceAll('-', '');
+  return 'K-${c.substring(1)}';
 }

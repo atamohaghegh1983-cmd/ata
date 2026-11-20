@@ -676,41 +676,36 @@ class InviteSheet extends ConsumerWidget {
               const SizedBox(height: 12),
               Text('این کد برای همه‌ی والدین کلاس یکی است.', textAlign: TextAlign.center, style: TextStyle(color: HsColors.muted, fontSize: 12)),
               const SizedBox(height: 8),
-              Card(
-                child: Column(children: [
-                  SwitchListTile(
-                    key: const Key('join_open'),
-                    value: d['join_open'] != false,
-                    title: const Text('پذیرش والد جدید با کد کلاس'),
-                    subtitle: Text(d['join_open'] != false ? 'هر کس کد یا QR را داشته باشد می‌تواند درخواست بدهد.' : 'بسته است؛ فقط والدینی که شماره‌شان را ثبت کرده‌اید وصل می‌شوند.', style: const TextStyle(fontSize: 12)),
-                    onChanged: (v) async {
-                      try {
-                        final r = await ref.read(apiProvider).post<Map<String, dynamic>>('/classes/$classId/join', data: {'open': v});
-                        ref.invalidate(classInviteProvider(classId));
-                        if (context.mounted) showMessage(context, '${r['message']}');
-                      } on ApiException catch (e) {
-                        if (context.mounted) showMessage(context, e.message, error: true);
-                      }
-                    },
-                  ),
-                  ListTile(
-                    key: const Key('new_code'),
-                    leading: const Icon(Icons.refresh_rounded, color: HsColors.red),
-                    title: const Text('ساخت کد تازه'),
-                    subtitle: const Text('کد و QR قبلی باطل می‌شوند (اگر کد به بیرون از کلاس رسیده).', style: TextStyle(fontSize: 12)),
-                    onTap: () async {
-                      if (!await confirmDanger(context, title: 'ساخت کد تازه', text: 'کد و QR فعلی دیگر کار نمی‌کنند و باید کد تازه را برای والدین بفرستید.', ok: 'ساخت کد تازه')) return;
-                      try {
-                        await ref.read(apiProvider).post<Object?>('/classes/$classId/invite', data: {'which': 'parent'});
-                        ref.invalidate(classInviteProvider(classId));
-                        if (context.mounted) showMessage(context, 'کد تازه ساخته شد ✅');
-                      } on ApiException catch (e) {
-                        if (context.mounted) showMessage(context, e.message, error: true);
-                      }
-                    },
-                  ),
-                ]),
-              ),
+              Builder(builder: (_) {
+                final open = d['join_open'] != false;
+                Future<void> setOpen(bool v) async {
+                  if (!v && !await confirmDanger(context, title: 'تکمیل کلاس', text: 'بعد از این، هیچ والد جدیدی با کد یا QR این کلاس وصل نمی‌شود. والدینی که شماره‌شان را خودتان ثبت کرده‌اید همچنان وصل می‌شوند. هر وقت خواستید می‌توانید دوباره باز کنید.', ok: 'تکمیل کلاس')) return;
+                  try {
+                    final r = await ref.read(apiProvider).post<Map<String, dynamic>>('/classes/$classId/join', data: {'open': v});
+                    ref.invalidate(classInviteProvider(classId));
+                    if (context.mounted) showMessage(context, '${r['message']}');
+                  } on ApiException catch (e) {
+                    if (context.mounted) showMessage(context, e.message, error: true);
+                  }
+                }
+
+                return open
+                    ? OutlinedButton.icon(
+                        key: const Key('class_full'),
+                        style: OutlinedButton.styleFrom(foregroundColor: HsColors.red, side: const BorderSide(color: HsColors.red)),
+                        onPressed: () => setOpen(false),
+                        icon: const Icon(Icons.lock_rounded),
+                        label: const Text('تکمیل کلاس (دیگر کسی وصل نشود)'),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: HsColors.red.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14)),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          const Text('🔒 کلاس تکمیل است؛ والد جدید با کد یا QR وصل نمی‌شود.', textAlign: TextAlign.center, style: TextStyle(color: HsColors.red, fontWeight: FontWeight.w700)),
+                          TextButton(key: const Key('class_reopen'), onPressed: () => setOpen(true), child: const Text('باز کردن دوباره')),
+                        ]),
+                      );
+              }),
               const SizedBox(height: 12),
               FilledButton.icon(
                 key: const Key('share_qr_image'),

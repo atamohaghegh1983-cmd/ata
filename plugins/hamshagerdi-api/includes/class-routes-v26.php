@@ -42,8 +42,10 @@ class HS_API_Routes_V26 {
 		$r( '/me/budget-sources', 'POST', 'budget_sources' );
 		$r( '/school/budget-subjects', 'GET', 'school_subjects' );
 		$r( '/school/budget-subjects', 'POST', 'school_subjects_save' );
-		// نسخه‌ی اپ
+		// نسخه‌ی اپ (?app=family | teacher)
 		$r( '/app/latest', 'GET', 'app_latest', $open );
+		// ویرایش نام خودم
+		$r( '/me/name', 'POST', 'me_name' );
 		// داشبورد معلم: دیوار و اطلاعیه‌های اخیر
 		$r( '/teacher/feed', 'GET', 'teacher_feed' );
 	}
@@ -335,19 +337,40 @@ class HS_API_Routes_V26 {
 
 	/* ------------------------------ نسخه‌ی اپ ------------------------------ */
 
-	public static function release() {
-		$r = get_option( self::APP_OPT, array() );
+	/** دو اپ: family (والدین و دانش‌آموزان) و teacher (کادر مدرسه) */
+	public static function apps() {
+		return array( 'family' => 'همشاگردی (والدین و دانش‌آموزان)', 'teacher' => 'همشاگردی معلم (کادر مدرسه)' );
+	}
+
+	public static function release( $app = 'family' ) {
+		$app = 'teacher' === $app ? 'teacher' : 'family';
+		$r   = get_option( 'teacher' === $app ? self::APP_OPT . '_teacher' : self::APP_OPT, array() );
 		return is_array( $r ) ? $r : array();
 	}
 
-	public static function app_latest() {
-		$r = self::release();
-		if ( empty( $r['url'] ) ) { return array( 'available' => false ); }
+	public static function app_latest( WP_REST_Request $req ) {
+		$app = 'teacher' === $req->get_param( 'app' ) ? 'teacher' : 'family';
+		$r   = self::release( $app );
+		$o   = self::release( 'teacher' === $app ? 'family' : 'teacher' );
+		if ( empty( $r['url'] ) ) { return array( 'available' => false, 'app' => $app, 'other_url' => ! empty( $o['url'] ) ? esc_url_raw( $o['url'] ) : '' ); }
 		return array(
 			'available' => true, 'version' => (string) $r['version'], 'build' => (int) $r['build'], 'url' => esc_url_raw( $r['url'] ),
 			'size' => (int) ( $r['size'] ?? 0 ), 'notes' => (string) ( $r['notes'] ?? '' ), 'min_build' => (int) ( $r['min_build'] ?? 0 ),
-			'date' => (string) ( $r['date'] ?? '' ),
+			'date' => (string) ( $r['date'] ?? '' ), 'app' => $app,
+			'other_url' => ! empty( $o['url'] ) ? esc_url_raw( $o['url'] ) : '',
 		);
+	}
+
+	public static function me_name( WP_REST_Request $r ) {
+		$uid   = get_current_user_id();
+		$first = HS_API_Util::text( self::p( $r, 'first_name' ), 60 );
+		$last  = HS_API_Util::text( self::p( $r, 'last_name' ), 60 );
+		if ( mb_strlen( $first ) < 2 || mb_strlen( $last ) < 2 ) { return self::err( 'نام و نام خانوادگی را کامل بنویسید.' ); }
+		$lim = HS_API_Util::limited( 'name_' . $uid, 10 );
+		if ( $lim ) { return $lim; }
+		HS_API_Util::hit( 'name_' . $uid, DAY_IN_SECONDS );
+		wp_update_user( array( 'ID' => $uid, 'first_name' => $first, 'last_name' => $last, 'display_name' => $first . ' ' . $last ) );
+		return array( 'ok' => true, 'name' => $first . ' ' . $last );
 	}
 
 	public static function admin_menu() {
@@ -355,36 +378,41 @@ class HS_API_Routes_V26 {
 	}
 
 	public static function admin_page() {
-		$r = self::release();
-		echo '<div class="wrap" dir="rtl"><h1>اپ موبایل همشاگردی — فایل نصب</h1>';
+		echo '<div class="wrap" dir="rtl"><h1>اپ‌های موبایل همشاگردی — فایل نصب</h1>';
 		if ( isset( $_GET['saved'] ) ) { echo '<div class="notice notice-success"><p>ذخیره شد.</p></div>'; } // phpcs:ignore
 		if ( isset( $_GET['err'] ) ) { echo '<div class="notice notice-error"><p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['err'] ) ) ) . '</p></div>'; } // phpcs:ignore
-		if ( ! empty( $r['url'] ) ) {
-			echo '<p>نسخه‌ی فعلی: <b>' . esc_html( $r['version'] ) . '</b> (ساخت ' . (int) $r['build'] . ') — <a href="' . esc_url( $r['url'] ) . '">دانلود</a> — ' . esc_html( size_format( (int) ( $r['size'] ?? 0 ) ) ) . '</p>';
-		} else {
-			echo '<p>هنوز فایلی بارگذاری نشده است.</p>';
+		foreach ( self::apps() as $app => $label ) {
+			$r = self::release( $app );
+			echo '<hr><h2>' . esc_html( $label ) . '</h2>';
+			if ( ! empty( $r['url'] ) ) {
+				echo '<p>نسخه‌ی فعلی: <b>' . esc_html( $r['version'] ) . '</b> (ساخت ' . (int) $r['build'] . ') — <a href="' . esc_url( $r['url'] ) . '">دانلود</a> — ' . esc_html( size_format( (int) ( $r['size'] ?? 0 ) ) ) . '</p>';
+			} else {
+				echo '<p>هنوز فایلی بارگذاری نشده است.</p>';
+			}
+			echo '<form method="post" enctype="multipart/form-data" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( 'hs_api_app' );
+			echo '<input type="hidden" name="action" value="hs_api_app_save"><input type="hidden" name="app" value="' . esc_attr( $app ) . '"><table class="form-table">';
+			echo '<tr><th>فایل APK</th><td><input type="file" name="apk" accept=".apk"> <p class="description">' . ( 'teacher' === $app ? 'فایل hamshagerdi-teacher-apk از گیت‌هاب.' : 'فایل hamshagerdi-family-apk از گیت‌هاب.' ) . '</p></td></tr>';
+			echo '<tr><th>نسخه</th><td><input name="version" value="' . esc_attr( $r['version'] ?? '' ) . '" placeholder="0.8.0" dir="ltr"></td></tr>';
+			echo '<tr><th>شماره‌ی ساخت</th><td><input name="build" type="number" value="' . esc_attr( $r['build'] ?? '' ) . '" dir="ltr"> <p class="description">همان شماره‌ی اجرای گیت‌هاب.</p></td></tr>';
+			echo '<tr><th>تغییرات</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $r['notes'] ?? '' ) . '</textarea></td></tr>';
+			echo '<tr><th>اجباری</th><td><label><input type="checkbox" name="force" value="1"' . checked( ! empty( $r['min_build'] ) && (int) $r['min_build'] >= (int) ( $r['build'] ?? 0 ), true, false ) . '> نسخه‌های قدیمی‌تر باید به‌روزرسانی کنند</label></td></tr>';
+			echo '</table>';
+			submit_button( 'ذخیره‌ی ' . ( 'teacher' === $app ? 'اپ معلم' : 'اپ والدین' ) );
+			echo '</form>';
 		}
-		echo '<form method="post" enctype="multipart/form-data" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-		wp_nonce_field( 'hs_api_app' );
-		echo '<input type="hidden" name="action" value="hs_api_app_save"><table class="form-table">';
-		echo '<tr><th>فایل APK</th><td><input type="file" name="apk" accept=".apk"> <p class="description">فایل app-arm64-v8a-release.apk از گیت‌هاب (بخش Artifacts).</p></td></tr>';
-		echo '<tr><th>نسخه</th><td><input name="version" value="' . esc_attr( $r['version'] ?? '' ) . '" placeholder="0.6.0" dir="ltr"></td></tr>';
-		echo '<tr><th>شماره‌ی ساخت</th><td><input name="build" type="number" value="' . esc_attr( $r['build'] ?? '' ) . '" dir="ltr"> <p class="description">همان شماره‌ی اجرای گیت‌هاب (مثلاً ۱۱).</p></td></tr>';
-		echo '<tr><th>تغییرات</th><td><textarea name="notes" rows="4" class="large-text">' . esc_textarea( $r['notes'] ?? '' ) . '</textarea></td></tr>';
-		echo '<tr><th>اجباری</th><td><label><input type="checkbox" name="force" value="1"' . checked( ! empty( $r['min_build'] ) && (int) $r['min_build'] >= (int) ( $r['build'] ?? 0 ), true, false ) . '> نسخه‌های قدیمی‌تر باید به‌روزرسانی کنند</label></td></tr>';
-		echo '</table>';
-		submit_button( 'ذخیره' );
-		echo '</form><p>برای نمایش دکمه‌ی دانلود در هر صفحه: <code>[hamshagerdi_app_download]</code></p></div>';
+		echo '<hr><p>دکمه‌ی دانلود: <code>[hamshagerdi_app_download]</code> (هر دو اپ)، یا <code>[hamshagerdi_app_download app="family"]</code> / <code>[hamshagerdi_app_download app="teacher"]</code></p></div>';
 	}
 
 	public static function admin_save() {
 		if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'hs_api_app' ) ) { wp_die( 'دسترسی ندارید.' ); }
-		$r       = self::release();
+		$app     = 'teacher' === ( $_POST['app'] ?? '' ) ? 'teacher' : 'family'; // phpcs:ignore
+		$r       = self::release( $app );
 		$version = sanitize_text_field( wp_unslash( $_POST['version'] ?? '' ) );
 		$build   = absint( $_POST['build'] ?? 0 );
 		$back    = admin_url( 'options-general.php?page=hs-api-app' );
 		if ( ! preg_match( '/^\d+\.\d+\.\d+$/', $version ) || ! $build ) {
-			wp_safe_redirect( add_query_arg( 'err', rawurlencode( 'نسخه (مثل 0.6.0) و شماره‌ی ساخت را وارد کنید.' ), $back ) );
+			wp_safe_redirect( add_query_arg( 'err', rawurlencode( 'نسخه (مثل 0.8.0) و شماره‌ی ساخت را وارد کنید.' ), $back ) );
 			exit;
 		}
 		if ( ! empty( $_FILES['apk']['name'] ) ) {
@@ -394,7 +422,7 @@ class HS_API_Routes_V26 {
 				wp_safe_redirect( add_query_arg( 'err', rawurlencode( 'فقط فایل APK.' ), $back ) );
 				exit;
 			}
-			$f['name'] = 'hamshagerdi-' . $version . '.apk';
+			$f['name'] = ( 'teacher' === $app ? 'hamshagerdi-teacher-' : 'hamshagerdi-' ) . $version . '.apk';
 			$up        = wp_handle_upload( $f, array( 'test_form' => false, 'test_type' => false, 'mimes' => array( 'apk' => 'application/vnd.android.package-archive' ) ) );
 			if ( isset( $up['error'] ) ) {
 				wp_safe_redirect( add_query_arg( 'err', rawurlencode( $up['error'] ), $back ) );
@@ -412,29 +440,36 @@ class HS_API_Routes_V26 {
 		$r['notes']     = sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) );
 		$r['min_build'] = ! empty( $_POST['force'] ) ? $build : 0;
 		$r['date']      = current_time( 'Y-m-d' );
-		update_option( self::APP_OPT, $r, false );
+		update_option( 'teacher' === $app ? self::APP_OPT . '_teacher' : self::APP_OPT, $r, false );
 		wp_safe_redirect( add_query_arg( 'saved', 1, $back ) );
 		exit;
 	}
 
 	/** دکمه‌ی دانلود اپ (برای صفحه‌ی اول یا هر صفحه‌ی دیگر) */
-	public static function download_shortcode() {
-		$r = self::release();
-		if ( empty( $r['url'] ) ) { return ''; }
-		$url = esc_url( $r['url'] );
-		$qr  = class_exists( 'HS_Class_Manager' ) || defined( 'HS_CLASS_URL' ) ? HS_CLASS_URL . 'assets/js/qrcode.js' : '';
-		$id  = 'hsapp' . wp_rand( 100, 999 );
-		$h   = '<div class="hs-app-dl" dir="rtl" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:#FFF8F2;border-radius:20px;padding:18px">'
-			. '<div style="flex:1;min-width:220px"><h3 style="margin:0 0 6px">📱 اپ همشاگردی</h3>'
-			. '<p style="margin:0 0 10px;color:#555">حضور و غیاب، تکالیف، پیام و گزارش فرزندتان روی گوشی. نسخه ' . esc_html( $r['version'] ) . ' — ' . esc_html( size_format( (int) ( $r['size'] ?? 0 ) ) ) . '</p>'
-			. '<a href="' . $url . '" style="display:inline-block;background:#F57C00;color:#fff;padding:12px 22px;border-radius:14px;text-decoration:none;font-weight:700">⬇️ دانلود برای اندروید</a>'
-			. '<details style="margin-top:10px"><summary style="cursor:pointer">راهنمای نصب</summary><ol style="line-height:2">'
-			. '<li>فایل را دانلود و باز کنید.</li><li>اگر گوشی پرسید، «اجازه‌ی نصب از این منبع» را روشن کنید.</li><li>«نصب» را بزنید و با شماره‌ی موبایل خود وارد شوید.</li></ol></details></div>'
-			. '<div id="' . esc_attr( $id ) . '" style="background:#fff;padding:8px;border-radius:12px" title="با دوربین گوشی اسکن کنید"></div></div>';
-		if ( $qr ) {
-			wp_enqueue_script( 'hs-qrcode', $qr, array(), HS_API_VERSION, true );
-			wp_add_inline_script( 'hs-qrcode', 'document.addEventListener("DOMContentLoaded",function(){try{var q=qrcode(0,"M");q.addData(' . wp_json_encode( $url ) . ');q.make();document.getElementById(' . wp_json_encode( $id ) . ').innerHTML=q.createSvgTag(4,4);}catch(e){}});' );
+	public static function download_shortcode( $atts = array() ) {
+		$atts = shortcode_atts( array( 'app' => '' ), (array) $atts, 'hamshagerdi_app_download' );
+		$list = in_array( $atts['app'], array( 'family', 'teacher' ), true ) ? array( $atts['app'] ) : array( 'family', 'teacher' );
+		$out  = '';
+		foreach ( $list as $app ) {
+			$r = self::release( $app );
+			if ( empty( $r['url'] ) ) { continue; }
+			$url   = esc_url( $r['url'] );
+			$id    = 'hsapp' . $app . wp_rand( 100, 999 );
+			$title = 'teacher' === $app ? '👩‍🏫 همشاگردی معلم' : '📱 همشاگردی';
+			$desc  = 'teacher' === $app ? 'برای معلمان، مدیران و معاونان: حضور و غیاب، تکلیف، نمره، برنامه‌ی هفتگی و ارتباط با والدین.' : 'برای والدین و دانش‌آموزان: حضور، تکالیف، امتیازها، پیام به معلم و دیوار همشاگردی.';
+			$out  .= '<div class="hs-app-dl" dir="rtl" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:#FFF8F2;border-radius:20px;padding:18px;margin-bottom:14px">'
+				. '<div style="flex:1;min-width:220px"><h3 style="margin:0 0 6px">' . $title . '</h3>'
+				. '<p style="margin:0 0 10px;color:#555">' . esc_html( $desc ) . ' نسخه ' . esc_html( $r['version'] ) . ' — ' . esc_html( size_format( (int) ( $r['size'] ?? 0 ) ) ) . '</p>'
+				. '<a href="' . $url . '" style="display:inline-block;background:' . ( 'teacher' === $app ? '#16213E' : '#F57C00' ) . ';color:#fff;padding:12px 22px;border-radius:14px;text-decoration:none;font-weight:700">⬇️ دانلود برای اندروید</a>'
+				. '<details style="margin-top:10px"><summary style="cursor:pointer">راهنمای نصب</summary><ol style="line-height:2">'
+				. '<li>فایل را دانلود و باز کنید.</li><li>اگر گوشی پرسید، «اجازه‌ی نصب از این منبع» را روشن کنید.</li><li>«نصب» را بزنید و با شماره‌ی موبایل خود وارد شوید.</li></ol></details></div>'
+				. '<div id="' . esc_attr( $id ) . '" style="background:#fff;padding:8px;border-radius:12px" title="با دوربین گوشی اسکن کنید"></div></div>';
+			if ( defined( 'HS_CLASS_URL' ) ) {
+				wp_enqueue_script( 'hs-qrcode', HS_CLASS_URL . 'assets/js/qrcode.js', array(), HS_API_VERSION, true );
+				wp_add_inline_script( 'hs-qrcode', 'document.addEventListener("DOMContentLoaded",function(){try{var q=qrcode(0,"M");q.addData(' . wp_json_encode( $url ) . ');q.make();document.getElementById(' . wp_json_encode( $id ) . ').innerHTML=q.createSvgTag(4,4);}catch(e){}});' );
+			}
 		}
-		return $h;
+		return $out;
 	}
+
 }

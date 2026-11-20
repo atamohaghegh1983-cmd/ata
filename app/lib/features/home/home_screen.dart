@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/config.dart';
+import '../../core/widgets/attachments.dart';
 import '../../core/providers.dart';
 import '../../core/update_check.dart';
 import '../../core/theme.dart';
@@ -89,7 +90,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView()),
         ];
     }
-    return [_Tab('خانه', Icons.home_rounded, 'همشاگردی', _StatusBody(me: me))];
+    if (me.homeKind == 'wrong_app') return [_Tab('خانه', Icons.home_rounded, AppConfig.appName, _WrongAppBody(me: me))];
+    return [_Tab('خانه', Icons.home_rounded, AppConfig.appName, _StatusBody(me: me))];
   }
 
   @override
@@ -256,6 +258,8 @@ class _Menu extends ConsumerWidget {
             await _delete(context, ref);
           case 'role':
             await context.push('/role');
+          case 'name':
+            await editMyName(context, ref, me);
           case 'school':
             await context.push('/school/form');
           case 'staff':
@@ -324,7 +328,9 @@ class _Menu extends ConsumerWidget {
           if (kind == 'manager') const PopupMenuItem(value: 'staff', child: Text('افزودن معلم یا معاون')),
         ],
         if (kind == 'parent') ...[const PopupMenuItem(value: 'kid', child: Text('حالت کودک (سپردن گوشی به فرزند)')), const PopupMenuItem(value: 'pin', child: Text('رمز والدین'))],
-        const PopupMenuItem(value: 'role', child: Text('انتخاب یا تغییر نقش')),
+        // انتخاب نقش فقط برای حسابی که هنوز نقشی ندارد (حساب نقش‌دار با فرم ثبت‌نام عوض نمی‌شود)
+        if (kind == 'other') const PopupMenuItem(value: 'role', child: Text('انتخاب نقش')),
+        const PopupMenuItem(value: 'name', child: Text('ویرایش نام من')),
         const PopupMenuItem(value: 'theme', child: Text('ظاهر (روشن / تاریک)')),
         const PopupMenuItem(value: 'privacy', child: Text('حریم خصوصی')),
         const PopupMenuDivider(),
@@ -498,5 +504,78 @@ class _StatusBody extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// ویرایش نام حساب (جدا از نقش)
+Future<void> editMyName(BuildContext context, WidgetRef ref, Me me) async {
+  final parts = me.name.trim().split(RegExp(r'\s+'));
+  final first = TextEditingController(text: parts.isEmpty ? '' : parts.first);
+  final last = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (d) => AlertDialog(
+      title: const Text('ویرایش نام من'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(key: const Key('name_first'), controller: first, decoration: const InputDecoration(labelText: 'نام')),
+        const SizedBox(height: 10),
+        TextField(key: const Key('name_last'), controller: last, decoration: const InputDecoration(labelText: 'نام خانوادگی')),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('انصراف')),
+        FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(d, true), child: const Text('ذخیره')),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref.read(apiProvider).post<Object?>('/me/name', data: {'first_name': first.text.trim(), 'last_name': last.text.trim()});
+    await ref.read(authProvider.notifier).reloadMe();
+    if (context.mounted) showMessage(context, 'نام ذخیره شد ✅');
+  } on ApiException catch (e) {
+    if (context.mounted) showMessage(context, e.message, error: true);
+  }
+}
+
+/// حسابی که نقشش مال اپ دیگر است (مثلاً معلم در اپ والدین)
+class _WrongAppBody extends ConsumerWidget {
+  const _WrongAppBody({required this.me});
+  final Me me;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final latest = ref.watch(getProvider('/app/latest?app=${AppConfig.app}'));
+    final other = '${(latest.valueOrNull?.data as Map?)?['other_url'] ?? ''}';
+    final teacherHere = !AppConfig.isTeacherApp; // معلمی که اپ والدین را باز کرده
+    return ListView(padding: const EdgeInsets.fromLTRB(24, 30, 24, 24), children: [
+      EmptyView(
+        icon: teacherHere ? Icons.co_present_rounded : Icons.family_restroom_rounded,
+        title: teacherHere ? 'این اپ مخصوص والدین و دانش‌آموزان است' : 'این اپ مخصوص کادر مدرسه است',
+        text: teacherHere
+            ? 'حساب شما حساب معلم یا مدیر است. برای کارهای کلاس و مدرسه، اپ «همشاگردی معلم» را نصب کنید و با همین شماره وارد شوید.'
+            : 'حساب شما حساب والد یا دانش‌آموز است. اپ «همشاگردی» را نصب کنید و با همین شماره وارد شوید.',
+      ),
+      const SizedBox(height: 12),
+      FilledButton.icon(
+        key: const Key('get_other_app'),
+        onPressed: () => openUrl(context, other.isNotEmpty ? other : AppConfig.site),
+        icon: const Icon(Icons.download_rounded),
+        label: Text('دریافت ${AppConfig.otherAppName}'),
+      ),
+      if (teacherHere) ...[
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          key: const Key('teacher_is_parent'),
+          onPressed: () async {
+            await context.push('/children/add');
+            await ref.read(authProvider.notifier).reloadMe();
+          },
+          icon: const Icon(Icons.child_care_rounded),
+          label: const Text('من والد هم هستم؛ فرزندم را وصل می‌کنم'),
+        ),
+      ],
+      const SizedBox(height: 10),
+      TextButton(onPressed: () => ref.read(authProvider.notifier).logout(), child: const Text('خروج از حساب')),
+    ]);
   }
 }
