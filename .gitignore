@@ -1,0 +1,11 @@
+plugins/_zips/
+
+# کلید امضای اندروید هرگز در گیت نباشد
+*.jks
+*.keystore
+key.properties
+
+# Firebase (never commit)
+google-services.json
+firebase-adminsdk*.json
+*service-account*.json

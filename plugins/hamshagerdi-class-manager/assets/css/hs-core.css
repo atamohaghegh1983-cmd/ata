@@ -1,0 +1,44 @@
+/* =====================================================
+   همشاگردی — هسته‌ی طراحی مشترک (Design Core) v1.6.0
+   تنها جایی که فونت‌ها و توکن‌های پایه تعریف می‌شوند.
+   همه‌ی افزونه‌های همشاگردی به این فایل (handle: hs-core) وابسته‌اند
+   تا فونت‌ها یک بار بارگذاری شوند و ظاهر یکدست بماند.
+   تیترها: لاله‌زار · متن‌ها: وزیرمتن
+   ===================================================== */
+@font-face{font-family:'Vazirmatn';src:url('../fonts/Vazirmatn-VF.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:'HS Title';src:url('../fonts/lalezar-arabic.woff2') format('woff2');font-weight:400;font-display:swap;unicode-range:U+0600-06FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE80-FEFC}
+@font-face{font-family:'HS Title';src:url('../fonts/lalezar-latin.woff2') format('woff2');font-weight:400;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215}
+
+:root{
+  /* تایپوگرافی */
+  --hs-font:'Vazirmatn',Tahoma,sans-serif;
+  --hs-title:'HS Title','Vazirmatn',Tahoma,sans-serif;
+  --hs-display:var(--hs-title);           /* نام قدیمی، برای سازگاری */
+  /* رنگ‌ها (پالت انتخابی در تنظیمات، این‌ها را بازنویسی می‌کند) */
+  --hs-primary:#C24E00;--hs-primary-2:#F57C00;--hs-primary-rgb:194,78,0;--hs-ink:#0F2F6B;--hs-navy:#0F2F6B;--hs-navy-2:#243055;
+  --hs-bg:#FFF8F2;--hs-card:#fff;--hs-line:#F0E4D8;--hs-text:#2E3650;--hs-muted:#7A8199;
+  --hs-sun:#FFC83D;--hs-coral:#FF6B81;--hs-mint:#27C9A5;--hs-sky:#4DA8FF;
+  /* شکل */
+  --hs-radius:18px;--hs-radius-sm:14px;
+  --hs-shadow:0 2px 0 rgba(43,35,88,.04),0 10px 28px rgba(var(--hs-primary-rgb),.09);
+  --hs-shadow-lg:0 16px 40px rgba(var(--hs-primary-rgb),.22);
+}
+
+/* ریشه‌ی همه‌ی بخش‌های همشاگردی */
+.hs-shell,.hs-guest,.hs-guest-school,.hs-oc,.hs-wp,.hsma-box,.hsum,.hs-pp,.hs-pchat,.hspp-cal,.hs-sw,.hssp-plan,.hs-so-tree,.hs-app-banner,.hs-app-toast{
+  font-family:var(--hs-font);
+  font-synthesis:none;               /* جلوگیری از بولد مصنوعی لاله‌زار */
+  -webkit-font-smoothing:antialiased;
+}
+:where(.hs-shell,.hs-guest,.hs-guest-school,.hs-oc,.hs-wp,.hsma-box,.hsum,.hs-pp,.hs-pchat,.hspp-cal,.hs-sw,.hssp-plan,.hs-so-tree) :where(input,select,textarea,button){font-family:var(--hs-font)}
+
+/* همه‌ی تیترها: لاله‌زار، بدون بولد (لاله‌زار یک وزن دارد) */
+:where(.hs-shell,.hs-guest,.hs-guest-school,.hs-oc,.hs-wp,.hsma-box,.hsum,.hs-pp,.hs-pchat,.hspp-cal,.hs-sw,.hssp-plan,.hs-so-tree) :is(h1,h2,h3,h4,h5,.hs-title){
+  font-family:var(--hs-title)!important;font-weight:400!important;letter-spacing:0;line-height:1.55;
+}
+/* اعداد و ارقام در جدول‌ها هم‌عرض بمانند */
+:where(.hs-shell,.hs-pp,.hs-sw,.hs-oc,.hs-wp) :where(table,.hs-num){font-variant-numeric:tabular-nums}
+
+/* خط زیر کلمه‌ی کلیدی تیتر (سبک «خیالت راحت») */
+.hs-mark{position:relative;color:var(--hs-primary);white-space:nowrap}
+.hs-mark::after{content:'';position:absolute;inset-inline:-2px;bottom:.02em;height:.32em;border-radius:99px;background:rgba(var(--hs-primary-rgb),.22);z-index:-1}

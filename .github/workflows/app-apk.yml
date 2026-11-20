@@ -1,0 +1,111 @@
+# ساخت خودکار دو اپ از یک کد (پوشه‌ی app/) با هر push:
+#   «همشاگردی» (والد و دانش‌آموز، ir.hamshagerdionline.app)  ← Artifact: hamshagerdi-family-apk-N
+#   «همشاگردی معلم» (کادر مدرسه، ir.hamshagerdionline.teacher) ← Artifact: hamshagerdi-teacher-apk-N
+# امضا: اگر Secrets زیر تعریف شده باشد با کلید شما، وگرنه با کلید آزمایشی (فقط برای تست، قابل انتشار در بازار نیست):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+name: App APK
+
+on:
+  push:
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-apk.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Tests
+        run: flutter test
+
+      - name: Signing key (from Secrets)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            {
+              echo "storeFile=$RUNNER_TEMP/upload.jks"
+              echo "storePassword=$KS_PASS"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASS"
+            } > android/key.properties
+            echo "✅ امضا با کلید شما"
+          else
+            echo "::warning::کلید امضا در Secrets نیست؛ APK با کلید آزمایشی امضا شد (برای انتشار در بازار مناسب نیست)."
+          fi
+
+      - name: Firebase config (from Secret, optional)
+        env:
+          GS_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GS_JSON" ]; then
+            printf '%s' "$GS_JSON" > android/app/google-services.json
+            echo "✅ اعلان Firebase فعال"
+          else
+            echo "::warning::GOOGLE_SERVICES_JSON در Secrets نیست؛ اعلان گوشی خاموش است (مرکز اعلان داخل اپ کار می‌کند)."
+          fi
+
+      - name: Build APK (همشاگردی)
+        run: flutter build apk --release --split-per-abi --flavor family --dart-define=HS_APP=family --build-number=${{ github.run_number }}
+
+      - name: Build APK (همشاگردی معلم)
+        run: |
+          # اگر اپ معلم هنوز در Firebase ثبت نشده، بدون اعلان گوشی ساخته می‌شود
+          if [ -f android/app/google-services.json ] && ! grep -q '"ir.hamshagerdionline.teacher"' android/app/google-services.json; then
+            rm -f android/app/google-services.json
+            echo "::warning::اپ معلم (ir.hamshagerdionline.teacher) در Firebase ثبت نشده؛ اعلان گوشی برای اپ معلم خاموش است."
+          fi
+          flutter build apk --release --split-per-abi --flavor teacher --dart-define=HS_APP=teacher --build-number=${{ github.run_number }}
+
+      - name: Remove key
+        if: always()
+        run: rm -f android/key.properties "$RUNNER_TEMP/upload.jks" android/app/google-services.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hamshagerdi-family-apk-${{ github.run_number }}
+          path: app/build/app/outputs/flutter-apk/app-arm64-v8a-family-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hamshagerdi-teacher-apk-${{ github.run_number }}
+          path: app/build/app/outputs/flutter-apk/app-arm64-v8a-teacher-release.apk
+          if-no-files-found: error
+          retention-days: 14
