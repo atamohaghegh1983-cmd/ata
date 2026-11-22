@@ -92,6 +92,16 @@ jobs:
           fi
           flutter build apk --release --split-per-abi --flavor teacher --dart-define=HS_APP=teacher --build-number=${{ github.run_number }}
 
+      - name: Check APKs (signature, Android version)
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for f in build/app/outputs/flutter-apk/app-arm64-v8a-*-release.apk; do
+            echo "=== $f"
+            "$BT"/aapt2 dump badging "$f" | grep -E "^package:|sdkVersion|targetSdkVersion|native-code|application-label:" || true
+            "$BT"/apksigner verify --verbose --print-certs "$f" | grep -E "Verifies|Verified using|Signer #1 certificate (DN|SHA-256)|WARNING|ERROR" || true
+            unzip -l "$f" | tail -1
+          done
+
       - name: Remove key
         if: always()
         run: rm -f android/key.properties "$RUNNER_TEMP/upload.jks" android/app/google-services.json
