@@ -1,0 +1,90 @@
+/* ساختار مدیریت مدرسه — v2.0.0
+   روی توکن‌ها و کلاس‌های پنل همشاگردی (hs-theme / panel-classes) سوار است. */
+.hs-so{display:block}
+.hs-so .hs-card{margin-bottom:1rem}
+.hs-so-tabs{margin-bottom:1rem}
+.hs-so-switch{margin:-.4rem 0 1rem;font-size:.9rem;color:var(--hs-muted)}
+.hs-so-switch select{padding:.3rem .6rem;border-radius:10px;border:2px solid var(--hs-line)}
+.hs-so-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
+.hs-so-cols .hs-card{margin-bottom:0}
+
+/* معرفی مدرسه */
+.hs-so-intro{max-width:720px;margin:0 auto;text-align:center}
+.hs-so-intro-ico{width:76px;height:76px;margin:-.2rem auto .5rem;display:grid;place-items:center;font-size:2.4rem;border-radius:24px;background:linear-gradient(135deg,var(--hs-sun,#FFC83D),#FFA94D);transform:rotate(-6deg);box-shadow:0 10px 22px rgba(255,159,28,.35)}
+.hs-so-intro .hs-so-form{text-align:right;margin-top:1rem}
+.hs-so-form .hs-form-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}
+.hs-so-form .hs-form-message.success{color:#0f9f6e}
+.hs-so-form .hs-form-message.error{color:#dc2626}
+.hs-so-creds{margin-top:.6rem;padding:.8rem;border-radius:14px;background:#FFF8E1;border:1px dashed #F5B700;color:#2E3650}
+
+/* مشخصات */
+.hs-so-dl{display:grid;grid-template-columns:auto 1fr;gap:.35rem .9rem;margin:0 0 .8rem}
+.hs-so-dl dt{color:var(--hs-muted);font-size:.88rem}
+.hs-so-dl dd{margin:0;font-weight:600}
+
+/* کادر */
+.hs-so-seg{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem}
+.hs-so-seg label{display:flex;gap:.35rem;align-items:center;cursor:pointer}
+.hs-so-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.8rem}
+.hs-so-person{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:.8rem;border-radius:18px;background:var(--cs,#FFF1E9);border:2px solid transparent}
+.hs-so-av{border-radius:50%;width:54px;height:54px;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.hs-so-person-body{flex:1;min-width:140px;display:flex;flex-direction:column;gap:.15rem}
+.hs-so-person-body small{color:var(--hs-muted)}
+.hs-so-person-body .hs-pill{align-self:flex-start}
+
+/* وظایف */
+.hs-so-filter{display:flex;gap:.5rem;flex-wrap:wrap}
+.hs-so-filter select{padding:.35rem .6rem;border-radius:10px;border:2px solid var(--hs-line);background:#fff}
+.hs-so-tasks{display:flex;flex-direction:column;gap:.7rem}
+.hs-so-task{display:flex;gap:1rem;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;padding:.9rem 1rem;border-radius:18px;background:#fff;border:2px solid var(--hs-line);border-inline-start:6px solid var(--hs-sky,#4DA8FF)}
+.hs-so-task.is-doing{border-inline-start-color:var(--hs-sun,#FFC83D)}
+.hs-so-task.is-done{border-inline-start-color:var(--hs-mint,#27C9A5);opacity:.8}
+.hs-so-task.is-overdue{border-inline-start-color:#ef4444;background:#FFF5F5}
+.hs-so-task-main{flex:1;min-width:220px}
+.hs-so-task-main p{margin:.3rem 0;color:var(--hs-text)}
+.hs-so-task-meta{display:flex;flex-wrap:wrap;gap:.4rem .7rem;align-items:center;font-size:.85rem;color:var(--hs-muted);margin-top:.4rem}
+.hs-so-st-done{background:#D9F7EE;color:#0b7a5d}.hs-so-st-doing{background:#FFF1C9;color:#8a6200}.hs-so-st-todo{background:#E2F0FF;color:#1d63b3}
+.hs-so-high{background:#FFE3E3;color:#b42318}
+.hs-so-late{color:#dc2626;font-weight:700}
+.hs-so-report{background:#F6F3FF;border-radius:12px;padding:.5rem .8rem;font-size:.9rem}
+.hs-so-task-acts{display:flex;gap:.4rem;flex-wrap:wrap}
+.hs-so-duties{margin:0;padding:0 1.2rem;line-height:2}
+
+/* نظارت */
+.hs-so-ro{margin-bottom:1rem;padding:.7rem 1rem;border-radius:14px;background:#EEF4FF;color:#1d4a8a;font-size:.9rem}
+.hs-so-ro-note{margin-top:1rem;font-size:.82rem;color:var(--hs-muted)}
+.hs-so-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.9rem}
+.hs-so-class{display:flex;flex-direction:column;gap:.45rem;padding:1rem;border-radius:20px;background:#fff;border:2px solid var(--hs-line)}
+.hs-so-class header{display:flex;justify-content:space-between;gap:.5rem;align-items:center}
+.hs-so-class small{color:var(--hs-muted)}
+.hs-so-class footer{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-top:auto;flex-wrap:wrap}
+.hs-so-bar{height:10px;border-radius:6px;background:#EEF0F6;overflow:hidden}
+.hs-so-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--hs-mint,#27C9A5),var(--hs-sky,#4DA8FF));border-radius:6px}
+.hs-so-chips{display:flex;flex-wrap:wrap;gap:.35rem}
+.hs-so-chips span{padding:.15rem .55rem;border-radius:999px;background:#FFF1E9;font-size:.85rem}
+.hs-so-legend{font-size:.8rem;margin:.6rem 0 0}
+.hs-so-clear{font-size:.8rem;font-weight:400}
+.hs-so-feed{list-style:none;margin:0 0 .8rem;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.hs-so-feed li{display:flex;gap:.7rem;align-items:flex-start}
+.hs-so-feed-ico{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#FFF1E9;flex:0 0 36px}
+.hs-so-feed small{display:block;color:var(--hs-muted)}
+.hs-so-mini{list-style:none;margin:0;padding:0}
+.hs-so-mini li{display:flex;justify-content:space-between;gap:.6rem;padding:.35rem 0;border-bottom:1px dashed var(--hs-line)}
+.hs-so-mini small{color:var(--hs-muted);white-space:nowrap}
+.hs-modal-box.hs-so-wide{max-width:640px;max-height:86vh;overflow:auto}
+.hs-so-wide h4{margin:1rem 0 .4rem}
+
+/* چارت */
+.hs-so-tree-wrap{overflow-x:auto;padding:.5rem 0}
+.hs-so-tree,.hs-so-tree ul{list-style:none;margin:0;padding:0;display:flex;justify-content:center;gap:1rem;position:relative}
+.hs-so-tree ul{padding-top:1.4rem}
+.hs-so-tree li{display:flex;flex-direction:column;align-items:center;position:relative;padding-top:0}
+.hs-so-tree ul>li::before{content:'';position:absolute;top:-1.4rem;right:50%;border-right:2px solid var(--hs-line);height:1.4rem}
+.hs-so-tree ul>li::after{content:'';position:absolute;top:-1.4rem;right:0;left:0;border-top:2px solid var(--hs-line)}
+.hs-so-tree ul>li:first-child::after{right:50%}
+.hs-so-tree ul>li:last-child::after{left:50%}
+.hs-so-tree ul>li:only-child::after{display:none}
+.hs-so-node-card{display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:130px;max-width:170px;padding:.7rem .8rem;border-radius:18px;background:var(--cs,#FFF1E9);border:2px solid var(--c,#F57C00);text-align:center}
+.hs-so-node-card span{font-size:.8rem;color:var(--hs-muted)}
+.hs-so-node-card strong{font-size:.92rem}
+@media (max-width:640px){.hs-so-dl{grid-template-columns:1fr}.hs-so-task{flex-direction:column}}

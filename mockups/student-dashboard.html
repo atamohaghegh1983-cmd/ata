@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>داشبورد نمرات کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#0D9488; --primary-soft:#CCFBF1; --accent:#D97706; --bg:#F0FDFA; --card:#fff;
+  --fg:#134E4A; --muted:#475569; --line:#E2E8F0; --bad:#DC2626; --mid:#CA8A04; --good:#16A34A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Vazirmatn,Tahoma,sans-serif;font-size:14px}
+.wrap{max-width:1280px;margin:0 auto;padding:24px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+h1{font-size:22px;margin:0;font-weight:800}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.filters{display:flex;gap:8px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--fg)}
+.chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.card h2{font-size:15px;margin:0 0 2px;font-weight:700}
+.card .hint{font-size:12px;color:var(--muted);margin-bottom:10px}
+.kpi{grid-column:span 3;display:flex;flex-direction:column;gap:6px}
+.kpi .label{color:var(--muted);font-size:13px}
+.kpi .val{font-size:30px;font-weight:800;line-height:1.1}
+.kpi .val small{font-size:14px;color:var(--muted);font-weight:500}
+.delta{font-size:12px;font-weight:700;display:inline-flex;gap:4px;align-items:center}
+.up{color:var(--good)} .down{color:var(--bad)}
+.s8{grid-column:span 8}.s4{grid-column:span 4}.s12{grid-column:span 12}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:4px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-left:6px}
+svg{direction:ltr}
+svg text{font-family:Vazirmatn,Tahoma,sans-serif;unicode-bidi:plaintext}
+.risk{list-style:none;margin:0;padding:0}
+.risk li{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+.risk li:last-child{border:0}
+.av{width:32px;height:32px;border-radius:50%;background:#FEE2E2;color:var(--bad);display:grid;place-items:center;font-weight:700;margin-left:10px}
+.who{display:flex;align-items:center}
+.who b{display:block;font-size:13px}.who span{font-size:12px;color:var(--muted)}
+.badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+.b-bad{background:#FEE2E2;color:#991B1B}.b-mid{background:#FEF3C7;color:#92400E}
+.hm-legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}
+.hm-legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-left:6px;vertical-align:-2px;background:var(--c)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>داشبورد نمرات — کلاس نهم ۲</h1>
+      <div class="sub">سال تحصیلی ۱۴۰۵–۱۴۰۴ · ۲۸ دانش‌آموز · به‌روزرسانی: ۲۸ آبان</div>
+    </div>
+    <div class="filters">
+      <span class="chip">نیم‌سال اول</span>
+      <span class="chip on">کل سال</span>
+      <span class="chip">همهٔ دروس ▾</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card kpi"><span class="label">میانگین کلاس</span><span class="val">۱۶٫۱ <small>از ۲۰</small></span><span class="delta up">▲ ۰٫۸ نسبت به ماه قبل</span></div>
+    <div class="card kpi"><span class="label">درصد قبولی</span><span class="val">۹۶٪</span><span class="delta up">▲ ۴٪ نسبت به ماه قبل</span></div>
+    <div class="card kpi"><span class="label">نیاز به توجه</span><span class="val" style="color:var(--bad)">۵ <small>دانش‌آموز</small></span><span class="delta down">▼ افت بیش از ۲ نمره</span></div>
+    <div class="card kpi"><span class="label">بیشترین پیشرفت</span><span class="val" style="font-size:22px;padding:4px 0">سارا محمدی</span><span class="delta up">▲ ۳٫۶ نمره از مهر</span></div>
+
+    <div class="card s8">
+      <h2>روند نمرهٔ دانش‌آموز در طول سال</h2>
+      <div class="hint">سارا محمدی در مقایسه با میانگین کلاس · خط افقی: حد قبولی مطلوب (۱۵)</div>
+      <div class="legend"><span><i style="background:var(--primary)"></i>سارا محمدی</span><span><i style="background:#94A3B8"></i>میانگین کلاس</span></div>
+      <svg id="line" viewBox="0 0 760 260" width="100%"></svg>
+    </div>
+
+    <div class="card s4">
+      <h2>وضعیت قبولی کلاس</h2>
+      <div class="hint">تعداد دانش‌آموزان در هر سطح</div>
+      <svg id="donut" viewBox="0 0 340 260" width="100%"></svg>
+    </div>
+
+    <div class="card s4">
+      <h2>میانگین هر درس</h2>
+      <div class="hint">مرتب‌شده · خط‌چین: هدف ۱۵</div>
+      <svg id="bars" viewBox="0 0 340 270" width="100%"></svg>
+    </div>
+
+    <div class="card s4">
+      <h2>نقاط قوت و ضعف</h2>
+      <div class="hint">سارا محمدی در برابر میانگین کلاس</div>
+      <svg id="radar" viewBox="0 0 340 270" width="100%"></svg>
+    </div>
+
+    <div class="card s4">
+      <h2>نیاز به توجه</h2>
+      <div class="hint">افت ناگهانی یا نمرهٔ زیر ۱۲</div>
+      <ul class="risk">
+        <li><div class="who"><div class="av">ر</div><div><b>رضا کریمی</b><span>ریاضی: ۱۵ ← ۱۰٫۵</span></div></div><span class="badge b-bad">افت شدید</span></li>
+        <li><div class="who"><div class="av">م</div><div><b>مهدی رحیمی</b><span>میانگین کل: ۱۱٫۲</span></div></div><span class="badge b-bad">زیر ۱۲</span></li>
+        <li><div class="who"><div class="av">ن</div><div><b>نگار احمدی</b><span>عربی: ۱۶ ← ۱۳</span></div></div><span class="badge b-mid">افت</span></li>
+        <li><div class="who"><div class="av">ع</div><div><b>علی حسینی</b><span>۴ تکلیف تحویل‌نشده</span></div></div><span class="badge b-mid">تکالیف</span></li>
+        <li><div class="who"><div class="av">ز</div><div><b>زهرا نوری</b><span>۳ غیبت در ماه</span></div></div><span class="badge b-mid">غیبت</span></li>
+      </ul>
+    </div>
+
+    <div class="card s12">
+      <h2>تحویل تکالیف — ۱۲ هفتهٔ اخیر</h2>
+      <div class="hint">هر خانه یک هفته · الگوی تکالیف تحویل‌نشده را سریع پیدا کنید</div>
+      <svg id="heat" viewBox="0 0 1220 250" width="100%"></svg>
+      <div class="hm-legend"><span style="--c:#0D9488">کامل</span><span style="--c:#99F6E4">ناقص</span><span style="--c:#FCA5A5">تحویل‌نشده</span><span style="--c:#F1F5F9">غیبت موجه</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const fa = v => String(v).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]).replace('.','٫');
+const NS='http://www.w3.org/2000/svg';
+function el(p,tag,a,txt){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;p.appendChild(e);return e;}
+
+/* Line chart — RTL: first month on the right */
+(()=>{
+  const s=document.getElementById('line'),W=760,H=260,L=20,R=50,T=15,B=35;
+  const months=['مهر','آبان','آذر','دی','بهمن','اسفند','فروردین','اردیبهشت'];
+  const stu=[14.2,15.0,15.6,13.1,16.3,16.9,17.4,17.8], cls=[14.5,14.8,15.1,15.0,15.4,15.6,15.9,16.1];
+  const min=10,max=20, x=i=>W-R-i*((W-R-L)/(months.length-1)), y=v=>T+(max-v)/(max-min)*(H-T-B);
+  for(let v=10;v<=20;v+=2){el(s,'line',{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:'#E2E8F0'});el(s,'text',{x:W-R+12,y:y(v)+4,'font-size':12,fill:'#64748B','text-anchor':'start'},fa(v));}
+  el(s,'line',{x1:L,x2:W-R,y1:y(15),y2:y(15),stroke:'#D97706','stroke-dasharray':'5 4','stroke-width':1.5});
+  months.forEach((m,i)=>el(s,'text',{x:x(i),y:H-10,'font-size':12,fill:'#64748B','text-anchor':'middle'},m));
+  const path=a=>a.map((v,i)=>(i?'L':'M')+x(i)+' '+y(v)).join(' ');
+  el(s,'path',{d:path(stu)+` L${x(7)} ${y(10)} L${x(0)} ${y(10)} Z`,fill:'#0D9488',opacity:.08});
+  el(s,'path',{d:path(cls),fill:'none',stroke:'#94A3B8','stroke-width':2,'stroke-dasharray':'6 4'});
+  el(s,'path',{d:path(stu),fill:'none',stroke:'#0D9488','stroke-width':3});
+  stu.forEach((v,i)=>{
+    const low=i===3;
+    el(s,'circle',{cx:x(i),cy:y(v),r:low?7:4.5,fill:low?'#DC2626':'#fff',stroke:low?'#fff':'#0D9488','stroke-width':2.5});
+  });
+  el(s,'rect',{x:x(3)-58,y:y(13.1)+12,width:116,height:24,rx:6,fill:'#FEE2E2'});
+  el(s,'text',{x:x(3),y:y(13.1)+29,'font-size':12,fill:'#991B1B','text-anchor':'middle','font-weight':700},'⚠ افت در امتحان دی');
+  el(s,'rect',{x:x(7)-6,y:y(17.8)-34,width:52,height:24,rx:6,fill:'#0D9488'});
+  el(s,'text',{x:x(7)+20,y:y(17.8)-17,'font-size':13,fill:'#fff','text-anchor':'middle','font-weight':700},fa(17.8));
+})();
+
+/* Donut */
+(()=>{
+  const s=document.getElementById('donut'),cx=105,cy=125,r=78,w=26;
+  const d=[['ممتاز (۱۷+)',9,'#0D9488'],['قبول (۱۲–۱۷)',14,'#5EEAD4'],['نیاز به تقویت',4,'#F59E0B'],['مردود',1,'#DC2626']];
+  const tot=d.reduce((a,b)=>a+b[1],0);let a0=-Math.PI/2;
+  d.forEach(([n,v,c])=>{const a1=a0+v/tot*2*Math.PI,lg=(a1-a0)>Math.PI?1:0,g=.02;
+    const p=(a,rr)=>[cx+rr*Math.cos(a),cy+rr*Math.sin(a)];
+    const [x1,y1]=p(a0+g,r),[x2,y2]=p(a1-g,r);
+    el(s,'path',{d:`M${x1} ${y1} A${r} ${r} 0 ${lg} 1 ${x2} ${y2}`,fill:'none',stroke:c,'stroke-width':w});a0=a1;});
+  el(s,'text',{x:cx,y:cy+2,'text-anchor':'middle','font-size':30,'font-weight':800,fill:'#134E4A'},fa(tot));
+  el(s,'text',{x:cx,y:cy+24,'text-anchor':'middle','font-size':12,fill:'#64748B'},'دانش‌آموز');
+  d.forEach(([n,v,c],i)=>{const yy=70+i*38;
+    el(s,'rect',{x:318,y:yy-11,width:12,height:12,rx:3,fill:c});
+    el(s,'text',{x:310,y:yy,'font-size':13,fill:'#134E4A','text-anchor':'end'},n);
+    el(s,'text',{x:310,y:yy+18,'font-size':12,fill:'#64748B','text-anchor':'end'},fa(v)+' نفر · '+fa(Math.round(v/tot*100))+'٪');});
+})();
+
+/* Horizontal bars (RTL: bars grow leftward) */
+(()=>{
+  const s=document.getElementById('bars');
+  const d=[['دینی',18.2],['ادبیات',17.1],['انگلیسی',16.8],['علوم',16.4],['اجتماعی',16.0],['ریاضی',15.2],['عربی',14.3]];
+  const right=270,left=40,x=v=>right-(v/20)*(right-left);
+  d.forEach(([n,v],i)=>{const yy=12+i*36,c=v>=17?'#0D9488':v>=15?'#5EEAD4':'#F59E0B';
+    el(s,'text',{x:338,y:yy+15,'font-size':13,fill:'#134E4A','text-anchor':'end'},n);
+    el(s,'rect',{x:x(20),y:yy,width:right-x(20),height:22,rx:5,fill:'#F1F5F9'});
+    el(s,'rect',{x:x(v),y:yy,width:right-x(v),height:22,rx:5,fill:c});
+    el(s,'text',{x:x(v)-6,y:yy+16,'font-size':12,'font-weight':700,fill:'#134E4A','text-anchor':'end'},fa(v));});
+  el(s,'line',{x1:x(15),x2:x(15),y1:4,y2:262,stroke:'#D97706','stroke-dasharray':'4 3','stroke-width':1.5});
+})();
+
+/* Radar */
+(()=>{
+  const s=document.getElementById('radar'),cx=170,cy=138,R=95;
+  const ax=['ریاضی','علوم','ادبیات','عربی','انگلیسی','دینی'],stu=[17,18.5,16,13.5,19,18],cls=[15.2,16.4,17.1,14.3,16.8,18.2];
+  const pt=(i,v)=>{const a=-Math.PI/2-i*2*Math.PI/ax.length,rr=(v-10)/10*R;return[cx+rr*Math.cos(a),cy+rr*Math.sin(a)];};
+  [12,14,16,18,20].forEach(v=>el(s,'polygon',{points:ax.map((_,i)=>pt(i,v).join(',')).join(' '),fill:'none',stroke:'#E2E8F0'}));
+  ax.forEach((n,i)=>{const[e1,e2]=pt(i,20);el(s,'line',{x1:cx,y1:cy,x2:e1,y2:e2,stroke:'#E2E8F0'});
+    const[lx,ly]=pt(i,22.6);el(s,'text',{x:lx,y:ly+4,'font-size':12,fill:'#475569','text-anchor':'middle'},n);});
+  el(s,'polygon',{points:cls.map((v,i)=>pt(i,v).join(',')).join(' '),fill:'#94A3B8',opacity:.15,stroke:'#94A3B8','stroke-dasharray':'5 3','stroke-width':1.5});
+  el(s,'polygon',{points:stu.map((v,i)=>pt(i,v).join(',')).join(' '),fill:'#0D9488',opacity:.22,stroke:'#0D9488','stroke-width':2.5});
+  stu.forEach((v,i)=>{const[px,py]=pt(i,v);el(s,'circle',{cx:px,cy:py,r:3.5,fill:'#0D9488'});});
+})();
+
+/* Heatmap — RTL: week 1 at right */
+(()=>{
+  const s=document.getElementById('heat');
+  const names=['سارا محمدی','رضا کریمی','مهدی رحیمی','نگار احمدی','علی حسینی','زهرا نوری'];
+  const C={2:'#0D9488',1:'#99F6E4',0:'#FCA5A5',9:'#F1F5F9'};
+  const data=[[2,2,2,2,2,1,2,2,2,2,2,2],[2,2,2,1,2,2,1,0,1,0,0,1],[1,0,1,1,0,1,1,0,1,1,0,1],[2,2,2,2,2,1,1,2,1,1,2,1],[2,2,0,2,1,0,2,2,0,2,0,1],[2,9,2,2,2,9,2,2,9,2,9,2]];
+  const right=1080,cw=80,ch=30,gap=6;
+  for(let w=0;w<12;w++)el(s,'text',{x:right-w*(cw+gap)-cw/2,y:16,'font-size':12,fill:'#64748B','text-anchor':'middle'},'هفتهٔ '+fa(w+1));
+  data.forEach((row,r)=>{const yy=28+r*(ch+gap);
+    el(s,'text',{x:1215,y:yy+20,'font-size':13,fill:'#134E4A','text-anchor':'end'},names[r]);
+    row.forEach((v,w)=>{el(s,'rect',{x:right-w*(cw+gap)-cw,y:yy,width:cw,height:ch,rx:5,fill:C[v]});
+      if(v===0)el(s,'text',{x:right-w*(cw+gap)-cw/2,y:yy+20,'font-size':13,fill:'#991B1B','text-anchor':'middle','font-weight':700},'✕');});});
+})();
+</script>
+</body>
+</html>

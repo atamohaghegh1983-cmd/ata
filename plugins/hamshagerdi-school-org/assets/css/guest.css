@@ -1,0 +1,27 @@
+/* صفحه‌ی ورود مدیر مدرسه: رسمی، سرمه‌ای */
+.hs-guest-school{--c:#1d1847;--ink:#1d1847;--line:#dcdaf3;background:radial-gradient(1000px 500px at 85% -10%,#e8e6ff 0,transparent 60%),#f6f6fc}
+.hs-guest-school::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(#e3e2f3 1px,transparent 1px),linear-gradient(90deg,#e3e2f3 1px,transparent 1px);background-size:32px 32px;
+  -webkit-mask-image:linear-gradient(#000,transparent 70%);mask-image:linear-gradient(#000,transparent 70%)}
+.hs-guest-school .hs-guest-ic{background:#ecebff}
+.hs-guest-school .hsma-btn{background:#1d1847}
+.hs-guest-school .hsma-tabs{background:#f1f0fb}
+.hs-guest-school .hsma-tab.is-on{color:#1d1847}
+.hs-guest-school .hsma-box{--c:#4f46e5}
+.hs-so-pv{background:#1d1847;color:#fff;border-radius:22px;padding:20px;margin-bottom:28px;box-shadow:0 24px 50px rgba(29,24,71,.25)}
+.hs-so-pv-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;margin-bottom:14px}
+.hs-so-pv-head em{font-style:normal;font-size:11px;background:rgba(255,255,255,.14);padding:3px 9px;border-radius:999px;color:#c9c6f5}
+.hs-so-pv-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.hs-so-pv-stats div{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px}
+.hs-so-pv-stats b{display:block;font-size:24px;font-weight:900}
+.hs-so-pv-stats small{font-size:12px;color:#b9b5ea}
+.hs-so-pv-bars{display:grid;gap:8px;margin-bottom:18px}
+.hs-so-pv-bar{display:grid;grid-template-columns:80px 1fr;align-items:center;gap:10px;font-size:12px;color:#c9c6f5}
+.hs-so-pv-bar i{display:block;height:8px;border-radius:99px;background:rgba(255,255,255,.1);position:relative;overflow:hidden}
+.hs-so-pv-bar i::after{content:"";position:absolute;inset:0 0 0 auto;width:var(--w);background:linear-gradient(90deg,#8b83ff,#b7b1ff);border-radius:99px}
+.hs-so-org{text-align:center;font-size:12px}
+.hs-so-org-top{display:inline-block;background:#fff;color:#1d1847;font-weight:800;padding:7px 14px;border-radius:10px;position:relative}
+.hs-so-org-top::after{content:"";position:absolute;top:100%;left:50%;width:1px;height:14px;background:rgba(255,255,255,.4)}
+.hs-so-org-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.3)}
+.hs-so-org-row span{background:rgba(255,255,255,.1);padding:7px 4px;border-radius:9px}
+@media (max-width:600px){.hs-so-pv-stats{grid-template-columns:repeat(2,1fr)}}

@@ -1,0 +1,63 @@
+/* صفحه‌ی ورود هر بخش پنل (مهمان) */
+.hs-guest{--c:var(--hs-primary,#F57C00);--bg:#FFF8F2;--ink:#0F2F6B;--mut:#6b6380;--line:#F0E4D8;
+  position:relative;min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--hs-font,Vazirmatn,Tahoma,sans-serif);
+  direction:rtl;text-align:right;overflow-x:hidden}
+.hs-guest *{box-sizing:border-box}
+.hs-guest-bg{position:fixed;inset:0;background-repeat:no-repeat;background-size:cover;background-position:var(--x,50%) var(--y,50%);opacity:var(--o,.2);z-index:0;pointer-events:none}
+.hs-guest-bg-top{position:absolute;inset:0 0 auto 0;height:calc(var(--s) * 1vh);-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.hs-guest-bg-bottom{position:absolute;inset:auto 0 0 0;height:calc(var(--s) * 1vh);-webkit-mask-image:linear-gradient(transparent,#000 30%);mask-image:linear-gradient(transparent,#000 30%)}
+.hs-guest-bg-right{inset:0 0 0 auto;width:calc(var(--s) * 1%);-webkit-mask-image:linear-gradient(to left,#000 75%,transparent);mask-image:linear-gradient(to left,#000 75%,transparent)}
+.hs-guest-bg-left{inset:0 auto 0 0;width:calc(var(--s) * 1%);-webkit-mask-image:linear-gradient(to right,#000 75%,transparent);mask-image:linear-gradient(to right,#000 75%,transparent)}
+.hs-guest-bg-free{inset:auto;left:var(--x);top:var(--y);width:calc(var(--s) * 1%);height:auto;transform:translate(-50%,-50%)}
+.hs-guest-top,.hs-guest-grid,.hs-guest-foot{position:relative;z-index:1}
+
+.hs-guest-top{max-width:1160px;margin:0 auto;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.hs-guest-brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px;color:var(--ink);text-decoration:none}
+.hs-guest-brand img{height:52px;width:auto;display:block}
+.hs-guest-switch{display:flex;gap:4px;background:rgba(255,255,255,.8);backdrop-filter:blur(6px);padding:4px;border-radius:999px;border:1px solid var(--line)}
+.hs-guest-switch a{padding:7px 14px;border-radius:999px;font-size:13px;color:var(--mut);text-decoration:none;white-space:nowrap}
+.hs-guest-switch a.is-on{background:var(--c);color:#fff;font-weight:700}
+
+.hs-guest-grid{max-width:1160px;margin:0 auto;padding:20px 24px 48px;display:grid;
+  grid-template-columns:minmax(0,1fr) 400px;grid-template-areas:"hero hero" "feat side";column-gap:40px;row-gap:22px;align-items:start}
+.hs-guest-hero{grid-area:hero;padding-top:16px}
+.hs-guest-hero h1{font-size:44px;line-height:1.35;margin:0 0 10px;font-weight:900;color:var(--ink)}
+.hs-guest-hero p{font-size:17px;line-height:2;color:var(--mut);margin:0}
+.hs-guest-side{grid-area:side;position:sticky;top:24px}
+.hs-guest-side .hsma-box{margin:0;max-width:none;padding:26px 24px;border-radius:22px;box-shadow:0 20px 50px rgba(43,35,64,.12)}
+.hs-guest-feat{grid-area:feat}
+.hs-guest-feat>h2{font-size:18px;margin:0 0 14px;font-weight:800;color:var(--ink)}
+
+.hs-guest-items{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hs-guest-items li{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.9);backdrop-filter:blur(4px);border:1px solid var(--line);border-radius:16px;padding:14px;margin:0}
+.hs-guest-ic{font-size:21px;line-height:1;flex:none;width:42px;height:42px;display:grid;place-items:center;background:#FFEDE4;border-radius:12px}
+.hs-guest-items strong{display:block;font-size:15px;margin-bottom:2px}
+.hs-guest-items small{display:block;font-size:13px;color:var(--mut);line-height:1.8}
+
+.hs-guest-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hs-guest-card{display:block;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;text-decoration:none;color:inherit;transition:transform .15s,box-shadow .15s}
+.hs-guest-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(245,124,0,.12)}
+.hs-guest-card h2{font-size:17px;margin:0 0 8px;color:var(--ink)}
+.hs-guest-card ul{margin:0 0 10px;padding:0 18px 0 0;color:var(--mut);font-size:14px;line-height:2}
+.hs-guest-card span{font-size:13px;color:var(--c);font-weight:700}
+.hs-guest-foot{text-align:center;color:var(--mut);font-size:12px;padding:0 0 24px}
+
+/* فرم ورود وردپرس (وقتی افزونه‌ی ثبت‌نام نصب نیست) */
+.hs-guest-wplogin{background:#fff;border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 20px 50px rgba(43,35,64,.12)}
+.hs-guest-wplogin input[type=text],.hs-guest-wplogin input[type=password]{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px}
+.hs-guest-wplogin input[type=submit]{width:100%;padding:12px;border:0;border-radius:12px;background:var(--c);color:#fff;font:inherit;font-weight:700}
+
+@media (max-width:960px){
+  .hs-guest-grid{grid-template-columns:1fr;grid-template-areas:"hero" "side" "feat";padding:8px 16px 40px;row-gap:20px}
+  .hs-guest-side{position:static}
+  .hs-guest-hero h1{font-size:30px}
+  .hs-guest-hero p{font-size:15px}
+  .hs-guest-top{padding:14px 16px}
+  .hs-guest-brand img{height:40px}
+  .hs-guest-switch{width:100%;overflow-x:auto;justify-content:space-between}
+  .hs-guest-switch a{padding:7px 10px;flex:1;text-align:center}
+}
+@media (max-width:600px){
+  .hs-guest-items,.hs-guest-cards{grid-template-columns:1fr}
+  .hs-guest-side .hsma-box{padding:20px 16px}
+}

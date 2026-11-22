@@ -1,0 +1,101 @@
+/* تحلیل نمرات — /panel/insights/ */
+.hs-gi{--gi-low:#DC2626;--gi-target:#F59E0B;--gi-grid:#EEF0F7}
+.hs-gi-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem}
+.hs-gi-head h2{margin:0 0 .2rem}
+.hs-gi-head p{margin:0}
+.hs-gi-picker{display:flex;align-items:center;gap:.5rem}
+.hs-gi-picker label{font-weight:700;font-size:.9rem;color:var(--hs-ink)}
+.hs-gi-picker select{min-height:44px;padding:.4rem .8rem;border-radius:14px;border:2px solid var(--hs-line);background:#fff;font:inherit;min-width:200px}
+
+.hs-gi-row{grid-template-columns:minmax(0,1.75fr) minmax(280px,1fr)}
+.hs-gi-row2{grid-template-columns:minmax(280px,1fr) minmax(0,1.4fr)}
+.hs-gi-card .hs-card-head{align-items:flex-start}
+.hs-gi-hint{margin:.2rem 0 0;font-size:.78rem;color:var(--hs-muted);font-weight:500}
+.hs-gi-note{color:var(--hs-muted);font-size:.9rem;text-align:center;padding:1.5rem .5rem;margin:0}
+
+/* SVG: ترتیب مختصات چپ‌به‌راست، متن فارسی با جهت خودش */
+.hs-gi-svg{display:block;width:100%;height:auto;direction:ltr}
+.hs-gi-svg text,.hs-gi-donut text{font-family:var(--hs-font);unicode-bidi:plaintext}
+.hs-gi-grid{stroke:var(--gi-grid);stroke-width:1}
+.hs-gi-axis{font-size:11px;fill:var(--hs-muted)}
+.hs-gi-target{stroke:var(--gi-target);stroke-width:1.5;stroke-dasharray:5 4}
+.hs-gi-line{fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.hs-gi-line-soft{stroke-width:2}
+.hs-gi-dot{fill:#fff;stroke-width:2.5}
+.hs-gi-dot.is-low{fill:var(--gi-low);stroke:#fff!important}
+
+.hs-gi-legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;font-size:.8rem;color:var(--hs-muted);margin-bottom:.4rem}
+.hs-gi-legend i{display:inline-block;width:16px;height:4px;border-radius:2px;vertical-align:middle;margin-inline-end:6px}
+.hs-gi-legend i.hs-gi-legend-target{background:repeating-linear-gradient(90deg,var(--gi-target) 0 5px,transparent 5px 8px)}
+.hs-gi-legend i.hs-gi-legend-low{width:10px;height:10px;border-radius:50%;background:var(--gi-low)}
+
+.hs-gi-donut-wrap{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:center}
+.hs-gi-donut{width:170px;height:170px;flex:0 0 170px}
+.hs-gi-donut-num{font-family:var(--hs-display);font-size:28px;font-weight:700;fill:var(--hs-ink)}
+.hs-gi-donut-lbl{font-size:11px;fill:var(--hs-muted)}
+.hs-gi-dlegend{list-style:none;margin:0;padding:0;flex:1 1 150px;min-width:150px}
+.hs-gi-dlegend li{display:flex;align-items:center;gap:.5rem;font-size:.86rem;padding:.35rem 0;border-bottom:1px dashed var(--hs-line)}
+.hs-gi-dlegend li:last-child{border:0}
+.hs-gi-dlegend i{width:12px;height:12px;border-radius:4px;flex:0 0 12px}
+.hs-gi-dlegend b{margin-inline-start:auto;color:var(--hs-ink);font-family:var(--hs-display)}
+.hs-gi-dlegend small{color:var(--hs-muted);min-width:2.6em;text-align:left}
+
+/* میله‌های افقی؛ در RTL از راست پر می‌شوند */
+.hs-gi-hbars{display:flex;flex-direction:column;gap:.55rem}
+.hs-gi-hbar{display:grid;grid-template-columns:minmax(70px,auto) 1fr 3em;align-items:center;gap:.6rem;font-size:.88rem}
+.hs-gi-hbar-lbl{color:var(--hs-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs-gi-hbar-track{position:relative;height:22px;border-radius:8px;background:#F4F5FA;overflow:hidden}
+.hs-gi-hbar-track::after{content:'';position:absolute;top:0;bottom:0;inset-inline-start:var(--target);border-inline-start:2px dashed var(--gi-target)}
+.hs-gi-hbar-fill{display:block;height:100%;border-radius:8px}
+.hs-gi-hbar-val{font-family:var(--hs-display);font-weight:700;color:var(--hs-ink);text-align:left}
+
+/* رادار */
+.hs-gi-radar{max-width:440px;margin:0 auto}
+.hs-gi-radar-cls{fill:#94A3B8;fill-opacity:.18;stroke:#94A3B8;stroke-width:1.5;stroke-dasharray:5 3}
+.hs-gi-radar-me{fill:var(--hs-primary);fill-opacity:.22;stroke:var(--hs-primary);stroke-width:2.5}
+.hs-gi-radar-dot{fill:var(--hs-primary)}
+
+/* تکالیف */
+.hs-gi-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hs-gi-hw{border-collapse:separate;border-spacing:5px;width:100%;font-size:.82rem}
+.hs-gi-hw thead th{color:var(--hs-muted);font-weight:500;text-align:center}
+.hs-gi-hw tbody th{text-align:right;font-weight:600;color:var(--hs-ink);white-space:nowrap;padding-inline-end:.4rem}
+.hs-gi-hw td{padding:0}
+.hs-gi-hw-cell{display:grid;place-items:center;min-width:28px;height:26px;border-radius:7px;font-weight:700;font-size:.8rem;font-style:normal}
+.hs-gi-hw-cell.is-done{background:#10B981}
+.hs-gi-hw-cell.is-partial{background:#FCD34D}
+.hs-gi-hw-cell.is-missing{background:#FCA5A5;color:#991B1B}
+.hs-gi-hw-cell.is-pending{background:#EEF0F7}
+.hs-gi-hw-legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;font-size:.8rem;color:var(--hs-muted);margin-top:.6rem}
+.hs-gi-hw-legend span{display:inline-flex;align-items:center;gap:.4rem}
+.hs-gi-hw-legend .hs-gi-hw-cell{min-width:16px;width:16px;height:16px;border-radius:4px;font-size:.6rem}
+
+/* جدول دانش‌آموزان */
+.hs-gi-who{display:flex;align-items:center;gap:.6rem;color:var(--hs-ink);text-decoration:none;min-height:44px}
+.hs-gi-who:hover strong{color:var(--hs-primary);text-decoration:underline}
+.hs-gi-who .hs-av{width:34px;height:34px;flex-basis:34px;border-radius:12px;font-size:.95rem}
+.hs-gi-pill{display:inline-block;padding:3px 11px;border-radius:999px;font-weight:700;font-size:.8rem;white-space:nowrap;color:var(--lv);background:color-mix(in srgb,var(--lv) 14%,#fff);border:1px solid color-mix(in srgb,var(--lv) 35%,#fff)}
+.hs-gi-spark{width:80px;height:28px;display:block;direction:ltr}
+.hs-gi-spark polyline{fill:none;stroke:var(--hs-primary);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.hs-gi-spark.is-down polyline{stroke:var(--gi-low)}
+.hs-gi-flag{display:inline-block;margin:2px 0;padding:2px 9px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap}
+.hs-gi-flag-low,.hs-gi-flag-drop{background:#FEE2E2;color:#991B1B}
+.hs-gi-flag-att,.hs-gi-flag-hw{background:#FEF3C7;color:#92400E}
+.hs-gi-ok{color:#047857;font-weight:700;font-size:.82rem}
+.hs-gi-comment{color:var(--hs-muted);font-size:.84rem;max-width:280px}
+
+/* صفحه‌ی دانش‌آموز */
+.hs-gi-student{margin-bottom:1rem}
+.hs-gi-student-name{display:flex;align-items:center;gap:.8rem;margin-top:.6rem}
+.hs-gi-student-name h3{margin:0 0 .2rem;font-size:1.35rem;color:var(--hs-ink)}
+
+@media (max-width:960px){
+  .hs-gi-row,.hs-gi-row2{grid-template-columns:1fr}
+}
+@media (max-width:520px){
+  .hs-gi-scroll{overflow-x:auto;margin-inline:-.4rem;padding-inline:.4rem}
+  .hs-gi-scroll .hs-gi-svg{min-width:560px}
+  .hs-gi-picker{width:100%}
+  .hs-gi-picker select{flex:1;min-width:0}
+  .hs-gi-hbar{grid-template-columns:64px 1fr 2.6em}
+}
