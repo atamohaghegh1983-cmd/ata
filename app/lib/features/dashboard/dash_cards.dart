@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../core/utils/fa.dart';
 import '../../core/widgets/hs_avatar.dart';
 import '../../core/widgets/ui.dart';
+import '../../core/widgets/states.dart' show showMessage;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
@@ -376,20 +377,6 @@ class ParentChildCard extends StatelessWidget {
                 ]),
               ),
           ],
-          if (events.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text('پیش‌رو', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
-            for (final e in events)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(children: [
-                  Text('${e['icon']}', style: const TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('${e['title']}', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  Text(Fa.date('${e['date']}', withYear: false), style: TextStyle(fontSize: 11.5, color: HsColors.muted)),
-                ]),
-              ),
-          ],
           const SizedBox(height: 12),
           Text('دسترسی سریع', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
           const SizedBox(height: 6),
@@ -407,7 +394,13 @@ class ParentChildCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
-                    onTap: () => context.push(q.$4, extra: q.$1 == 'پیام به معلم' ? '${c0?['teacher'] ?? ''}' : name),
+                    onTap: () {
+                      if (q.$1 == 'پیام به معلم' && c0?['can_message'] == false) {
+                        showMessage(context, 'فعلاً امکان پیام به معلم این کلاس نیست؛ یا معلم بخش «پیام» را برای این دانش‌آموز بسته، یا خودتان معلم همین کلاس هستید.', error: true);
+                        return;
+                      }
+                      context.push(q.$4, extra: q.$1 == 'پیام به معلم' ? '${c0?['teacher'] ?? ''}' : name);
+                    },
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Icon(q.$2, color: q.$3),
                       const SizedBox(height: 4),
@@ -417,6 +410,20 @@ class ParentChildCard extends StatelessWidget {
                 ),
             ],
           ),
+          if (events.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('مناسبت‌ها و رویدادهای پیش‌رو', style: TextStyle(fontWeight: FontWeight.w700, color: HsColors.navy)),
+            for (final e in events)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(children: [
+                  Text('${e['icon']}', style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('${e['title']}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  Text(Fa.date('${e['date']}', withYear: false), style: TextStyle(fontSize: 11.5, color: HsColors.muted)),
+                ]),
+              ),
+          ],
         ]),
       ),
     );

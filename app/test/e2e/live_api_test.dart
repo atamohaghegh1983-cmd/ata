@@ -113,6 +113,18 @@ void main() {
       throwsA(isA<ApiException>()),
     );
     expect((await auth.reloadMe()).name, contains('زهرا'));
+    // ساخت رمز و ورود بدون پیامک (با شماره موبایل و با نام کاربری)
+    await auth.setPassword(password: 'Teach2026x', email: 'z$mobile@example.com');
+    expect((await auth.reloadMe()).hasPassword, isTrue);
+    final uname = box.read(authProvider).me!.username;
+    await auth.logout();
+    await auth.loginPassword(mobile, 'Teach2026x');
+    expect(box.read(authProvider).status, AuthStatus.loggedIn);
+    await auth.logout();
+    await auth.loginPassword('z$mobile@example.com', 'Teach2026x');
+    await auth.logout();
+    await auth.loginPassword(uname, 'Teach2026x');
+    await expectLater(auth.setPassword(password: 'Other2026x'), throwsA(isA<ApiException>()));
     final opt = (await api.get<Map<String, dynamic>>('/classes/options', useCache: false)).data;
     expect(opt['can_create'], isTrue);
     expect((opt['defaults'] as Map)['school'], 'دبستان امید');

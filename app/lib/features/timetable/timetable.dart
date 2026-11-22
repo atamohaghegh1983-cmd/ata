@@ -115,17 +115,9 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
     final sub = TextEditingController(text: '${cur?['subject'] ?? ''}');
     int? tid = (cur?['teacher_id'] as num?)?.toInt() ?? (teachers.isNotEmpty ? (teachers.first['id'] as num).toInt() : null);
     var span = ((cur?['span'] as num?) ?? 1).toInt();
-    // حداکثر زنگ پشت سر هم بدون تفریح از این زنگ
-    final slots = (((d['bells'] as Map)['slots'] as List?) ?? const []).cast<Map>();
-    var maxSpan = 0;
-    var started = false;
-    for (final sl in slots) {
-      if (!started && sl['type'] == 'class' && (sl['period'] as num).toInt() == period) started = true;
-      if (!started) continue;
-      if (sl['type'] != 'class') break;
-      maxSpan++;
-    }
-    maxSpan = maxSpan.clamp(1, 3);
+    // درس چندزنگه می‌تواند از روی تفریح رد شود؛ فقط تا آخرین زنگ روز
+    final periods = (((d['bells'] as Map)['periods'] as num?) ?? 1).toInt();
+    final maxSpan = (periods - period + 1).clamp(1, 6);
     final used = {for (final v in _draft.values) '${v['subject']}'}..removeWhere((x) => x.isEmpty);
     final days = ((d['bells'] as Map)['day_names'] as List).cast<String>();
     final res = await showModalBottomSheet<String>(
@@ -146,10 +138,11 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
             if (maxSpan > 1) ...[
               const SizedBox(height: 10),
               const Text('مدت درس', style: TextStyle(fontWeight: FontWeight.w700)),
+              Text('اگر وسط این زنگ‌ها تفریح باشد، تفریح سر جای خودش می‌ماند.', style: TextStyle(fontSize: 11.5, color: HsColors.muted)),
               const SizedBox(height: 4),
               Wrap(spacing: 6, children: [
                 for (var k = 1; k <= maxSpan; k++)
-                  ChoiceChip(key: Key('span_$k'), label: Text(k == 1 ? 'یک زنگ' : (k == 2 ? 'دو زنگ (دوزنگه)' : 'سه زنگ')), selected: span == k, onSelected: (_) => set(() => span = k)),
+                  ChoiceChip(key: Key('span_$k'), label: Text(k == 1 ? 'یک زنگ' : (k == 2 ? 'دو زنگ (دوزنگه)' : '${Fa.faDigits(k)} زنگ')), selected: span == k, onSelected: (_) => set(() => span = k)),
               ]),
             ],
             if (teachers.length > 1) ...[
@@ -301,7 +294,10 @@ class WeekGrid extends StatelessWidget {
             const SizedBox(height: 38),
             for (final s in slots)
               s['type'] == 'break'
-                  ? const SizedBox(height: breakH + gap, child: Center(child: Text('☕')))
+                  ? SizedBox(
+                      height: breakH + gap,
+                      child: Center(child: Text('☕ ${Fa.faDigits(s['start'])}', style: TextStyle(fontSize: 10, color: HsColors.blue))),
+                    )
                   : SizedBox(
                       height: rowH + gap,
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -315,7 +311,9 @@ class WeekGrid extends StatelessWidget {
       final children = <Widget>[
         SizedBox(height: 38, child: Center(child: Text(days[d], style: TextStyle(fontWeight: FontWeight.w700, color: d == today ? HsColors.orangeDark : HsColors.navy)))),
       ];
+      var skipUntil = -1; // ردیف‌هایی که زیر درس چندزنگه (حتی از روی تفریح) رفته‌اند
       for (var i = 0; i < slots.length; i++) {
+        if (i <= skipUntil) continue;
         final s = slots[i];
         if (s['type'] == 'break') {
           children.add(Container(
@@ -323,7 +321,7 @@ class WeekGrid extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: gap),
             decoration: BoxDecoration(color: HsColors.blue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
             alignment: Alignment.center,
-            child: Text('تفریح', style: TextStyle(fontSize: 11, color: HsColors.blue)),
+            child: Text('${s['title'] ?? 'تفریح'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: HsColors.blue)),
           ));
           continue;
         }
@@ -331,11 +329,25 @@ class WeekGrid extends StatelessWidget {
         if (covered.contains(key)) continue;
         final c = cells[key];
         final span = ((c?['span'] as num?) ?? 1).toInt();
+        // ارتفاع: همه‌ی ردیف‌های درسی و تفریحی تا آخرین زنگ این درس
+        var h = rowH;
+        var seen = 1;
+        var j = i;
+        while (seen < span && j + 1 < slots.length) {
+          j++;
+          if (slots[j]['type'] == 'break') {
+            h += breakH + gap;
+          } else {
+            h += rowH + gap;
+            seen++;
+          }
+        }
+        skipUntil = j;
         children.add(Padding(
           padding: const EdgeInsets.only(bottom: gap),
           child: _Cell(
             width: w - 6,
-            height: rowH * span + gap * (span - 1),
+            height: h,
             c: c,
             today: d == today,
             showClass: showClass,
@@ -462,7 +474,7 @@ class DaySlots extends StatelessWidget {
               ? const SizedBox.shrink()
               : Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text('☕ زنگ تفریح ${Fa.faDigits(s['start'])} تا ${Fa.faDigits(s['end'])}', style: const TextStyle(color: HsColors.blue, fontSize: 12.5)),
+                  child: Text('☕ ${s['title'] ?? 'زنگ تفریح'} ${Fa.faDigits(s['start'])} تا ${Fa.faDigits(s['end'])}', style: const TextStyle(color: HsColors.blue, fontSize: 12.5)),
                 )
         else
           Builder(builder: (_) {
@@ -598,12 +610,15 @@ class BellsScreen extends ConsumerStatefulWidget {
   ConsumerState<BellsScreen> createState() => _BellsScreenState();
 }
 
+/// زنگ‌بندی کاملاً آزاد: هر ردیف «درس» یا «تفریح» (با نام دلخواه مثل نماز، صبحگاه، ناهار)، با ساعت شروع و پایان دلخواه،
+/// افزودن بین ردیف‌ها، جابه‌جایی، و جابه‌جا شدن خودکار ساعت ردیف‌های بعدی.
 class _BellsScreenState extends ConsumerState<BellsScreen> {
   int _days = 5;
   List<Map<String, String>> _slots = [];
   String _source = '';
   bool _loaded = false;
   bool _busy = false;
+  bool _shift = true;
 
   String get _getPath => widget.school ? '/school/bells' : '/classes/${widget.classId}/timetable';
   String get _savePath => widget.school ? '/school/bells' : '/classes/${widget.classId}/bells';
@@ -612,28 +627,200 @@ class _BellsScreenState extends ConsumerState<BellsScreen> {
     final b = widget.school ? d : (d['bells'] as Map? ?? const {});
     _days = (b['days'] as num?)?.toInt() ?? 5;
     _source = '${b['source'] ?? ''}';
-    _slots = [for (final s in ((b['slots'] as List?) ?? const []).cast<Map>()) {'type': '${s['type']}', 'start': '${s['start']}', 'end': '${s['end']}'}];
+    _slots = [
+      for (final s in ((b['slots'] as List?) ?? const []).cast<Map>())
+        {'type': '${s['type']}', 'start': '${s['start']}', 'end': '${s['end']}', 'title': '${s['title'] ?? (s['type'] == 'break' ? 'زنگ تفریح' : '')}'},
+    ];
     _loaded = true;
   }
 
-  Future<void> _pick(int i, String key) async {
-    final p = _slots[i][key]!.split(':');
-    final t = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: int.tryParse(p[0]) ?? 8, minute: int.tryParse(p.length > 1 ? p[1] : '0') ?? 0),
-      builder: (c, child) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: child!),
-    );
-    if (t == null) return;
-    setState(() => _slots[i][key] = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}');
+  static int _m(String hm) {
+    final p = hm.split(':');
+    return (int.tryParse(p[0]) ?? 0) * 60 + (int.tryParse(p.length > 1 ? p[1] : '0') ?? 0);
   }
 
-  String _plus(String hm, int min) {
-    final p = hm.split(':');
-    final x = (int.parse(p[0]) * 60 + int.parse(p[1]) + min).clamp(0, 23 * 60 + 59);
+  static String _hm(int x) {
+    x = x.clamp(0, 23 * 60 + 59);
     return '${(x ~/ 60).toString().padLeft(2, '0')}:${(x % 60).toString().padLeft(2, '0')}';
   }
 
+  /// ساعت ردیف‌های بعد از [from] به اندازه‌ی [delta] دقیقه جابه‌جا می‌شود
+  void _shiftAfter(int from, int delta) {
+    if (!_shift || delta == 0) return;
+    for (var j = from + 1; j < _slots.length; j++) {
+      _slots[j]['start'] = _hm(_m(_slots[j]['start']!) + delta);
+      _slots[j]['end'] = _hm(_m(_slots[j]['end']!) + delta);
+    }
+  }
+
+  Future<TimeOfDay?> _time(String hm) => showTimePicker(
+        context: context,
+        initialTime: TimeOfDay(hour: _m(hm) ~/ 60, minute: _m(hm) % 60),
+        builder: (c, child) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: child!),
+      );
+
+  Future<void> _pick(int i, String key) async {
+    final t = await _time(_slots[i][key]!);
+    if (t == null) return;
+    final v = t.hour * 60 + t.minute;
+    setState(() {
+      final s = _slots[i];
+      if (key == 'start') {
+        // شروع عوض شد: طول همان ردیف ثابت می‌ماند
+        final len = _m(s['end']!) - _m(s['start']!);
+        final delta = v + len - _m(s['end']!);
+        s['start'] = _hm(v);
+        s['end'] = _hm(v + len);
+        _shiftAfter(i, delta);
+      } else {
+        final delta = v - _m(s['end']!);
+        s['end'] = _hm(v);
+        _shiftAfter(i, delta);
+      }
+    });
+  }
+
+  void _insert(int at, String type) {
+    setState(() {
+      final st = at == 0 ? (_slots.isEmpty ? '07:45' : _slots.first['start']!) : _slots[at - 1]['end']!;
+      final len = type == 'break' ? 15 : 45;
+      _slots.insert(at, {'type': type, 'start': st, 'end': _hm(_m(st) + len), 'title': type == 'break' ? 'زنگ تفریح' : ''});
+      _shiftAfter(at, len);
+    });
+  }
+
+  void _remove(int i) {
+    setState(() {
+      final len = _m(_slots[i]['end']!) - _m(_slots[i]['start']!);
+      _shiftAfter(i, -len);
+      _slots.removeAt(i);
+    });
+  }
+
+  /// جابه‌جایی ردیف با ردیف بعد/قبل: ساعت‌ها پشت سر هم می‌ماند، فقط ترتیب عوض می‌شود
+  void _move(int i, int dir) {
+    final j = i + dir;
+    if (j < 0 || j >= _slots.length) return;
+    setState(() {
+      final a = i < j ? i : j;
+      final first = _slots[a], second = _slots[a + 1];
+      final start = _m(first['start']!);
+      final gap = _m(second['start']!) - _m(first['end']!);
+      final l1 = _m(first['end']!) - _m(first['start']!), l2 = _m(second['end']!) - _m(second['start']!);
+      second['start'] = _hm(start);
+      second['end'] = _hm(start + l2);
+      first['start'] = _hm(start + l2 + gap);
+      first['end'] = _hm(start + l2 + gap + l1);
+      _slots[a] = second;
+      _slots[a + 1] = first;
+    });
+  }
+
+  Future<void> _rename(int i) async {
+    final c = TextEditingController(text: _slots[i]['title']);
+    final v = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('نام این زمان'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          TextField(controller: c, autofocus: true, maxLength: 40, decoration: const InputDecoration(labelText: 'مثلاً زنگ تفریح، نماز، صبحگاه، ناهار')),
+          Wrap(spacing: 6, children: [
+            for (final x in ['زنگ تفریح', 'صبحگاه', 'نماز و ناهار', 'ورزش صبحگاهی', 'مطالعه'])
+              ActionChip(label: Text(x), onPressed: () => c.text = x),
+          ]),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d), child: const Text('انصراف')),
+          FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(90, 44)), onPressed: () => Navigator.pop(d, c.text.trim()), child: const Text('تأیید')),
+        ],
+      ),
+    );
+    if (v != null) setState(() => _slots[i]['title'] = v.isEmpty ? 'زنگ تفریح' : v);
+  }
+
+  /// چیدمان سریع: ساعت شروع، طول هر زنگ، فاصله، تعداد زنگ و جای تفریح‌ها
+  Future<void> _quick() async {
+    var start = _slots.isEmpty ? '07:45' : _slots.first['start']!;
+    final len = TextEditingController(text: '45');
+    final gap = TextEditingController(text: '5');
+    final count = TextEditingController(text: '6');
+    final brLen = TextEditingController(text: '15');
+    final after = <int>{2, 4};
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (c) => StatefulBuilder(
+        builder: (c, set) {
+          final n = (int.tryParse(Fa.enDigits(count.text)) ?? 6).clamp(1, 12);
+          Widget num(TextEditingController t, String label) => Expanded(
+                child: TextField(controller: t, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: label), onChanged: (_) => set(() {})),
+              );
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(c).viewInsets.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('چیدمان سریع زنگ‌ها', style: Theme.of(c).textTheme.titleLarge),
+              const SizedBox(height: 4),
+              Text('بعد از ساختن، هر ردیف را جداگانه هم می‌توانید تغییر دهید.', style: TextStyle(color: HsColors.muted, fontSize: 12.5)),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.schedule_rounded),
+                label: Text('شروع روز: ${Fa.faDigits(start)}'),
+                onPressed: () async {
+                  final t = await _time(start);
+                  if (t != null) set(() => start = _hm(t.hour * 60 + t.minute));
+                },
+              ),
+              const SizedBox(height: 10),
+              Row(children: [num(count, 'تعداد زنگ درسی'), const SizedBox(width: 8), num(len, 'طول هر زنگ (دقیقه)')]),
+              const SizedBox(height: 10),
+              Row(children: [num(gap, 'فاصله بین زنگ‌ها (دقیقه)'), const SizedBox(width: 8), num(brLen, 'طول تفریح (دقیقه)')]),
+              const SizedBox(height: 12),
+              const Text('زنگ تفریح بعد از کدام زنگ‌ها؟', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Wrap(spacing: 6, runSpacing: 4, children: [
+                for (var k = 1; k < n; k++)
+                  FilterChip(label: Text('بعد از زنگ ${Fa.faDigits(k)}'), selected: after.contains(k), onSelected: (v) => set(() => v ? after.add(k) : after.remove(k))),
+              ]),
+              const SizedBox(height: 14),
+              FilledButton(key: const Key('bells_quick_ok'), onPressed: () => Navigator.pop(c, true), child: const Text('ساختن')),
+            ]),
+          );
+        },
+      ),
+    );
+    if (ok != true) return;
+    final n = (int.tryParse(Fa.enDigits(count.text)) ?? 6).clamp(1, 12);
+    final l = (int.tryParse(Fa.enDigits(len.text)) ?? 45).clamp(5, 240);
+    final g = (int.tryParse(Fa.enDigits(gap.text)) ?? 0).clamp(0, 120);
+    final b = (int.tryParse(Fa.enDigits(brLen.text)) ?? 15).clamp(1, 180);
+    var t = _m(start);
+    final out = <Map<String, String>>[];
+    for (var k = 1; k <= n; k++) {
+      out.add({'type': 'class', 'start': _hm(t), 'end': _hm(t + l), 'title': ''});
+      t += l;
+      if (k == n) break;
+      if (after.contains(k)) {
+        out.add({'type': 'break', 'start': _hm(t), 'end': _hm(t + b), 'title': 'زنگ تفریح'});
+        t += b;
+      } else {
+        t += g;
+      }
+    }
+    setState(() => _slots = out);
+  }
+
+  /// ردیف‌هایی که ساعتشان با ردیف قبل هم‌پوشانی دارد یا پایانشان قبل از شروع است
+  Set<int> get _badRows => {
+        for (var i = 0; i < _slots.length; i++)
+          if (_m(_slots[i]['end']!) <= _m(_slots[i]['start']!) || (i > 0 && _m(_slots[i]['start']!) < _m(_slots[i - 1]['end']!))) i,
+      };
+
   Future<void> _save({bool reset = false}) async {
+    if (!reset && _badRows.isNotEmpty) {
+      showMessage(context, 'ساعت ردیف‌های قرمز را درست کنید (هم‌پوشانی دارند یا پایانشان قبل از شروع است).', error: true);
+      return;
+    }
     setState(() => _busy = true);
     try {
       await ref.read(apiProvider).post<Object?>(_savePath, data: reset ? {'reset': true} : {'days': _days, 'slots': _slots});
@@ -651,11 +838,28 @@ class _BellsScreenState extends ConsumerState<BellsScreen> {
     }
   }
 
+  Widget _addBar(int at) => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        TextButton.icon(
+          style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: HsColors.blue),
+          onPressed: _slots.length >= 20 ? null : () => _insert(at, 'class'),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: const Text('درس', style: TextStyle(fontSize: 12)),
+        ),
+        TextButton.icon(
+          style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: HsColors.orangeDark),
+          onPressed: _slots.length >= 20 ? null : () => _insert(at, 'break'),
+          icon: const Icon(Icons.coffee_rounded, size: 18),
+          label: const Text('تفریح / استراحت', style: TextStyle(fontSize: 12)),
+        ),
+      ]);
+
   @override
   Widget build(BuildContext context) {
     final res = ref.watch(getProvider(_getPath));
     if (res.hasValue && !_loaded) _load((res.value!.data as Map?) ?? const {});
     var n = 0;
+    final bad = _badRows;
+    final lessons = _slots.where((x) => x['type'] == 'class').length;
     return Scaffold(
       appBar: AppBar(title: Text(widget.school ? 'زنگ‌بندی مدرسه' : 'زنگ‌های ${widget.title}')),
       bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 10), child: FilledButton(key: const Key('bells_save'), onPressed: _busy || !_loaded ? null : _save, child: busyLabel(_busy, 'ذخیره')))),
@@ -680,54 +884,78 @@ class _BellsScreenState extends ConsumerState<BellsScreen> {
             selected: {_days},
             onSelectionChanged: (s) => setState(() => _days = s.first),
           ),
-          const SizedBox(height: 14),
-          for (final (i, s) in _slots.indexed)
+          const SizedBox(height: 10),
+          OutlinedButton.icon(key: const Key('bells_quick'), onPressed: _quick, icon: const Icon(Icons.auto_fix_high_rounded), label: const Text('چیدمان سریع (ساعت شروع، طول زنگ، جای تفریح‌ها)')),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _shift,
+            onChanged: (v) => setState(() => _shift = v),
+            title: const Text('ساعت ردیف‌های بعدی خودکار جابه‌جا شود', style: TextStyle(fontSize: 13.5)),
+            subtitle: const Text('با تغییر یا افزودن یک ردیف، بقیه پشت سر آن می‌آیند', style: TextStyle(fontSize: 11.5)),
+          ),
+          if (_slots.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'از ${Fa.faDigits(_slots.first['start']!)} تا ${Fa.faDigits(_slots.last['end']!)}، ${Fa.faDigits(lessons)} زنگ درسی، ${Fa.faDigits(_slots.length - lessons)} تفریح/استراحت',
+                style: const TextStyle(fontWeight: FontWeight.w700, color: HsColors.blue),
+              ),
+            ),
+          _addBar(0),
+          for (final (i, s) in _slots.indexed) ...[
             Card(
-              margin: const EdgeInsets.only(bottom: 6),
-              color: s['type'] == 'break' ? const Color(0xFFE8F0FB) : HsColors.card,
+              key: Key('bell_row_$i'),
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: bad.contains(i) ? const BorderSide(color: HsColors.red, width: 2) : BorderSide.none),
+              color: s['type'] == 'break' ? (HsColors.dark ? const Color(0xFF1E2B45) : const Color(0xFFE8F0FB)) : HsColors.card,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
+                padding: const EdgeInsets.fromLTRB(6, 4, 0, 4),
                 child: Row(children: [
-                  SizedBox(
-                    width: 70,
-                    child: Text(s['type'] == 'break' ? '☕ تفریح' : 'زنگ ${Fa.faDigits(++n)}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  // زدن روی برچسب: درس ⇄ تفریح
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => setState(() {
+                      s['type'] = s['type'] == 'break' ? 'class' : 'break';
+                      if (s['type'] == 'break' && (s['title'] ?? '').isEmpty) s['title'] = 'زنگ تفریح';
+                    }),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: SizedBox(
+                        width: 78,
+                        child: s['type'] == 'break'
+                            ? Text('☕ ${s['title']}', maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w700, color: HsColors.blue, fontSize: 12.5))
+                            : Text('📘 زنگ ${Fa.faDigits(++n)}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
                   ),
-                  TextButton(onPressed: () => _pick(i, 'start'), child: Text(Fa.faDigits(s['start']!), style: const TextStyle(fontSize: 16))),
+                  TextButton(style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 36)), onPressed: () => _pick(i, 'start'), child: Text(Fa.faDigits(s['start']!), style: const TextStyle(fontSize: 15))),
                   const Text('تا'),
-                  TextButton(onPressed: () => _pick(i, 'end'), child: Text(Fa.faDigits(s['end']!), style: const TextStyle(fontSize: 16))),
-                  const Spacer(),
-                  IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: _slots.length <= 1 ? null : () => setState(() => _slots.removeAt(i))),
+                  TextButton(style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 36)), onPressed: () => _pick(i, 'end'), child: Text(Fa.faDigits(s['end']!), style: const TextStyle(fontSize: 15))),
+                  Expanded(child: Text('${Fa.faDigits(_m(s['end']!) - _m(s['start']!))}′', style: TextStyle(fontSize: 11, color: HsColors.faint))),
+                  PopupMenuButton<String>(
+                    onSelected: (v) => switch (v) {
+                      'toggle' => setState(() {
+                          s['type'] = s['type'] == 'break' ? 'class' : 'break';
+                          if (s['type'] == 'break' && (s['title'] ?? '').isEmpty) s['title'] = 'زنگ تفریح';
+                        }),
+                      'rename' => _rename(i),
+                      'up' => _move(i, -1),
+                      'down' => _move(i, 1),
+                      _ => _remove(i),
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'toggle', child: Text(s['type'] == 'break' ? 'تبدیل به زنگ درسی' : 'تبدیل به تفریح / استراحت')),
+                      if (s['type'] == 'break') const PopupMenuItem(value: 'rename', child: Text('نام‌گذاری (نماز، صبحگاه، …)')),
+                      if (i > 0) const PopupMenuItem(value: 'up', child: Text('بالاتر')),
+                      if (i < _slots.length - 1) const PopupMenuItem(value: 'down', child: Text('پایین‌تر')),
+                      if (_slots.length > 1) const PopupMenuItem(value: 'delete', child: Text('حذف', style: TextStyle(color: HsColors.red))),
+                    ],
+                  ),
                 ]),
               ),
             ),
-          const SizedBox(height: 6),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _slots.length >= 14
-                    ? null
-                    : () => setState(() {
-                          final st = _slots.isEmpty ? '07:45' : _plus(_slots.last['end']!, 5);
-                          _slots.add({'type': 'class', 'start': st, 'end': _plus(st, 45)});
-                        }),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('زنگ درسی'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _slots.length >= 14 || _slots.isEmpty
-                    ? null
-                    : () => setState(() {
-                          final st = _slots.last['end']!;
-                          _slots.add({'type': 'break', 'start': st, 'end': _plus(st, 15)});
-                        }),
-                icon: const Icon(Icons.coffee_rounded),
-                label: const Text('زنگ تفریح'),
-              ),
-            ),
-          ]),
+            _addBar(i + 1),
+          ],
         ]),
       ),
     );

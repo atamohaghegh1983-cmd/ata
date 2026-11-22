@@ -157,12 +157,12 @@ class FakeApi extends ApiClient {
       '/me/timetable' || '/classes/9/timetable' => {'mode': 'teacher', 'can_edit': true, 'class': 'کلاس سوم الف',
           'bells': {'days': 5, 'periods': 4, 'source': 'default', 'day_names': ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه'], 'slots': [
             {'type': 'class', 'start': '07:45', 'end': '08:30', 'period': 1}, {'type': 'class', 'start': '08:35', 'end': '09:20', 'period': 2},
-            {'type': 'break', 'start': '09:20', 'end': '09:40', 'period': 0},
+            {'type': 'break', 'start': '09:20', 'end': '09:40', 'period': 0, 'title': 'نماز و تفریح'},
             {'type': 'class', 'start': '09:40', 'end': '10:25', 'period': 3}, {'type': 'class', 'start': '10:30', 'end': '11:15', 'period': 4}]},
           'cells': [
             {'day': 0, 'period': 1, 'subject': 'ریاضی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف', 'span': 2},
             {'day': 1, 'period': 1, 'subject': 'علوم تجربی', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 2, 'period': 3, 'subject': 'زبان انگلیسی', 'teacher': 'آقای صادقی', 'class': 'سوم ب'},
-            {'day': 3, 'period': 1, 'subject': 'هدیه‌های آسمان', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 4, 'period': 2, 'subject': 'هنر', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'},
+            {'day': 3, 'period': 1, 'subject': 'هدیه‌های آسمان', 'teacher': 'زهرا احمدی', 'class': 'سوم الف'}, {'day': 4, 'period': 2, 'subject': 'هنر (کارگاه)', 'teacher': 'زهرا احمدی', 'class': 'سوم الف', 'span': 2},
             {'day': 3, 'period': 4, 'subject': 'تربیت‌بدنی', 'teacher': 'آقای کریمی', 'class': 'سوم الف'}],
           'teachers': [{'id': 2, 'name': 'زهرا احمدی'}],
           'score': {'score': 87, 'checks': [{'label': 'بدون تداخل زمانی معلم', 'ok': true, 'detail': ''}, {'label': 'همه‌ی زنگ‌ها درس دارند', 'ok': false, 'detail': '۱۳ زنگ خالی'}, {'label': 'تعادل دروس در هر روز', 'ok': true, 'detail': ''}, {'label': 'استراحت کافی معلم‌ها', 'ok': true, 'detail': ''}]}},
@@ -275,5 +275,6 @@ void main() {
   testWidgets('wrong-app', (t) => shot(t, '35-wrong-app', const HomeScreen(), teacher: true, app: 'family'), skip: !on);
   testWidgets('teacher-onboarding', (t) => shot(t, '36-teacher-onboarding', const OnboardingScreen(), onboarding: true, app: 'teacher'), skip: !on);
   testWidgets('teacher-phone', (t) => shot(t, '37-teacher-phone', const PhoneScreen(), app: 'teacher'), skip: !on);
+  testWidgets('dark-phone', (t) => shot(t, '38-dark-phone', const PhoneScreen(), dark: true), skip: !on);
   testWidgets('magazine', (t) => shot(t, '10-magazine', const Scaffold(body: MagazineView(showMineFilter: true))), skip: !on);
 }

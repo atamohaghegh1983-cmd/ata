@@ -45,7 +45,7 @@ class HS_API_OTP {
 	}
 
 	/** کاربرِ قابل ورود با این شماره (دانش‌آموز با کارت کلاس وارد می‌شود، نه با پیامک) */
-	private static function find_user( $m ) {
+	public static function find_user( $m ) {
 		$cands = array();
 		$u     = get_user_by( 'login', $m );
 		if ( $u ) { $cands[] = $u; }
@@ -131,6 +131,7 @@ class HS_API_OTP {
 		do_action( 'hs_api_login', $user, 'otp' );
 
 		$user = get_userdata( $user->ID ); // نقش‌ها ممکن است با اتصال‌های خودکار عوض شده باشند
+		update_user_meta( $user->ID, '_hs_otp_at', time() ); // تا ۱۵ دقیقه بعد، رمز بدون رمز قبلی عوض می‌شود
 		$out  = HS_API_Auth::issue( $user, $device );
 		$out['is_new']           = $new;
 		$out['needs_onboarding'] = HS_API_Access::needs_onboarding( $user->ID );

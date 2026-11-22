@@ -46,6 +46,7 @@ class HS_API_Routes_V26 {
 		$r( '/app/latest', 'GET', 'app_latest', $open );
 		// ویرایش نام خودم
 		$r( '/me/name', 'POST', 'me_name' );
+		$r( '/me/password', 'POST', 'me_password' );
 		// داشبورد معلم: دیوار و اطلاعیه‌های اخیر
 		$r( '/teacher/feed', 'GET', 'teacher_feed' );
 	}
@@ -371,6 +372,48 @@ class HS_API_Routes_V26 {
 		HS_API_Util::hit( 'name_' . $uid, DAY_IN_SECONDS );
 		wp_update_user( array( 'ID' => $uid, 'first_name' => $first, 'last_name' => $last, 'display_name' => $first . ' ' . $last ) );
 		return array( 'ok' => true, 'name' => $first . ' ' . $last );
+	}
+
+	/**
+	 * ساخت یا تغییر رمز عبور (و ایمیل اختیاری) برای ورود بدون پیامک.
+	 * اگر قبلاً رمز ساخته شده، رمز فعلی لازم است؛ مگر در ۱۵ دقیقه‌ی بعد از ورود با کد پیامکی (فراموشی رمز).
+	 */
+	public static function me_password( WP_REST_Request $r ) {
+		$uid  = get_current_user_id();
+		$u    = get_userdata( $uid );
+		$pass = (string) self::p( $r, 'password' );
+		$lim  = HS_API_Util::limited( 'pwset_' . $uid, 8, 'تلاش زیاد بود؛ کمی بعد دوباره امتحان کنید.' );
+		if ( $lim ) { return $lim; }
+		HS_API_Util::hit( 'pwset_' . $uid, HOUR_IN_SECONDS );
+		if ( strlen( $pass ) < 8 || ! preg_match( '/[0-9]/', $pass ) || ! preg_match( '/[A-Za-z]/', $pass ) ) {
+			return self::err( 'رمز باید دست‌کم ۸ نویسه و شامل حرف انگلیسی و عدد باشد.' );
+		}
+		$fresh_otp = time() - (int) get_user_meta( $uid, '_hs_otp_at', true ) < 15 * MINUTE_IN_SECONDS;
+		if ( get_user_meta( $uid, '_hs_pw_set', true ) && ! $fresh_otp ) {
+			$cur = (string) self::p( $r, 'current' );
+			if ( '' === $cur || ! wp_check_password( $cur, $u->user_pass, $uid ) ) {
+				return self::err( 'رمز فعلی درست نیست. اگر آن را فراموش کرده‌اید، خارج شوید، با کد پیامکی وارد شوید و تا ۱۵ دقیقه رمز تازه بسازید.', 403, 'hs_bad_current' );
+			}
+		}
+		$email = trim( (string) self::p( $r, 'email', '' ) );
+		if ( '' !== $email ) {
+			$email = sanitize_email( $email );
+			if ( ! is_email( $email ) ) { return self::err( 'ایمیل درست نیست.' ); }
+			$other = email_exists( $email );
+			if ( $other && (int) $other !== $uid ) { return self::err( 'این ایمیل برای حساب دیگری ثبت شده است.', 409, 'hs_email_taken' ); }
+			wp_update_user( array( 'ID' => $uid, 'user_email' => $email ) );
+		}
+		wp_set_password( $pass, $uid );
+		update_user_meta( $uid, '_hs_pw_set', 1 );
+		delete_user_meta( $uid, '_hs_otp_at' );
+		// دستگاه‌های دیگر خارج می‌شوند؛ این دستگاه توکن تازه می‌گیرد
+		HS_API_Auth::revoke_all( $uid );
+		$out = HS_API_Auth::issue( get_userdata( $uid ), (string) self::p( $r, 'device' ) );
+		if ( is_array( $out ) ) {
+			$out['username'] = $u->user_login;
+			$out['message']  = 'رمز ذخیره شد. از این به بعد می‌توانید با «' . $u->user_login . '»' . ( $email ? '، ایمیل' : '' ) . ' یا شماره موبایل و همین رمز وارد شوید.';
+		}
+		return $out;
 	}
 
 	public static function admin_menu() {

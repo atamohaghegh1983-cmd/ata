@@ -26,6 +26,7 @@ import '../portfolio/portfolio.dart' show PortfolioView;
 import '../school/school_screens.dart';
 import '../magazine/magazine.dart';
 import '../messages/messages_screens.dart';
+import '../auth/password_screen.dart';
 import '../parent/parent_home.dart';
 import '../student/student_screens.dart';
 import '../teach/teach_screens.dart' show ClassTools;
@@ -64,28 +65,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     switch (me.homeKind) {
       case 'teacher':
         return [
-          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد', DashboardView(kind: 'teacher', onOpenTab: _go)),
+          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد معلم', DashboardView(kind: 'teacher', onOpenTab: _go)),
           _Tab('کلاس‌ها', Icons.class_rounded, 'کلاس‌های من', _ClassList(student: false, onOpenTab: _go)),
           msgs,
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
         ];
       case 'parent':
         return [
-          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد', DashboardView(kind: 'parent', onOpenTab: _go)),
+          _Tab('داشبورد', Icons.dashboard_rounded, 'پنل کاربری دانش‌آموز', DashboardView(kind: 'parent', onOpenTab: _go)),
           const _Tab('فرزندان', Icons.family_restroom_rounded, 'فرزندان من', ParentHome()),
           msgs,
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله‌ی والدین', MagazineView()),
         ];
       case 'manager':
         return [
-          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد مدرسه', DashboardView(kind: 'manager', onOpenTab: _go)),
+          _Tab('داشبورد', Icons.dashboard_rounded, 'داشبورد مدیر مدرسه', DashboardView(kind: 'manager', onOpenTab: _go)),
           const _Tab('کلاس‌ها', Icons.class_rounded, 'کلاس‌های مدرسه', SchoolClassesView()),
           const _Tab('کادر', Icons.badge_rounded, 'کادر مدرسه', StaffView()),
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView(showMineFilter: true)),
         ];
       case 'student':
         return [
-          const _Tab('من', Icons.emoji_events_rounded, 'امتیازها و تکالیف من', StudentHome()),
+          const _Tab('من', Icons.emoji_events_rounded, 'پنل کاربری دانش‌آموز', StudentHome()),
           _Tab('دیوار من', Icons.photo_album_rounded, 'دیوار همشاگردی من', PortfolioView(studentId: me.id)),
           const _Tab('مجله', Icons.auto_stories_rounded, 'مجله', MagazineView()),
         ];
@@ -260,6 +261,8 @@ class _Menu extends ConsumerWidget {
             await context.push('/role');
           case 'name':
             await editMyName(context, ref, me);
+          case 'password':
+            await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PasswordScreen()));
           case 'school':
             await context.push('/school/form');
           case 'staff':
@@ -331,6 +334,7 @@ class _Menu extends ConsumerWidget {
         // انتخاب نقش فقط برای حسابی که هنوز نقشی ندارد (حساب نقش‌دار با فرم ثبت‌نام عوض نمی‌شود)
         if (kind == 'other') const PopupMenuItem(value: 'role', child: Text('انتخاب نقش')),
         const PopupMenuItem(value: 'name', child: Text('ویرایش نام من')),
+        const PopupMenuItem(value: 'password', child: Text('رمز عبور و ایمیل')),
         const PopupMenuItem(value: 'theme', child: Text('ظاهر (روشن / تاریک)')),
         const PopupMenuItem(value: 'privacy', child: Text('حریم خصوصی')),
         const PopupMenuDivider(),

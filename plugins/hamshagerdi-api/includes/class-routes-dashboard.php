@@ -79,7 +79,7 @@ class HS_API_Routes_Dashboard {
 		$out   = array(
 			'role'            => $view,
 			'date'            => HS_API_Util::today(),
-			'unread_messages' => class_exists( 'HS_Comms_DB' ) ? (int) HS_Comms_DB::count_unread( $uid ) : 0,
+			'unread_messages' => HS_API_Access::unread_visible( $uid ),
 		);
 		if ( 'teacher' === $view ) {
 			$out['teacher'] = self::teacher_dash( $uid );
@@ -200,7 +200,7 @@ class HS_API_Routes_Dashboard {
 			foreach ( HS_API_Access::student_classes( $sid ) as $cid ) {
 				if ( 'publish' !== get_post_status( $cid ) ) { continue; }
 				$tu               = get_userdata( (int) get_post_meta( $cid, '_hs_teacher_id', true ) );
-				$row['classes'][] = array( 'id' => (int) $cid, 'title' => get_the_title( $cid ), 'teacher' => $tu ? $tu->display_name : '', 'teacher_id' => $tu ? (int) $tu->ID : 0 );
+				$row['classes'][] = array( 'id' => (int) $cid, 'title' => get_the_title( $cid ), 'teacher' => $tu ? $tu->display_name : '', 'teacher_id' => $tu ? (int) $tu->ID : 0, 'can_message' => $tu ? HS_API_Access::can_message( $uid, (int) $tu->ID ) : false );
 				if ( HS_API_Access::parent_can( $uid, $sid, 'attendance', $cid ) && class_exists( 'HS_Attendance_DB' ) ) {
 					global $wpdb;
 					$t  = HS_Attendance_DB::table_name();

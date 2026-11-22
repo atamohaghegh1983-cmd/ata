@@ -162,7 +162,7 @@ class HS_API_Routes {
 	public static function me() {
 		$u   = wp_get_current_user();
 		$out = HS_API_Access::profile( $u );
-		$out['unread_messages'] = class_exists( 'HS_Comms_DB' ) ? (int) HS_Comms_DB::count_unread( $u->ID ) : 0;
+		$out['unread_messages'] = HS_API_Access::unread_visible( $u->ID );
 		$out['unread_notifications'] = HS_API_Notify::unread( $u->ID );
 		return $out;
 	}

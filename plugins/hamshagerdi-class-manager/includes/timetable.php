@@ -74,7 +74,7 @@ class HS_Timetable {
 		$days  = max( 1, min( 6, $days ) );
 		$slots = array();
 		$prev  = '';
-		foreach ( array_slice( (array) ( $in['slots'] ?? array() ), 0, 14 ) as $s ) {
+		foreach ( array_slice( (array) ( $in['slots'] ?? array() ), 0, 20 ) as $s ) {
 			$type  = 'break' === ( $s['type'] ?? '' ) ? 'break' : 'class';
 			$start = self::hm( $s['start'] ?? '' );
 			$end   = self::hm( $s['end'] ?? '' );
@@ -88,7 +88,9 @@ class HS_Timetable {
 				return new WP_Error( 'hs_bells', 'زنگ‌ها هم‌پوشانی دارند (' . $start . '). ترتیب ساعت‌ها را درست کنید.' );
 			}
 			$prev    = $end;
-			$slots[] = array( 'type' => $type, 'start' => $start, 'end' => $end );
+			$title   = mb_substr( trim( sanitize_text_field( (string) ( $s['title'] ?? '' ) ) ), 0, 40 );
+			if ( 'break' === $type && '' === $title ) { $title = 'زنگ تفریح'; }
+			$slots[] = array( 'type' => $type, 'start' => $start, 'end' => $end, 'title' => $title );
 		}
 		if ( ! array_filter( $slots, function ( $s ) { return 'class' === $s['type']; } ) ) {
 			return new WP_Error( 'hs_bells', 'دست‌کم یک زنگ درسی لازم است.' );
@@ -289,19 +291,6 @@ class HS_Timetable {
 		$bells    = self::bells( $class_id );
 		$allowed  = self::teacher_options( $class_id );
 		$default  = (int) get_post_meta( $class_id, '_hs_teacher_id', true );
-		// زنگ‌های درسی پشت سر هم (بدون تفریح بین‌شان) برای درس چندزنگه
-		$next_ok = array();
-		$prev    = null;
-		foreach ( $bells['slots'] as $sl ) {
-			if ( 'class' === $sl['type'] ) {
-				if ( null !== $prev ) {
-					$next_ok[ $prev ] = true;
-				}
-				$prev = (int) $sl['period'];
-			} else {
-				$prev = null;
-			}
-		}
 		$clean  = array();
 		$errors = array();
 		$taken  = array(); // day_period => true
@@ -320,11 +309,9 @@ class HS_Timetable {
 			if ( isset( $taken[ $day . '_' . $period ] ) ) {
 				continue; // زیر درس چندزنگه‌ی قبلی افتاده
 			}
-			$span = max( 1, min( 4, (int) ( $r['span'] ?? 1 ) ) );
-			for ( $k = 0; $k < $span - 1; $k++ ) {
-				if ( empty( $next_ok[ $period + $k ] ) ) {
-					return new WP_Error( 'hs_timetable_span', sprintf( 'درس «%s» روز %s نمی‌تواند از زنگ تفریح یا آخر روز رد شود؛ تعداد زنگ‌هایش را کمتر کنید.', $sub, $days[ $day ] ?? '' ), array( 'conflicts' => array( array( 'day' => $day, 'period' => $period, 'message' => 'درس چندزنگه نمی‌تواند از زنگ تفریح رد شود.' ) ) ) );
-				}
+			$span = max( 1, min( 6, (int) ( $r['span'] ?? 1 ) ) );
+			if ( $period + $span - 1 > $bells['periods'] ) {
+				return new WP_Error( 'hs_timetable_span', sprintf( 'درس «%s» روز %s از آخرین زنگ روز بیرون می‌زند؛ تعداد زنگ‌هایش را کمتر کنید.', $sub, $days[ $day ] ?? '' ), array( 'conflicts' => array( array( 'day' => $day, 'period' => $period, 'message' => 'درس از آخرین زنگ روز بیرون می‌زند.' ) ) ) );
 			}
 			for ( $k = 0; $k < $span; $k++ ) {
 				$taken[ $day . '_' . ( $period + $k ) ] = true;
@@ -492,10 +479,23 @@ class HS_Timetable {
 		$bells  = self::bells( $cid );
 		$cells  = array();
 		$cover  = array(); // خانه‌هایی که زیر درس چندزنگه افتاده‌اند
+		$idx    = array(); // شماره‌ی زنگ ← ردیف جدول
+		foreach ( $bells['slots'] as $i => $sl ) {
+			if ( 'class' === $sl['type'] ) { $idx[ (int) $sl['period'] ] = $i; }
+		}
+		$rows_of = array(); // day_period ← تعداد ردیف (با زنگ‌های تفریحِ وسط)
+		$brcover = array(); // day_rowIndex ← ردیف تفریحی که زیر درس چندزنگه رفته
 		foreach ( self::cells( $cid ) as $c ) {
 			$cells[ $c['day'] . '_' . $c['period'] ] = $c;
-			for ( $k = 1; $k < (int) ( $c['span'] ?? 1 ); $k++ ) {
+			$sp = max( 1, (int) ( $c['span'] ?? 1 ) );
+			for ( $k = 1; $k < $sp; $k++ ) {
 				$cover[ $c['day'] . '_' . ( (int) $c['period'] + $k ) ] = true;
+			}
+			$from = $idx[ (int) $c['period'] ] ?? null;
+			$to   = $idx[ (int) $c['period'] + $sp - 1 ] ?? $from;
+			if ( null !== $from ) {
+				$rows_of[ $c['day'] . '_' . $c['period'] ] = $to - $from + 1;
+				for ( $i = $from + 1; $i < $to; $i++ ) { $brcover[ $c['day'] . '_' . $i ] = true; }
 			}
 		}
 		$days   = array_slice( self::day_names(), 0, $bells['days'] );
@@ -531,9 +531,14 @@ class HS_Timetable {
 			echo '<th' . ( $i === $today ? ' style="color:#C24E00"' : '' ) . '>' . esc_html( $d ) . '</th>';
 		}
 		echo '</tr></thead><tbody>';
-		foreach ( $bells['slots'] as $s ) {
+		foreach ( $bells['slots'] as $si => $s ) {
 			if ( 'break' === $s['type'] ) {
-				echo '<tr class="br"><td colspan="' . ( count( $days ) + 1 ) . '">☕ زنگ تفریح ' . esc_html( self::fa( $s['start'] . ' تا ' . $s['end'] ) ) . '</td></tr>';
+				echo '<tr class="br"><td class="bell">☕ ' . esc_html( $s['title'] ?? 'زنگ تفریح' ) . '<br>' . esc_html( self::fa( $s['start'] . ' - ' . $s['end'] ) ) . '</td>';
+				foreach ( $days as $d => $name ) {
+					if ( ! $edit && isset( $brcover[ $d . '_' . $si ] ) ) { continue; }
+					echo '<td></td>';
+				}
+				echo '</tr>';
 				continue;
 			}
 			$p = (int) $s['period'];
@@ -546,7 +551,7 @@ class HS_Timetable {
 				if ( $edit ) {
 					echo '<td><input name="tt[' . (int) $d . '][' . $p . '][subject]" value="' . esc_attr( $c['subject'] ?? '' ) . '" placeholder="' . ( isset( $cover[ $d . '_' . $p ] ) ? '↑ ادامه‌ی زنگ قبل' : 'درس' ) . '">';
 					echo '<select name="tt[' . (int) $d . '][' . $p . '][span]" title="چند زنگ پشت سر هم">';
-					for ( $k = 1; $k <= 3; $k++ ) {
+					for ( $k = 1; $k <= 4; $k++ ) {
 						echo '<option value="' . $k . '"' . selected( $k, (int) ( $c['span'] ?? 1 ), false ) . '>' . ( 1 === $k ? 'یک زنگ' : self::fa( $k ) . ' زنگ' ) . '</option>';
 					}
 					echo '</select>';
@@ -561,7 +566,8 @@ class HS_Timetable {
 				} elseif ( $c ) {
 					$t = get_userdata( (int) $c['teacher_id'] );
 					$sp = max( 1, (int) ( $c['span'] ?? 1 ) );
-					echo '<td' . ( $sp > 1 ? ' rowspan="' . $sp . '"' : '' ) . '><div class="c' . ( $d === $today ? ' today' : '' ) . '" style="background:' . esc_attr( self::color( $c['subject'] ) ) . ( $sp > 1 ? ';height:100%' : '' ) . '"><b>' . esc_html( $c['subject'] ) . '</b><small>' . esc_html( $t ? $t->display_name : '' ) . ( $sp > 1 ? ' · ' . self::fa( $sp ) . ' زنگ' : '' ) . '</small></div></td>';
+					$rs = $rows_of[ $d . '_' . $p ] ?? $sp;
+					echo '<td' . ( $rs > 1 ? ' rowspan="' . $rs . '"' : '' ) . '><div class="c' . ( $d === $today ? ' today' : '' ) . '" style="background:' . esc_attr( self::color( $c['subject'] ) ) . ( $sp > 1 ? ';height:100%' : '' ) . '"><b>' . esc_html( $c['subject'] ) . '</b><small>' . esc_html( $t ? $t->display_name : '' ) . ( $sp > 1 ? ' · ' . self::fa( $sp ) . ' زنگ' : '' ) . '</small></div></td>';
 				} else {
 					echo '<td></td>';
 				}

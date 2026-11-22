@@ -81,6 +81,34 @@ class AuthController extends Notifier<AuthState> {
     return me;
   }
 
+  /// ورود با رمز: شماره موبایل، ایمیل یا نام کاربری
+  Future<Me> loginPassword(String login, String password) async {
+    final api = ref.read(apiProvider);
+    final d = await api.post<Map<String, dynamic>>(
+      '/auth/login',
+      data: {'username': login, 'password': password, 'device': AppConfig.deviceName},
+      auth: false,
+    );
+    await api.saveTokens(d);
+    final me = await reloadMe();
+    Push.register(api);
+    return me;
+  }
+
+  /// ساخت یا تغییر رمز (و ایمیل)؛ توکن تازه‌ی این دستگاه ذخیره می‌شود
+  Future<String> setPassword({required String password, String? current, String? email}) async {
+    final api = ref.read(apiProvider);
+    final d = await api.post<Map<String, dynamic>>('/me/password', data: {
+      'password': password,
+      if (current != null && current.isNotEmpty) 'current': current,
+      'email': ?email,
+      'device': AppConfig.deviceName,
+    });
+    await api.saveTokens(d);
+    await reloadMe();
+    return '${d['message'] ?? 'رمز ذخیره شد.'}';
+  }
+
   Future<void> logout({bool everywhere = false}) async {
     final api = ref.read(apiProvider);
     final tokens = ref.read(tokenStoreProvider);

@@ -37,6 +37,8 @@ class HS_API_Access {
 			'first_name'       => (string) $u->first_name,
 			'last_name'        => (string) $u->last_name,
 			'username'         => $u->user_login,
+			'email'            => false === strpos( (string) $u->user_email, '@hamshagerdi.local' ) ? (string) $u->user_email : '',
+			'has_password'     => (bool) get_user_meta( $u->ID, '_hs_pw_set', true ),
 			'mobile'           => (string) get_user_meta( $u->ID, '_hs_mobile', true ),
 			'view'             => $view,   // teacher | manager | parent | student | other
 			'roles'            => array_values( (array) $u->roles ),
@@ -207,6 +209,17 @@ class HS_API_Access {
 			}
 		}
 		return false;
+	}
+
+	/** تعداد پیام‌های خوانده‌نشده فقط از کسانی که گفت‌وگویشان در صندوق دیده می‌شود */
+	public static function unread_visible( $uid ) {
+		global $wpdb;
+		if ( ! class_exists( 'HS_Comms_DB' ) ) { return 0; }
+		$n = 0;
+		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SELECT sender_id, COUNT(*) n FROM ' . HS_Comms_DB::messages_table() . ' WHERE recipient_id = %d AND is_read = 0 GROUP BY sender_id', $uid ), ARRAY_A ) as $x ) { // phpcs:ignore
+			if ( self::can_read_thread( (int) $uid, (int) $x['sender_id'] ) ) { $n += (int) $x['n']; }
+		}
+		return $n;
 	}
 
 	/** دیدن گفت‌وگو: فقط اگر رابطه‌ی فعلی (در یکی از دو جهت) برقرار باشد */

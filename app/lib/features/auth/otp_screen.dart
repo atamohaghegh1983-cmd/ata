@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smart_auth/smart_auth.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
@@ -34,6 +35,20 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   void initState() {
     super.initState();
     _start(widget.wait);
+    _listenSms();
+  }
+
+  /// خواندن خودکار کد از پیامک (اندروید: پنجره‌ی «اجازه‌ی خواندن این پیامک» نشان داده می‌شود)
+  Future<void> _listenSms() async {
+    try {
+      final r = await SmartAuth.instance.getSmsWithUserConsentApi(matcher: r'[0-9۰-۹]{5}');
+      final code = r.data?.code;
+      if (!mounted || code == null) return;
+      _c.text = Fa.enDigits(code);
+      _verify();
+    } catch (_) {
+      // روی دستگاه بدون سرویس گوگل: کاربر دستی وارد می‌کند
+    }
   }
 
   void _start(int s) {
@@ -48,6 +63,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   @override
   void dispose() {
+    SmartAuth.instance.removeUserConsentApiListener().ignore();
     _timer?.cancel();
     _c.dispose();
     _focus.dispose();
@@ -83,6 +99,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     try {
       final wait = await ref.read(authProvider.notifier).requestOtp(widget.mobile);
       _start(wait);
+      _listenSms();
       if (mounted) showMessage(context, 'کد تازه فرستاده شد.');
     } on ApiException catch (e) {
       if (mounted) showMessage(context, e.message, error: true);

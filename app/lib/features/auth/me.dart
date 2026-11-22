@@ -18,6 +18,9 @@ class Me {
   bool get needsOnboarding => raw['needs_onboarding'] == true;
   bool get hasChildren => raw['has_children'] == true;
   bool get canSupervise => raw['can_supervise'] == true;
+  String get username => '${raw['username'] ?? ''}';
+  String get email => '${raw['email'] ?? ''}';
+  bool get hasPassword => raw['has_password'] == true;
   int get unread => (raw['unread_messages'] as num?)?.toInt() ?? 0;
   List<String> get roles => ((raw['roles'] as List?) ?? const []).map((e) => '$e').toList();
   String? get schoolName => (raw['school'] is Map) ? (raw['school']['name'] as String?) : null;

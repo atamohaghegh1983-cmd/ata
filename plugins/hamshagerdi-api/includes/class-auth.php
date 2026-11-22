@@ -180,14 +180,23 @@ class HS_API_Auth {
 		if ( '' === $username || '' === (string) $password ) {
 			return HS_API_Util::err( 'نام کاربری و رمز را وارد کنید.', 400, 'hs_bad_login' );
 		}
-		$u = wp_authenticate( $username, (string) $password );
+		// شماره‌ی موبایل هم قبول است: حسابِ همان شماره پیدا می‌شود
+		$login = $username;
+		if ( class_exists( 'HSMA_Util' ) && class_exists( 'HS_API_OTP' ) ) {
+			$m = HSMA_Util::mobile( $username );
+			if ( $m ) {
+				$mu = HS_API_OTP::find_user( $m );
+				if ( $mu instanceof WP_User ) { $login = $mu->user_login; }
+			}
+		}
+		$u = wp_authenticate( $login, (string) $password );
 		if ( is_wp_error( $u ) ) {
 			HS_API_Util::hit( $k_user, 15 * MINUTE_IN_SECONDS );
 			HS_API_Util::hit( $k_ip, 15 * MINUTE_IN_SECONDS );
 			if ( 'hsum_suspended' === $u->get_error_code() ) {
 				return HS_API_Util::err( 'حساب شما تعلیق شده است. با مدیر سایت تماس بگیرید.', 403, 'hs_suspended' );
 			}
-			return HS_API_Util::err( 'نام کاربری یا رمز عبور درست نیست.', 401, 'hs_bad_login' );
+			return HS_API_Util::err( 'نام کاربری یا رمز عبور درست نیست. اگر هنوز رمز نساخته‌اید، با کد پیامکی وارد شوید و از منو «رمز عبور و ایمیل» را بزنید.', 401, 'hs_bad_login' );
 		}
 		$ok = self::may_use_app( $u );
 		if ( is_wp_error( $ok ) ) { return $ok; }

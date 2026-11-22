@@ -25,8 +25,10 @@ class V27Test extends HS_Test_Case {
 		$cells = $res->get_data()['cells'];
 		$this->assertCount( 1, $cells );
 		$this->assertSame( 2, $cells[0]['span'] );
-		// از روی تفریح رد نمی‌شود
-		$this->assertStatus( 409, $this->call( 'POST', '/classes/' . $c . '/timetable', array( 'cells' => array( array( 'day' => 0, 'period' => 2, 'subject' => 'علوم', 'span' => 2 ) ) ), $t ) );
+		// درس دوزنگه می‌تواند از روی زنگ تفریح رد شود (تفریح سر جایش می‌ماند)
+		$this->assertStatus( 200, $this->call( 'POST', '/classes/' . $c . '/timetable', array( 'cells' => array( array( 'day' => 0, 'period' => 2, 'subject' => 'علوم', 'span' => 2 ) ) ), $t ) );
+		// ولی از آخرین زنگ روز بیرون نمی‌زند (پیش‌فرض ۵ زنگ)
+		$this->assertStatus( 409, $this->call( 'POST', '/classes/' . $c . '/timetable', array( 'cells' => array( array( 'day' => 0, 'period' => 4, 'subject' => 'علوم', 'span' => 3 ) ) ), $t ) );
 	}
 
 	public function test_conflict_uses_real_clock_across_different_bells() {
